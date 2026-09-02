@@ -4,8 +4,8 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **2**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **139**, 32 GPUs, 2t2r, 3 requested steps. Stopped after two actual optimizer updates: strict TITO gate discrepancy. Both checkpoints retained; no qualified resume or held-out-quality result.
-Status snapshot: `2026-09-02T22:25:40.296765+00:00`; inspect Slurm for live state.
+Latest submission: Slurm **140**, 32 GPUs, 2t2r, 3 requested steps. Fresh three-step synchronous qualification after exact truncated-token replay. No optimizer step yet verified for job140; two prior updates belong to failed job139.
+Status snapshot: `2026-09-02T22:26:40.191809+00:00`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
