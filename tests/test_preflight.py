@@ -21,6 +21,7 @@ from pull_pinned_model import download_file, validate_manifest
 import io
 import threading
 from validate_fabric_under_load import validate_records
+from telemetry_lustre_host import stats_records
 
 
 class EvidenceTests(unittest.TestCase):
@@ -53,6 +54,19 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_lustre_aggregate_units_and_saturated_moment_are_not_invented(self):
+        text = 'snapshot_time 123 secs.nsecs\nread_bytes 4 samples [bytes] 1 8 16 9223372036854775807\nopen 2 samples [usecs] 1 3 4 10\nioctl 3 samples [reqs]\n'
+        rows = {r['metric']: r for r in stats_records(text)}
+        self.assertEqual(rows['read_bytes.sum']['value'], 16)
+        self.assertEqual(rows['read_bytes.sum']['unit'], 'B')
+        self.assertEqual(rows['open.sum']['unit'], 'us')
+        self.assertEqual(rows['open.max']['kind'], 'lifetime_aggregate')
+        self.assertNotIn('read_bytes.sum_squares', rows)
+        with self.assertRaises(ValueError):
+            stats_records(text.replace('[bytes]', '[unknown]'))
+        with self.assertRaises(ValueError):
+            stats_records('snapshot_time 123 secs.nsecs\n')
+
     def test_fabric_load_gate_requires_every_rail_and_rejects_reset(self):
         rows = [dict(hca=f'mlx5_{i}', hca_port='1', metric=name, value=value)
                 for i in range(8) for name in ('PortXmitData', 'PortRcvData') for value in (1, 2, 3)]
