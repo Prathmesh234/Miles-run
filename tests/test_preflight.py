@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 import subprocess
@@ -34,6 +35,7 @@ from trainer_probe import trainer_command, parameter_hashes, gradient_statistics
 from audit_trainer_probe import validate_rank_evidence
 from report_trainer_probe import analyze_streams
 from prepare_local_task_images import offline_harness, pin_dockerfile
+from local_file_env import validate_archive, tree_archive, atomic_bytes, FileTaskSession
 
 
 class EvidenceTests(unittest.TestCase):
@@ -77,6 +79,37 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_file_runtime_rejects_links_special_files_and_escaping_snapshots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'source'
+            source.mkdir()
+            (source / 'answer').write_text('candidate output')
+            payload = tree_archive(source, 'task_file')
+            validate_archive(payload, 'task_file')
+            atomic_bytes(root / 'snapshot.tar', payload)
+            self.assertEqual((root / 'snapshot.tar').read_bytes(), payload)
+            (source / 'link').symlink_to('/etc/passwd')
+            with self.assertRaises(ValueError):
+                tree_archive(source, 'task_file')
+        for name, kind in [('task_file/../../escape', tarfile.REGTYPE), ('/task_file/escape', tarfile.REGTYPE),
+                           ('task_file/link', tarfile.SYMTYPE), ('task_file/hardlink', tarfile.LNKTYPE),
+                           ('task_file/fifo', tarfile.FIFOTYPE), ('tests/hidden', tarfile.REGTYPE)]:
+            buffer = io.BytesIO()
+            with tarfile.open(fileobj=buffer, mode='w') as archive:
+                member = tarfile.TarInfo(name)
+                member.type = kind
+                archive.addfile(member)
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                validate_archive(buffer.getvalue(), 'task_file')
+
+    def test_sealed_policy_rejects_commands_before_any_docker_call(self):
+        session = FileTaskSession.__new__(FileTaskSession)
+        session.lock = threading.RLock()
+        session.sealed = True
+        with self.assertRaisesRegex(RuntimeError, 'permanently sealed'):
+            session.run_command('cat /tests/test_outputs.py')
+
     def test_offline_harness_preserves_scoring_and_refuses_unknown_setup(self):
         setup = ('#!/bin/bash\napt-get update\napt-get install -y curl\n'
                  'curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh\n'
