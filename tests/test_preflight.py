@@ -7,17 +7,20 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from evidence import Run, markdown, sha256
 from infra_controller import parse_nccl, srun
 from telemetry_native import GPU_FIELDS, gpu_records, nvlink_records
 from submit_native_preflight import batches, entry
-from fabric_probe import active_training_ports, perfquery_command, perfquery_records
+from fabric_probe import active_training_ports, capture_port, perfquery_command, perfquery_records, write_port_capture
 from summarize_native import counter_rate, summary
 from pull_pinned_model import download_file, validate_manifest
 import io
 import threading
+from validate_fabric_under_load import validate_records
 
 
 class EvidenceTests(unittest.TestCase):
@@ -50,6 +53,32 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_fabric_load_gate_requires_every_rail_and_rejects_reset(self):
+        rows = [dict(hca=f'mlx5_{i}', hca_port='1', metric=name, value=value)
+                for i in range(8) for name in ('PortXmitData', 'PortRcvData') for value in (1, 2, 3)]
+        errors, metrics = validate_records(rows, 'test-node')
+        self.assertFalse(errors)
+        self.assertEqual(len(metrics), 16)
+        self.assertTrue(validate_records(rows[6:], 'test-node')[0])
+        rows[1]['value'] = 4
+        self.assertTrue(validate_records(rows, 'test-node')[0])
+
+    def test_perfquery_failure_preserves_raw_evidence_and_allocation_context(self):
+        failed = subprocess.CompletedProcess(['perfquery'], 7, 'partial counters', 'port unavailable')
+        with patch('fabric_probe.subprocess.run', return_value=failed):
+            result = capture_port('mlx5_0', '1', {'slurm_job_id': '123', 'role': 'trainer'})
+        self.assertEqual(result['raw']['stdout'], 'partial counters')
+        self.assertEqual(result['raw']['exit_code'], 7)
+        self.assertEqual(result['records'][0]['slurm_job_id'], '123')
+        self.assertEqual(result['records'][0]['role'], 'trainer')
+        self.assertIsNone(result['records'][0]['value'])
+        writes = []
+        class Sink:
+            def write(self, name, value):
+                writes.append((name, value))
+        write_port_capture(Sink(), result)
+        self.assertEqual([name for name, _ in writes], ['raw-infiniband', 'infiniband'])
+
     def test_model_download_checks_hash_size_and_never_overwrites(self):
         payload = b'pinned model data'
         class Response(io.BytesIO):

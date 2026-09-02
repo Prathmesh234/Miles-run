@@ -16,6 +16,7 @@ import time
 
 from evidence import utcnow
 from infra_node import allocated_run
+from fabric_probe import active_training_ports, capture_port, write_port_capture
 
 
 GPU_FIELDS = [
@@ -120,20 +121,6 @@ def sample_files(streams, common):
     for line in raw.get('/proc/vmstat', '').splitlines():
         name, value = line.split()
         streams.write('cpu-memory-numa', dict(common, source='proc-vmstat', metric=name, value=int(value), unit='count'))
-    ib_paths = sorted(Path('/sys/class/infiniband').glob('*/ports/*/counters/*'))
-    ib_paths += sorted(Path('/sys/class/infiniband').glob('*/ports/*/hw_counters/*'))
-    if not ib_paths:
-        streams.write('infiniband', dict(common, source='ib-sysfs', metric='collector_error',
-                                        value=None, unit='event', error='No IB counters found.'))
-    for p in ib_paths:
-        attrs = dict(common, source='ib-sysfs', hca=p.parts[-5], hca_port=p.parts[-3],
-                     counter_group=p.parts[-2], metric=p.name)
-        try:
-            value = int(p.read_text().strip())
-            unit = '4_octets' if p.name in ('port_xmit_data', 'port_rcv_data') else 'counter_units'
-            streams.write('infiniband', dict(attrs, value=value, unit=unit))
-        except (OSError, ValueError) as exc:
-            streams.write('infiniband', dict(attrs, metric='collector_error', value=None, unit='event', error=str(exc)))
     v = os.statvfs(streams.root)
     for name, value, unit in [('capacity', v.f_blocks*v.f_frsize, 'B'),
                               ('available', v.f_bavail*v.f_frsize, 'B'), ('free_inodes', v.f_favail, 'count')]:
@@ -150,9 +137,26 @@ def sample_files(streams, common):
                                       value=None, unit='event', path=str(p), error=str(exc)))
 
 
-def collect(run, stop_file, limit_s):
+def sample_sysfs_ib(streams, common):
+    ib_paths = sorted(Path('/sys/class/infiniband').glob('*/ports/*/counters/*'))
+    ib_paths += sorted(Path('/sys/class/infiniband').glob('*/ports/*/hw_counters/*'))
+    if not ib_paths:
+        streams.write('infiniband', dict(common, source='ib-sysfs', metric='collector_error',
+                                        value=None, unit='event', error='No IB counters found.'))
+    for p in ib_paths:
+        attrs = dict(common, source='ib-sysfs', hca=p.parts[-5], hca_port=p.parts[-3],
+                     counter_group=p.parts[-2], metric=p.name)
+        try:
+            value = int(p.read_text().strip())
+            unit = '4_octets' if p.name in ('port_xmit_data', 'port_rcv_data') else 'counter_units'
+            streams.write('infiniband', dict(attrs, value=value, unit=unit))
+        except (OSError, ValueError) as exc:
+            streams.write('infiniband', dict(attrs, metric='collector_error', value=None, unit='event', error=str(exc)))
+def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native'):
+    if ib_backend not in ('sysfs', 'perfquery') or not re.fullmatch(r'[a-z0-9][a-z0-9-]*', stream_label):
+        raise ValueError('Invalid explicit collector backend or stream label.')
     host = socket.gethostname()
-    root = run.root / 'telemetry' / 'native' / host
+    root = run.root / 'telemetry' / stream_label / host
     root.mkdir(parents=True, exist_ok=False)
     streams = Streams(root)
     start = time.monotonic()
@@ -162,13 +166,19 @@ def collect(run, stop_file, limit_s):
         'nvlink': (['nvidia-smi', 'nvlink', '-gt', 'd'], nvlink_records),
     }
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        ports = active_training_ports() if ib_backend == 'perfquery' else []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
             while time.monotonic() - start < limit_s and not stop_file.exists():
                 tick = time.monotonic()
                 common = {'time': utcnow(), 'monotonic_s': tick, 'hostname': host,
                           'slurm_job_id': os.environ['SLURM_JOB_ID'], 'role': 'infrastructure-preflight'}
                 pending = {name: pool.submit(capture, argv) for name, (argv, _) in commands.items()}
+                fabric = [pool.submit(capture_port, hca, port, common) for hca, port in ports]
                 sample_files(streams, common)
+                if ib_backend == 'sysfs':
+                    sample_sysfs_ib(streams, common)
+                for future in fabric:
+                    write_port_capture(streams, future.result())
                 for name, future in pending.items():
                     raw = future.result()
                     streams.write('raw-' + name, dict(common, source=name, **raw))
@@ -184,6 +194,10 @@ def collect(run, stop_file, limit_s):
                                                     value=time.monotonic()-tick, unit='s'))
                 streams.flush()
                 time.sleep(max(0, 1 - (time.monotonic()-tick)))
+    except (OSError, ValueError) as exc:
+        streams.write('infiniband', dict(time=utcnow(), monotonic_s=time.monotonic(), hostname=host,
+                      source=ib_backend, metric='collector_error', value=None, unit='event', error=str(exc)))
+        raise
     finally:
         streams.close()
 
@@ -192,9 +206,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--limit-s', type=int, default=840)
+    ap.add_argument('--ib-backend', choices=['sysfs', 'perfquery'], default='sysfs')
+    ap.add_argument('--stream-label', default='native')
     args = ap.parse_args()
     run = allocated_run(args.run_dir)
-    collect(run, run.root / 'control' / 'native-telemetry.stop', args.limit_s)
+    collect(run, run.root / 'control' / (args.stream_label + '-telemetry.stop'), args.limit_s,
+            args.ib_backend, args.stream_label)
 
 
 if __name__ == '__main__':

@@ -51,11 +51,13 @@ def perfquery_records(text, hca, port):
     return records
 
 
-def capture_port(hca, port):
+def capture_port(hca, port, context=None):
     start = time.monotonic()
-    common = {'time': utcnow(), 'monotonic_s': start, 'hostname': socket.gethostname(),
-              'source': 'perfquery', 'hca': hca, 'hca_port': str(port), 'role': 'read-only-diagnostic'}
+    common = {'role': 'read-only-diagnostic', **(context or {}),
+              'time': utcnow(), 'monotonic_s': start, 'hostname': socket.gethostname(),
+              'source': 'perfquery', 'hca': hca, 'hca_port': str(port)}
     argv = perfquery_command(hca, port)
+    raw = dict(common, argv=argv)
     try:
         result = subprocess.run(argv, capture_output=True, text=True, timeout=5)
         raw = dict(common, argv=argv, stdout=result.stdout, stderr=result.stderr,
@@ -64,9 +66,15 @@ def capture_port(hca, port):
             raise ValueError(result.stderr)
         rows = [dict(common, **row) for row in perfquery_records(result.stdout, hca, port)]
     except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
-        raw = dict(common, argv=argv, error=str(exc), duration_s=time.monotonic() - start)
+        raw.update(error=str(exc), duration_s=time.monotonic() - start)
         rows = [dict(common, metric='collector_error', value=None, unit='event', error=str(exc))]
     return {'raw': raw, 'records': rows}
+
+
+def write_port_capture(streams, capture):
+    streams.write('raw-infiniband', capture['raw'])
+    for row in capture['records']:
+        streams.write('infiniband', row)
 
 
 def main():
