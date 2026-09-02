@@ -12,10 +12,11 @@ from evidence import Run, atomic
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
+    ap.add_argument('--attempt', type=int, choices=range(2, 10), default=2)
     args = ap.parse_args()
     run = Run(args.run_dir)
-    phase = run.phase('00-pinned-image-cpu-runtime-v2')
-    root = run.root / 'images/runtime-cpu-inventory-v2'
+    phase = run.phase('00-pinned-image-cpu-runtime-v' + str(args.attempt))
+    root = run.root / ('images/runtime-cpu-inventory-v' + str(args.attempt))
     try:
         root.mkdir(exist_ok=False)
         env = prepare(root)
@@ -27,7 +28,7 @@ def main():
     code = Path(__file__).resolve().parent
     rc, out, _ = phase.command(['enroot', 'start', '--net', '--pid', '--ipc', '--env',
         'NVIDIA_VISIBLE_DEVICES=void', '--env', 'PYTHONDONTWRITEBYTECODE=1', '--mount',
-        str(code) + ':/ptx:none:bind,ro', str(image), 'python3', '/ptx/runtime_inventory.py'], timeout=180)
+        str(code) + ':/ptx:none:bind,ro,x-create=dir', str(image), 'python3', '/ptx/runtime_inventory.py'], timeout=180)
     errors = []
     if rc:
         errors.append('Enroot startup/package inspection failed with exit code ' + str(rc))
