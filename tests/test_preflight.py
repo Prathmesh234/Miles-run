@@ -22,7 +22,7 @@ from pull_pinned_model import download_file, validate_manifest
 import io
 import threading
 from validate_fabric_under_load import validate_records
-from telemetry_lustre_host import stats_records
+from telemetry_lustre_host import stats_records, duration_seconds
 from enroot_run_config import prepare as prepare_enroot_config
 from runtime_inventory import parse_inventory_stdout
 from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows, stop_owned_server
@@ -35,7 +35,7 @@ from trainer_probe import trainer_command, parameter_hashes, gradient_statistics
 from audit_trainer_probe import validate_rank_evidence
 from report_trainer_probe import analyze_streams
 from prepare_local_task_images import offline_harness, pin_dockerfile
-from local_file_env import validate_archive, tree_archive, atomic_bytes, FileTaskSession
+from local_file_env import validate_archive, tree_archive, atomic_bytes, archive_contents, FileTaskSession
 
 
 class EvidenceTests(unittest.TestCase):
@@ -79,6 +79,13 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_training_collector_duration_is_bounded_but_allows_full_allocation(self):
+        import argparse
+        self.assertEqual(duration_seconds('5460'), 5460)
+        for duration in ('0', '86401'):
+            with self.assertRaises(argparse.ArgumentTypeError):
+                duration_seconds(duration)
+
     def test_file_runtime_rejects_links_special_files_and_escaping_snapshots(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -87,6 +94,9 @@ class ParserTests(unittest.TestCase):
             (source / 'answer').write_text('candidate output')
             payload = tree_archive(source, 'task_file')
             validate_archive(payload, 'task_file')
+            with tarfile.open(fileobj=io.BytesIO(archive_contents(payload, 'task_file'))) as inside:
+                self.assertEqual(inside.getnames(), ['answer'])
+                self.assertEqual(inside.extractfile('answer').read(), b'candidate output')
             atomic_bytes(root / 'snapshot.tar', payload)
             self.assertEqual((root / 'snapshot.tar').read_bytes(), payload)
             (source / 'link').symlink_to('/etc/passwd')
