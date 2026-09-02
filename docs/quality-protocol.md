@@ -22,6 +22,14 @@ Four hundred steps is a planning budget, not evidence that this model or taskset
 will improve. Any extension requires a prospective budget and a new documented
 analysis plan. A plateau, regressions, or failed gates must be reported.
 
+The pinned Megatron calculator has now been executed with dense DP 8, 16 and 24:
+global batch 64 is rejected at DP24, while 96 passes all three without rounding.
+The Stage 4 reference remains 64. The proposed common Stage 5 batch is therefore
+96 (12 prompts × 8 samples), pending full-trainer/gradient validation and the
+prospective campaign freeze. At that batch, a subsequent 400-step quality run
+would consume 38,400 eligible trajectories, not 25,600. No measured run or
+baseline outcome has been used to choose this arithmetic compatibility change.
+
 ## Evaluation isolation
 
 Training uses only the pinned Terminal-Lego or TMAX subset. Terminal-Bench 2.1

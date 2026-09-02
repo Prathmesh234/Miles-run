@@ -17,7 +17,7 @@ def render(data):
     lines += ['', '## Reproducer', '', '```sh', data['reproducer'], '```', '',
               'Dependency resolution only; expected conflicts never trigger forced installation.', '',
               '## Locks', '']
-    for name in ('offline_lock', 'openenv_development_lock'):
+    for name in ('offline_lock', 'openenv_development_lock', 'openenv_server_linux_lock'):
         lock = data.get(name)
         if lock:
             lines += [f"- `{lock['path']}`: SHA256 `{lock['sha256']}`."]
