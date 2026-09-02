@@ -2,10 +2,10 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Optimizer steps verified: **0**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **2**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **139**, 32 GPUs, 2t2r, 3 requested steps. Initial synchronous validation. Submission is not optimizer execution or quality success.
-Status snapshot: `2026-09-02T22:05:10.417681Z`; inspect Slurm for live state.
+Latest submission: Slurm **139**, 32 GPUs, 2t2r, 3 requested steps. Stopped after two actual optimizer updates: strict TITO gate discrepancy. Both checkpoints retained; no qualified resume or held-out-quality result.
+Status snapshot: `2026-09-02T22:25:40.296765+00:00`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -46,16 +46,18 @@ Status snapshot: `2026-09-02T22:05:10.417681Z`; inspect Slurm for live state.
 - Job138 passed initial broadcast and target/MTP weight equality on both EP8 rollout engines using Triton MoE. Model-driven local terminal execution produced a first recorded reward1.0, but our text-only placeholder guard stopped the first group before optimization.
 - Pinned-image CPU reproduction confirmed all four Qwen text-only prompts produce images=None/videos=None. Miles1181014c3 permits these placeholders, still rejects media/invalid groups and saves full pre-optimizer native group evidence. Nineteen targeted tests passed; root evidence/cleanup suite38passed.
 - Post-allocation audits retained jobs137/138 as failed, including collection timeouts and incomplete node-finalization artifacts. Rootafcbf71 adds coordinated peer-failure cleanup and a read-only terminal audit. No historical results overwritten.
+- Job139 executed two real GRPO optimizer updates (gradient norms0.6023604/1.0913043) and saved two497,292,57x,xxx-byte checkpoints before operator gate stop. All four node phases finalized. Forty-eight durable graded episodes,32passed/16failed-task/zero grading errors; only32 samples accepted before stop. No held-out result.
+- Pinned CPU replay reproduced all32 session comparisons. Candidate unfinished-message verification preserves all32 native sample fields; three expected final closers handled only in comparison; seven real-token negative controls rejected. Targeted launcher suite28passed; root suite39passed. Original failed replay wrapper retained.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Ten live local-runtime checks passed in job134 for four training IDs and the separate runtime task. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Native GPU/NVLink/IB/CPU and host-Lustre streams captured across all four GRPO nodes; GPU/NVLink collection timeouts occurred around weight broadcasts in jobs137/138. Full gate remains open. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
+| Full infrastructure telemetry | Job139 finalized24 native/host-Lustre streams; one NVLink timeout occurred during second backward at22:18:42 and four collection-error records around shutdown. Full telemetry remains unqualified; no fabric-fault attribution. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Independently compare each loaded EP8 parameter shard against the qualified checkpoint, then compare teacher-forced logprobs with serving. Diagnostic cross-entropy is not GRPO correctness or optimizer/resume validation. |
-| GRPO, async and resume fidelity | Job138 passed target/MTP broadcast equality and generated local terminal trajectories, then failed our false-positive text-only guard before optimizer execution. Job139 submitted with the tested fix. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
+| GRPO, async and resume fidelity | Job139 executed two updates, but was stopped on an incomplete strict TITO gate. Narrow comparison fix passed pinned CPU replay; fresh GPU qualification required. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | 641 task sources verified. Pinned images and reference solutions qualified for four training IDs plus runtime task. TB2.1 evaluation remains unexecuted. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
@@ -64,4 +66,4 @@ Status snapshot: `2026-09-02T22:05:10.417681Z`; inspect Slurm for live state.
 
 ## Quality budget
 
-Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. No optimizer step or held-out quality delta has yet been verified, and no improvement is guaranteed.
+Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. Two optimizer updates were observed in failed qualification job139. No held-out quality delta or complete resume has been verified; no improvement is guaranteed.

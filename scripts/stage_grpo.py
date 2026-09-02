@@ -58,6 +58,14 @@ def main():
     miles_sha = subprocess.check_output(['git', '-C', str(miles), 'rev-parse', 'HEAD'], text=True).strip()
     run = Run(a.run_dir)
     phase = run.phase(f'02-sync-grpo-submission-v{a.attempt}')
+    tito_gate = run.root / 'tests/02-tito-candidate-validation-v1/result.json'
+    tito_proof = json.loads(tito_gate.read_text())
+    if (tito_proof['findings'] or tito_proof.get('samples_unchanged') != 32
+            or len(tito_proof.get('negative_controls', [])) != 7
+            or not all(case['rejected'] for case in tito_proof['negative_controls'])
+            or sha256(miles / 'examples/experimental/openenv/posttrainingx_local_agent.py') != tito_proof['candidate_sha256']):
+        phase.finish('fail', failure_summary='Exact candidate tokenization replay gate has not passed; no allocation submitted.', refresh=False)
+        return 1
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
     prefix = f'provenance/sync-grpo-code-v{a.attempt}/'
     label = f'sync-grpo-v{a.attempt}'
@@ -99,6 +107,8 @@ def main():
         'task_ids': ['task_06652', 'task_14118', 'task_10753', 'task_09467'],
         'layout': '2t2r', 'optimizer_steps_requested': 3, 'group_size': 8, 'global_batch_size': 16,
         'sglang_moe_runner_backend': 'triton', 'verify_initial_weight_broadcast': True,
+        'tito_comparison_contract': 'qwen36_length_limited_final_message_v1',
+        'tito_candidate_validation_sha256': sha256(tito_gate),
         'backend_change_reason': 'Job 137 rejected BF16 broadcast into auto-selected FlashInfer packed expert weights; pinned-loader CPU reproduction retained.',
         'scope': 'Initial synchronous GRPO validation, not the final 400-step hill climb or placement benchmark.'}
     atomic(phase.path / 'launch.json', config)
@@ -106,6 +116,7 @@ def main():
              'telemetry_lustre_host.py', 'grpo_node.py', 'grpo_container.py', 'local_file_env.py', 'local_openenv_app.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     files[prefix + 'launch.json'] = entry((json.dumps(config, indent=2) + '\n').encode())
+    files[prefix + 'tito-validation.json'] = entry(tito_gate.read_bytes())
     files[prefix + 'host-map.json'] = entry((json.dumps(host_map, indent=2) + '\n').encode())
     system = ('You are an autonomous terminal agent solving a Linux task. You will be given the task instruction, '
               'then interact with a real Linux shell. On each turn respond with EXACTLY ONE shell command inside '
