@@ -16,7 +16,8 @@ def render(data):
     lines += ['- ' + text for text in data['limitations']]
     lines += ['', '## Collection failures', '']
     lines += ['- ' + text for text in sorted(set(data['findings']))] or ['None.']
-    lines += ['', '## Time series', '', f"![GPU, fabric and storage](grpo-v{data['attempt']}-infrastructure.png)", '',
+    plot_name = data.get('plot_basename', f"grpo-v{data['attempt']}-infrastructure.png")
+    lines += ['', '## Time series', '', f"![GPU, fabric and storage]({plot_name})", '',
               'UTC alignment; clocks are not proven synchronized below a sample interval. Missing rates are not zero-filled.', '',
               '## Per-node and per-entity distributions', '',
               '| Node | GPU/link/rail/client | Metric | Unit | Min | Mean | Median | p90 | p95 | p99 | Max | CV |',

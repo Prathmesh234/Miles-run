@@ -136,16 +136,30 @@ def plot(data, path, title=None):
              ('PortXmitData.rate', 'IB Tx per rail (GB/s)', 1e-9), ('lustre', 'Host Lustre client I/O (GB/s)', 1e-9)]
     origin = min(dt.datetime.fromisoformat(row['time'].replace('Z', '+00:00')) for row in data['timeline'])
     fig, axes = plt.subplots(3, 2, figsize=(14, 10), sharex=True)
+    hosts = sorted({row['hostname'] for row in data['timeline']})
+    host_colors = {host: f'C{i}' for i, host in enumerate(hosts)}
     for axis, (name, axis_title, factor) in zip(axes.flat, specs):
         groups = defaultdict(list)
         for row in data['timeline']:
             if row['metric'] == name or (name == 'lustre' and row['metric'] in ['read_bytes.sum.rate', 'write_bytes.sum.rate']):
                 groups[(row['hostname'], row['entity'], row['metric'])].append(row)
+        seen = set()
         for (host, entity, metric_name), rows in sorted(groups.items()):
             rows.sort(key=lambda row: row['time'])
             times = [(dt.datetime.fromisoformat(row['time'].replace('Z', '+00:00')) - origin).total_seconds() for row in rows]
             label = host + '/' + (entity[:8] if name != 'lustre' else entity[:8] + ' ' + metric_name.split('_')[0])
-            axis.plot(times, [row['value'] * factor for row in rows], label=label, linewidth=.8)
+            options = {}
+            if len(groups) > 16:
+                label = host if host not in seen else '_nolegend_'
+                options = {'color':host_colors[host], 'alpha':.55}
+                seen.add(host)
+            # Break long missing intervals instead of drawing a false continuous signal.
+            values = [row['value'] * factor for row in rows]
+            for i in range(len(times) - 1, 0, -1):
+                if times[i] - times[i - 1] > 5:
+                    times.insert(i, (times[i] + times[i - 1]) / 2)
+                    values.insert(i, float('nan'))
+            axis.plot(times, values, label=label, linewidth=.8, **options)
         axis.set_title(axis_title)
         axis.grid(alpha=.2)
         axis.set_xlabel('Seconds since first plotted sample (UTC alignment)')
