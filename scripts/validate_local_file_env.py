@@ -148,13 +148,20 @@ def main():
                     reset = await client.reset(task_id='task_00000')
                     check(reset.observation.task_id == 'task_00000' and reset.observation.instruction,
                           'OpenEnv reset instruction/task identity mismatch.')
+                    check(client.task_id == 'task_00000' and client.episode_id is not None,
+                          'OpenEnv controller episode identity missing after reset/state roundtrip.')
+                    episode_id = client.episode_id
                     reply = await client.step(Action(action_type='exec', command='printf protocol-ok'))
                     check(reply.observation.output == 'protocol-ok', 'OpenEnv command/observation roundtrip mismatch.')
                     verdict = await client.step(Action(action_type='evaluate'))
                     check(verdict.reward == 0.0 and verdict.done and not verdict.observation.output,
                           'OpenEnv verdict/isolation roundtrip mismatch.')
                     check(verdict.observation.info['harness'] == 'tests/test.sh', 'Missing explicit harness identity.')
-                record('openenv-live-websocket-roundtrip', reward=0.0)
+                events_path = manifest.parent / 'episodes' / episode_id / 'events.jsonl'
+                events = [json.loads(line) for line in events_path.read_text().splitlines()]
+                check(events and all(e['episode_id'] == episode_id and e['task_id'] == 'task_00000' for e in events),
+                      'Client episode identity does not join the durable controller events.')
+                record('openenv-live-websocket-roundtrip', reward=0.0, episode=episode_id)
             asyncio.run(protocol())
     except Exception as exc:
         findings.append(str(exc))

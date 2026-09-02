@@ -58,7 +58,7 @@ def main():
     miles_sha = subprocess.check_output(['git', '-C', str(miles), 'rev-parse', 'HEAD'], text=True).strip()
     run = Run(a.run_dir)
     phase = run.phase(f'02-sync-grpo-submission-v{a.attempt}')
-    tito_gate = run.root / 'tests/02-tito-candidate-validation-v2/result.json'
+    tito_gate = run.root / 'tests/02-tito-candidate-validation-v3/result.json'
     tito_proof = json.loads(tito_gate.read_text())
     rdma_gate = run.root / 'tests/02-rdma-container-visibility-v2/result.json'
     rdma_proof = json.loads(rdma_gate.read_text())

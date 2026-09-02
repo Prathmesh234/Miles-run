@@ -43,6 +43,42 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_openenv_state_identity_is_separate_from_policy_observation(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        from local_openenv_client import LocalOpenEnvClient
+
+        for fault in (None, 'missing_episode', 'bad_episode', 'wrong_task', 'wrong_reply'):
+            with self.subTest(fault=fault):
+                observation = {'instruction': 'Solve this task.', 'task_id': 'task_00000'}
+                state = {'episode_id': 'a' * 32, 'task_id': 'task_00000'}
+                if fault == 'missing_episode':
+                    state.pop('episode_id')
+                elif fault == 'bad_episode':
+                    state['episode_id'] = '../../outside'
+                elif fault == 'wrong_task':
+                    state['task_id'] = 'task_00001'
+                replies = [dict(type='observation', data={'observation': observation}),
+                           dict(type='observation' if fault == 'wrong_reply' else 'state', data=state)]
+                client = LocalOpenEnvClient('http://localhost:8000')
+                client.ws = type('Socket', (), {'send': AsyncMock(),
+                    'recv': AsyncMock(side_effect=[json.dumps(reply) for reply in replies])})()
+                client.episode_id = 'previous-episode'
+                if fault:
+                    with self.assertRaises(RuntimeError):
+                        asyncio.run(client.reset(task_id='task_00000'))
+                    self.assertIsNone(client.episode_id)
+                else:
+                    result = asyncio.run(client.reset(task_id='task_00000'))
+                    self.assertEqual(vars(result.observation), observation)
+                    self.assertEqual((client.episode_id, client.task_id), ('a' * 32, 'task_00000'))
+                    sent = [json.loads(call.args[0]) for call in client.ws.send.await_args_list]
+                    self.assertEqual(sent, [{'type': 'reset', 'data': {'task_id': 'task_00000'}},
+                                            {'type': 'state', 'data': {}}])
+        source = Path(__file__).resolve().parents[1]
+        self.assertEqual((source / 'scripts/local_openenv_client.py').read_bytes(),
+                         (source / 'vendor/miles/examples/experimental/openenv/posttrainingx_openenv_client.py').read_bytes())
+
     def test_grpo_tensor_audit_detects_sample_corruption_and_incomplete_rank_coverage(self):
         import torch
         from audit_grpo_tensors import audit_tensors
