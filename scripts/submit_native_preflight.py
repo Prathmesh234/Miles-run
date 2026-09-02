@@ -63,7 +63,7 @@ def pack(payload):
     return base64.b64encode(gzip.compress(json.dumps(payload).encode())).decode()
 
 
-def batches(common, files, limit=128*1024):
+def batches(common, files, limit=256*1024):
     """Bound each exec upload; the receiver verifies every uncompressed file."""
     batch = {}
     for name, item in files.items():
@@ -132,7 +132,12 @@ def main():
     atomic(run.root / 'provenance/native-bootstrap.py', BOOTSTRAP)
     common = {'root': remote, 'create': False, 'manifest_sha256': files['run.json']['sha256']}
     first = pack(dict(common, create=True, files={'run.json': files.pop('run.json')}))
-    payloads = [first] + list(batches(common, files))
+    try:
+        payloads = [first] + list(batches(common, files))
+    except ValueError as exc:
+        phase.finish('fail', failure_summary=str(exc), metadata={'classification': 'local-upload-size-guard',
+                                                               'cluster_upload_started': False})
+        return 1
     for index, payload in enumerate(payloads):
         code, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], timeout=45, stdin=payload)
         if code:
