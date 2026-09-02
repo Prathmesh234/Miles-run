@@ -34,10 +34,17 @@ def stats_records(text):
     return rows
 
 
-def collect(root, host, source, duration):
+def collect(root, host, source, duration, label='lustre-host-validation-v1',
+            marker_name='control/lustre-validation-job.json', stop_name=None,
+            role='infrastructure-collector-validation'):
     if root.is_symlink() or not (root / 'run.json').is_file():
         raise ValueError('A mounted run directory is required.')
-    output = root / 'telemetry/lustre-host-validation-v1' / host
+    if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', label):
+        raise ValueError('Invalid collector stream label.')
+    for name in (marker_name, stop_name):
+        if name and (Path(name).is_absolute() or '..' in Path(name).parts):
+            raise ValueError('Collector marker must be a relative run path.')
+    output = root / 'telemetry' / label / host
     output.mkdir(parents=True, exist_ok=False)
     start = time.monotonic()
     paths = {'normalized': output / 'lustre.jsonl.partial', 'raw': output / 'raw-lustre.jsonl.partial'}
@@ -45,12 +52,12 @@ def collect(root, host, source, duration):
     def write(key, value):
         handles[key].write(json.dumps(value, allow_nan=False) + '\n')
     try:
-        while time.monotonic() - start < duration:
+        while time.monotonic() - start < duration and not (stop_name and (root / stop_name).exists()):
             tick = time.monotonic()
             common = {'time': dt.datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z'),
                       'monotonic_s': tick, 'hostname': host, 'source': 'lustre-host-debugfs',
-                      'role': 'infrastructure-collector-validation'}
-            marker = root / 'control/lustre-validation-job.json'
+                      'role': role}
+            marker = root / marker_name
             if marker.exists():
                 allocation = json.loads(marker.read_text())
                 if allocation.get('active'):
@@ -91,6 +98,11 @@ if __name__ == '__main__':
     ap.add_argument('--run-dir', required=True, type=Path)
     ap.add_argument('--hostname', required=True, choices=[f'gpu-nodes-{i}' for i in range(4)])
     ap.add_argument('--source', type=Path, default=Path('/host-lustre'))
-    ap.add_argument('--duration-s', type=int, choices=range(1, 601), default=180)
+    ap.add_argument('--duration-s', type=int, choices=range(1, 3601), default=180)
+    ap.add_argument('--stream-label', default='lustre-host-validation-v1')
+    ap.add_argument('--job-marker', default='control/lustre-validation-job.json')
+    ap.add_argument('--stop-marker')
+    ap.add_argument('--role', default='infrastructure-collector-validation')
     args = ap.parse_args()
-    collect(args.run_dir, args.hostname, args.source, args.duration_s)
+    collect(args.run_dir, args.hostname, args.source, args.duration_s, args.stream_label,
+            args.job_marker, args.stop_marker, args.role)

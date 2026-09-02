@@ -94,7 +94,7 @@ class Streams:
             os.replace(self.root / (name + '.jsonl.partial'), self.root / (name + '.jsonl'))
 
 
-def sample_files(streams, common):
+def sample_files(streams, common, collect_lustre_stats=True):
     raw = {}
     paths = ['/proc/stat', '/proc/meminfo', '/proc/vmstat', '/proc/loadavg', '/proc/softirqs']
     paths += [str(p) for p in Path('/sys/devices/system/node').glob('node*/numastat')]
@@ -125,6 +125,8 @@ def sample_files(streams, common):
     for name, value, unit in [('capacity', v.f_blocks*v.f_frsize, 'B'),
                               ('available', v.f_bavail*v.f_frsize, 'B'), ('free_inodes', v.f_favail, 'count')]:
         streams.write('lustre', dict(common, source='statvfs', metric=name, value=value, unit=unit))
+    if not collect_lustre_stats:
+        return
     stats = list(Path('/proc/fs/lustre/llite').glob('*/stats'))
     if not stats:
         streams.write('lustre', dict(common, source='lustre-llite', metric='collector_error',
@@ -152,7 +154,8 @@ def sample_sysfs_ib(streams, common):
             streams.write('infiniband', dict(attrs, value=value, unit=unit))
         except (OSError, ValueError) as exc:
             streams.write('infiniband', dict(attrs, metric='collector_error', value=None, unit='event', error=str(exc)))
-def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native'):
+def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
+            role='infrastructure-preflight', lustre_backend='namespace'):
     if ib_backend not in ('sysfs', 'perfquery') or not re.fullmatch(r'[a-z0-9][a-z0-9-]*', stream_label):
         raise ValueError('Invalid explicit collector backend or stream label.')
     host = socket.gethostname()
@@ -171,10 +174,10 @@ def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native'):
             while time.monotonic() - start < limit_s and not stop_file.exists():
                 tick = time.monotonic()
                 common = {'time': utcnow(), 'monotonic_s': tick, 'hostname': host,
-                          'slurm_job_id': os.environ['SLURM_JOB_ID'], 'role': 'infrastructure-preflight'}
+                          'slurm_job_id': os.environ['SLURM_JOB_ID'], 'role': role}
                 pending = {name: pool.submit(capture, argv) for name, (argv, _) in commands.items()}
                 fabric = [pool.submit(capture_port, hca, port, common) for hca, port in ports]
-                sample_files(streams, common)
+                sample_files(streams, common, collect_lustre_stats=lustre_backend == 'namespace')
                 if ib_backend == 'sysfs':
                     sample_sysfs_ib(streams, common)
                 for future in fabric:
@@ -208,10 +211,12 @@ def main():
     ap.add_argument('--limit-s', type=int, default=840)
     ap.add_argument('--ib-backend', choices=['sysfs', 'perfquery'], default='sysfs')
     ap.add_argument('--stream-label', default='native')
+    ap.add_argument('--role', default='infrastructure-preflight')
+    ap.add_argument('--lustre-backend', choices=['namespace', 'host-debugfs-pod'], default='namespace')
     args = ap.parse_args()
     run = allocated_run(args.run_dir)
     collect(run, run.root / 'control' / (args.stream_label + '-telemetry.stop'), args.limit_s,
-            args.ib_backend, args.stream_label)
+            args.ib_backend, args.stream_label, args.role, args.lustre_backend)
 
 
 if __name__ == '__main__':

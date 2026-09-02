@@ -24,6 +24,7 @@ from validate_fabric_under_load import validate_records
 from telemetry_lustre_host import stats_records
 from enroot_run_config import prepare as prepare_enroot_config
 from runtime_inventory import parse_inventory_stdout
+from qwen_serving_probe import server_command
 
 
 class EvidenceTests(unittest.TestCase):
@@ -67,6 +68,19 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_serving_smoke_preserves_node_local_ep8_and_mtp_control(self):
+        off, on = server_command('/model', False), server_command('/model', True)
+        for argv in (off, on):
+            self.assertEqual(argv[argv.index('--tp-size')+1], '8')
+            self.assertEqual(argv[argv.index('--ep-size')+1], '8')
+            self.assertEqual(argv[argv.index('--nnodes')+1], '1')
+            self.assertIn('--language-model-only', argv)
+            self.assertIn('--enable-metrics', argv)
+        self.assertNotIn('--speculative-algorithm', off)
+        self.assertEqual(on[on.index('--speculative-num-steps')+1], '2')
+        self.assertEqual(on[on.index('--speculative-num-draft-tokens')+1], '3')
+        self.assertEqual(on[on.index('--mamba-scheduler-strategy')+1], 'extra_buffer')
+
     def test_runtime_inventory_accepts_entrypoint_banner_but_not_ambiguous_records(self):
         record = {'python': '3.12', 'packages': [], 'torch': {}, 'scope': 'CPU only'}
         text = 'CUDA banner\n{}\n' + json.dumps(record) + '\n'
