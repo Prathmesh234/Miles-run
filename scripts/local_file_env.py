@@ -144,6 +144,13 @@ class FileTaskSession:
             validate_archive(data, 'task_file')
             if not self.container.put_archive('/app/task_file', archive_contents(data, 'task_file')):
                 raise RuntimeError('Public task upload failed.')
+            if task_id == 'task_00000':
+                # Its public instruction promises this empty directory; Git did
+                # not preserve it. Do not modify its oracle or scoring code.
+                result = self.container.exec_run(['mkdir', '-p', '/app/task_file/output'])
+                if result.exit_code:
+                    raise RuntimeError('Documented empty output directory could not be materialized.')
+                self.record('public_setup_patch', path='/app/task_file/output', reason='Empty directory promised in pinned instruction.md is absent from Git tree.')
             self.record('ready', container_id=self.container.id, staged_public_sha256=hashlib.sha256(data).hexdigest())
         except Exception:
             self.close()
