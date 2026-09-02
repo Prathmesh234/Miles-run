@@ -9,6 +9,13 @@ import shutil
 import time
 
 
+def duration_seconds(value):
+    seconds = int(value)
+    if not 1 <= seconds <= 86400:
+        raise argparse.ArgumentTypeError('Collector duration must be between 1 and 86400 seconds.')
+    return seconds
+
+
 def stats_records(text):
     units = {'bytes': 'B', 'usecs': 'us', 'reqs': 'count', 'pages': 'pages'}
     rows = []
@@ -98,7 +105,7 @@ if __name__ == '__main__':
     ap.add_argument('--run-dir', required=True, type=Path)
     ap.add_argument('--hostname', required=True, choices=[f'gpu-nodes-{i}' for i in range(4)])
     ap.add_argument('--source', type=Path, default=Path('/host-lustre'))
-    ap.add_argument('--duration-s', type=int, choices=range(1, 3601), default=180)
+    ap.add_argument('--duration-s', type=duration_seconds, default=180)
     ap.add_argument('--stream-label', default='lustre-host-validation-v1')
     ap.add_argument('--job-marker', default='control/lustre-validation-job.json')
     ap.add_argument('--stop-marker')
