@@ -74,7 +74,7 @@ class EvidenceTests(unittest.TestCase):
                     self.assertEqual((client.episode_id, client.task_id), ('a' * 32, 'task_00000'))
                     sent = [json.loads(call.args[0]) for call in client.ws.send.await_args_list]
                     self.assertEqual(sent, [{'type': 'reset', 'data': {'task_id': 'task_00000'}},
-                                            {'type': 'state', 'data': {}}])
+                                            {'type': 'state'}])
         source = Path(__file__).resolve().parents[1]
         self.assertEqual((source / 'scripts/local_openenv_client.py').read_bytes(),
                          (source / 'vendor/miles/examples/experimental/openenv/posttrainingx_openenv_client.py').read_bytes())

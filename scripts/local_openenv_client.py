@@ -38,7 +38,10 @@ class LocalOpenEnvClient:
                 await self.ws.close()
 
     async def _request(self, operation, data):
-        await self.ws.send(json.dumps({'type': operation, 'data': data}))
+        message = {'type': operation}
+        if data is not None:
+            message['data'] = data
+        await self.ws.send(json.dumps(message))
         reply = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=self.timeout))
         if reply.get('type') == 'error':
             error = reply.get('data', {})
@@ -57,7 +60,7 @@ class LocalOpenEnvClient:
     async def reset(self, **kwargs):
         self.episode_id = self.task_id = None
         result = await self.exchange('reset', kwargs)
-        state = await self._request('state', {})
+        state = await self._request('state', None)
         episode_id = state.get('episode_id')
         task_id = state.get('task_id')
         expected_task = kwargs.get('task_id') or kwargs.get('task_name')
