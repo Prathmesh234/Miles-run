@@ -27,6 +27,7 @@ from runtime_inventory import parse_inventory_stdout
 from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows, stop_owned_server
 from model_conversion import conversion_command, checkpoint_files
 from checkpoint_parity import ALOG_WIDENINGS, reference_part, check_coverage, required_parts, verify_files
+from prepare_terminal_lego import CATALOG_URL, next_page, select_tasks
 
 
 class EvidenceTests(unittest.TestCase):
@@ -70,6 +71,20 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_clean_split_is_disjoint_deterministic_and_outcome_independent(self):
+        tasks = [f'task_{i:05d}' for i in range(20)]
+        train, dev = select_tasks(tasks, train_count=8, dev_count=4)
+        self.assertEqual((train, dev), select_tasks(list(reversed(tasks)), 8, 4))
+        self.assertFalse(set(train) & set(dev))
+        self.assertNotIn('task_00000', train + dev)
+        with self.assertRaises(ValueError):
+            select_tasks(tasks + ['task_00001'], 8, 4)
+        with self.assertRaises(ValueError):
+            select_tasks(tasks, 20, 4)
+        self.assertEqual(next_page('<' + CATALOG_URL + '?cursor=public>; rel="next"'), CATALOG_URL + '?cursor=public')
+        with self.assertRaises(ValueError):
+            next_page('<https://example.invalid/other>; rel="next"')
+
     def test_parity_requires_complete_nonoverlapping_expert_and_mtp_coverage(self):
         self.assertEqual(len(ALOG_WIDENINGS), 30)
         self.assertNotIn('model.language_model.layers.3.linear_attn.A_log', ALOG_WIDENINGS)
