@@ -18,7 +18,7 @@ for index,checksum in enumerate(plan['part_sha256']):
  if path.exists():
   if hashlib.sha256(path.read_bytes()).hexdigest()!=checksum:raise ValueError('Existing part mismatch.')
   continue
- data=b''.join((p/'recovery-64k'/f'{index:04d}-{j}').read_bytes() for j in range(plan['piece_counts'][index]))
+ data=b''.join((p/plan.get('piece_dir','recovery-64k')/f'{index:04d}-{j}').read_bytes() for j in range(plan['piece_counts'][index]))
  if hashlib.sha256(data).hexdigest()!=checksum:raise ValueError('Recovered part checksum mismatch.')
  fd,tmp=tempfile.mkstemp(dir=path.parent,prefix='.'+path.name)
  with os.fdopen(fd,'wb') as f:f.write(data);f.flush();os.fsync(f.fileno())
@@ -32,26 +32,38 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, default=1)
+    ap.add_argument('--tag', default='v1')
+    ap.add_argument('--original-part-bytes', type=int, choices=[65536, 131072], default=131072)
+    ap.add_argument('--piece-bytes', type=int, choices=[32768, 65536], default=65536)
     args = ap.parse_args()
     run = Run(args.run_dir)
-    phase = run.phase(f'00-diagnostic-evidence-resume-{args.attempt}')
-    manifest = json.loads((run.root/'tests/00-diagnostic-evidence-sync/transfer-manifest.json').read_text())
-    archive = run.root/'tests/00-diagnostic-archive-recovery/diagnostic-evidence.tar.gz'
+    suffix = '' if args.tag == 'v1' else '-' + args.tag
+    phase = run.phase(f'00-diagnostic-evidence-resume{suffix}-{args.attempt}')
+    original_phase = '00-diagnostic-evidence-sync' + suffix
+    manifest = json.loads((run.root/'tests'/original_phase/'transfer-manifest.json').read_text())
+    archive = (run.root/'tests/00-diagnostic-archive-recovery/diagnostic-evidence.tar.gz' if args.tag == 'v1'
+               else run.root/'tests'/original_phase/'diagnostic-evidence.tar.gz')
     if sha256(archive) != manifest['archive_sha256']:
         phase.finish('fail', failure_summary='Recovered archive does not match the original transfer manifest.')
         return 1
     payload = archive.read_bytes()
-    parts = [payload[i:i+128*1024] for i in range(0, len(payload), 128*1024)]
-    prefix = 'provenance/diagnostic-evidence-sync-v1/'
+    parts = [payload[i:i+args.original_part_bytes] for i in range(0, len(payload), args.original_part_bytes)]
+    if len(parts) != manifest['parts']:
+        phase.finish('fail', failure_summary='Declared original chunk size does not match the frozen manifest.')
+        return 1
+    prefix = 'provenance/diagnostic-evidence-sync-' + args.tag + '/'
+    piece_dir = f'recovery-{args.piece_bytes//1024}k'
     files = {prefix+'manifest.json': entry(json.dumps(manifest, sort_keys=True).encode())}
     part_hashes, piece_counts = [], []
     for index, part in enumerate(parts):
         part_hashes.append(hashlib.sha256(part).hexdigest())
-        pieces = [part[i:i+64*1024] for i in range(0, len(part), 64*1024)]
+        pieces = [part[i:i+args.piece_bytes] for i in range(0, len(part), args.piece_bytes)]
         piece_counts.append(len(pieces))
         for j, piece in enumerate(pieces):
-            files[prefix+f'recovery-64k/{index:04d}-{j}'] = entry(piece)
+            files[prefix+f'{piece_dir}/{index:04d}-{j}'] = entry(piece)
     plan = {'part_sha256': part_hashes, 'piece_counts': piece_counts}
+    if piece_dir != 'recovery-64k':
+        plan['piece_dir'] = piece_dir
     files[prefix+'resume-plan.json'] = entry(json.dumps(plan, sort_keys=True).encode())
     originals = {prefix+f'parts/{i:04d}': checksum for i, checksum in enumerate(part_hashes)}
     worker = ['kubectl', '--kubeconfig', args.kubeconfig, '--request-timeout=0', '-n', 'slurm',
@@ -70,23 +82,23 @@ def main():
     for index in range(len(parts)):
         if prefix+f'parts/{index:04d}' in existing:
             for j in range(piece_counts[index]):
-                files.pop(prefix+f'recovery-64k/{index:04d}-{j}', None)
+                files.pop(prefix+f'{piece_dir}/{index:04d}-{j}', None)
     files = {name: item for name, item in files.items() if name not in existing}
     common = {'root': remote, 'create': False, 'manifest_sha256': sha256(run.root/'run.json')}
-    uploads = list(batches(common, files, limit=128*1024))
+    uploads = list(batches(common, files, limit=2*args.piece_bytes))
     for index, encoded in enumerate(uploads):
         code, _, _ = phase.command(worker+['python3', '-c', BOOTSTRAP], stdin=encoded, timeout=45)
         if code:
-            phase.finish('fail', failure_summary='The 64 KiB evidence upload failed; stop and reconcile before another attempt.',
+            phase.finish('fail', failure_summary='The bounded evidence upload failed; stop and reconcile before another attempt.',
                          metadata={'upload_index': index, 'upload_count': len(uploads)})
             return 1
     code, _, _ = phase.command(worker+['python3', '-c', ASSEMBLE, remote+'/'+prefix], timeout=60)
     if not code:
         code, _, _ = phase.command(worker+['python3', '-c', INSTALL, remote, prefix], timeout=90)
     phase.finish('fail' if code else 'ok', failure_summary='Archive assembly or installation failed.' if code else None,
-        metadata={'original_failed_phase': '00-diagnostic-evidence-sync',
+        metadata={'original_failed_phase': original_phase,
                   'archive_sha256': manifest['archive_sha256'], 'files': len(manifest['files']),
-                  'piece_bytes': 64*1024, 'upload_calls': len(uploads),
+                  'piece_bytes': args.piece_bytes, 'upload_calls': len(uploads),
                   'scope': 'Verified transfer resume only; original transport failure remains recorded.'})
     print(json.dumps({'exit_code': code, 'files': len(manifest['files']), 'upload_calls': len(uploads)}))
     return code
