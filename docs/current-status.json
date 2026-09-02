@@ -17,8 +17,8 @@
     },
     {
       "gate": "GPU runtime and provenance",
-      "smallest_next_step": "Prove all-tensor HF/Megatron round-trip parity using the pinned conversion path, review conversion warnings, and validate trainer forward/backward before optimizer execution.",
-      "state": "MTP off/on serving passed; candidate MTP checkpoint converted and hashed"
+      "smallest_next_step": "Version and test a narrow A_log widening rule without changing checkpoint weights or prior failures, then qualify EP8 trainer load/forward/backward. No optimizer execution yet.",
+      "state": "Strict dtype parity failed in job118; 30 A_log differences independently proved lossless BF16-to-FP32 widenings."
     },
     {
       "gate": "GRPO, async and resume fidelity",
@@ -53,16 +53,18 @@
     "Native job 110: four-node all-reduce correctness and read-only perfquery load validation passed on all 32 active 400G rails; no counter resets or collector errors.",
     "Native job 111: verified 2 GiB fio per node and 180 one-second host Lustre samples per node; all four collectors passed load coverage without errors. Host statistics are read-only mounts in run-owned pods; cluster settings unchanged.",
     "Native job 112: all eight B200 GPUs in the node-0 Enroot container reconcile to the frozen UUIDs; deterministic BF16 matmul passed on every GPU. Run-scoped NVIDIA_VISIBLE_DEVICES=all; no model or optimizer step.",
-    "Root preparation/evidence suite: 22 tests passed. The full Miles suite remains at its previously documented baseline failures.",
+    "Root preparation/evidence suite: 24 tests passed. The full Miles suite remains at its previously documented baseline failures.",
     "Terminal-Bench 2.1 evaluation metadata frozen: 89 ordered task IDs at git 7131e4375048a0e408a8fb404b5f499d726b695b. No task instructions, hidden tests, solutions or oracle files fetched by this metadata stage; Harbor 0.21 compatibility remains untested.",
     "Job 115 completed in 4m14s: one node-local Qwen TP8/EP8 serving engine, MTP off then on, both deterministic prompts correct, exact output-token/logprob counts valid, positive MTP acceptance. This is not RL or controlled inference benchmarking.",
     "Serving telemetry audit: six finalized native/host-Lustre streams, no collector-error rows, eight GPU UUIDs, 88 per-GPU metric distributions. Forward-timer gauge remained unavailable during the very short requests; full workload telemetry remains unqualified.",
     "Isolated OpenEnv Python 3.12.11 development stack resolved with hashes. Baseline tests 26 passed/1 skipped; archive-staging hardening 32 passed/1 skipped, clean Ruff check and exact patch replay verified. Hidden-test grading isolation is still not implemented.",
     "Pinned full Megatron image git SHA 8c1e05747eb612b382df2632783df5c83a853646. Campaign Miles b61dbe83ee815412b72c84ed367ffd329d7922d4 runtime sources materialized on shared storage from their verified archive; one non-runtime agent-skill symlink omitted explicitly.",
-    "Job 117 completed in 4m36s: verified campaign Miles/Megatron imports, a two-rank loopback rendezvous check, and eight-rank cookbook checkpoint conversion. All 11 payload files (71,108,393,235 bytes) hashed; 539 MTP-related tensor keys present. Conversion command 192.06s; hashing 32.65s. This is a candidate checkpoint, not proven tensor parity or a training checkpoint.",
+    "Job 117 completed in 4m36s: verified campaign Miles/Megatron imports, a two-rank loopback rendezvous check, and eight-rank cookbook checkpoint conversion. All 11 payload files (71,108,393,235 bytes) hashed; 539 MTP-related metadata entries present (includes extra_state; later audit identifies 16 weight tensors). Conversion command 192.06s; hashing 32.65s. This is a candidate checkpoint, not proven tensor parity or a training checkpoint.",
     "Conversion telemetry audit: six non-empty native/host-Lustre streams, eight GPU UUIDs, no collector errors. Megatron argument-consistency, router-dtype, deprecated-save, unrelated ASR docstring and empty-stack log messages are retained for review.",
     "Exact pinned Megatron microbatch calculator exercised at dense DP 8/16/24. Batch64 rejected at DP24; batch96 passed all three without rounding. Stage4 stays at 64; a common Stage5 batch96 is a prospective proposal, still requiring full-trainer/gradient validation.",
-    "Separate hash-pinned OpenEnv Linux x86_64/Python3.12.11 server lock resolved without changing the GPU stack. Runtime/client compatibility and live policy/grader isolation remain open."
+    "Separate hash-pinned OpenEnv Linux x86_64/Python3.12.11 server lock resolved without changing the GPU stack. Runtime/client compatibility and live policy/grader isolation remain open.",
+    "Full CPU parity check executed in Slurm job118: 32,118 comparisons, including 785 MTP components, covering 712 HF text/MTP tensors. 32,088 were dtype- and byte-exact; the 30 A_log dtype mismatches intentionally failed the gate. All six telemetry streams finalized without collector errors.",
+    "Independent CPU-only diagnosis verified all 960 A_log scalars are exact, reversible BF16-to-FP32 widenings and match the prior comparison hashes. Pinned upstream source explicitly performs this widening. A sub-BF16 perturbation negative control passed; original failure and checkpoint remain unchanged."
   ],
   "failed_slurm_jobs": [
     {
@@ -76,6 +78,10 @@
     {
       "job_id": 116,
       "reason": "torchrun standalone advertised a cluster hostname inside a loopback-only namespace. Owned launcher stopped via verified PID; failed artifacts retained. Explicit static loopback rendezvous passed in job117."
+    },
+    {
+      "job_id": 118,
+      "reason": "Strict dtype parity rejected 30 intentional A_log BF16-to-FP32 widenings. Independent numeric diagnostic proved exact values; revised gate is proposed, not silently enabled."
     }
   ],
   "heldout_quality_measured": false,
