@@ -127,7 +127,7 @@ def render(data):
     return '\n'.join(lines)
 
 
-def plot(data, path):
+def plot(data, path, title=None):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -136,21 +136,21 @@ def plot(data, path):
              ('PortXmitData.rate', 'IB Tx per rail (GB/s)', 1e-9), ('lustre', 'Host Lustre client I/O (GB/s)', 1e-9)]
     origin = min(dt.datetime.fromisoformat(row['time'].replace('Z', '+00:00')) for row in data['timeline'])
     fig, axes = plt.subplots(3, 2, figsize=(14, 10), sharex=True)
-    for axis, (name, title, factor) in zip(axes.flat, specs):
+    for axis, (name, axis_title, factor) in zip(axes.flat, specs):
         groups = defaultdict(list)
         for row in data['timeline']:
             if row['metric'] == name or (name == 'lustre' and row['metric'] in ['read_bytes.sum.rate', 'write_bytes.sum.rate']):
-                groups[(row['entity'], row['metric'])].append(row)
-        for (entity, metric_name), rows in sorted(groups.items()):
+                groups[(row['hostname'], row['entity'], row['metric'])].append(row)
+        for (host, entity, metric_name), rows in sorted(groups.items()):
             rows.sort(key=lambda row: row['time'])
             times = [(dt.datetime.fromisoformat(row['time'].replace('Z', '+00:00')) - origin).total_seconds() for row in rows]
-            label = entity[:8] if name != 'lustre' else entity[:8] + ' ' + metric_name.split('_')[0]
+            label = host + '/' + (entity[:8] if name != 'lustre' else entity[:8] + ' ' + metric_name.split('_')[0])
             axis.plot(times, [row['value'] * factor for row in rows], label=label, linewidth=.8)
-        axis.set_title(title)
+        axis.set_title(axis_title)
         axis.grid(alpha=.2)
         axis.set_xlabel('Seconds since first plotted sample (UTC alignment)')
         axis.legend(fontsize=6, ncol=2)
-    fig.suptitle('Job 120: EP8 load and diagnostic forward/backward; no optimizer or GRPO\nIncludes startup/JIT/hashing. Host fabric/storage counters are not process-exclusive.', fontsize=11)
+    fig.suptitle(title or 'Job 120: EP8 load and diagnostic forward/backward; no optimizer or GRPO\nIncludes startup/JIT/hashing. Host fabric/storage counters are not process-exclusive.', fontsize=11)
     fig.tight_layout()
     temporary = path.with_suffix('.partial.png')
     fig.savefig(temporary, dpi=150)
