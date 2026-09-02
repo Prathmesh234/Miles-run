@@ -22,6 +22,14 @@ from evidence import Run, atomic, metric, sha256
 from model_conversion import validate_imports
 
 
+# Pinned 40-layer recipe: three linear-attention layers followed by full attention.
+# The bridge explicitly widens these BF16 source values to FP32. No other dtype
+# difference is authorized, including MTP, routers or future/unrecognized layers.
+ALOG_WIDENINGS = frozenset(f'model.language_model.layers.{i}.linear_attn.A_log'
+                          for i in range(40) if i % 4 != 3)
+WIDENING_SOURCE_SHA = '2e64b4703a26b786a1c7026be67d3c090f35981947f198a31c80145db472d009'
+
+
 def reference_part(name, weight_map, num_experts):
     if name in weight_map:
         return name, None, None
@@ -77,6 +85,27 @@ def compare_tensors(actual, expected):
     return result
 
 
+def qualify_comparison(name, actual, expected):
+    import torch
+    result = compare_tensors(actual, expected)
+    finite = bool(torch.isfinite(actual).all() and torch.isfinite(expected).all())
+    result.update(finite=finite, qualified=result['equal'] and finite,
+                  qualification='bitwise_equal' if result['equal'] and finite else 'rejected')
+    if (name in ALOG_WIDENINGS and actual.dtype == torch.float32 and expected.dtype == torch.bfloat16
+            and actual.shape == expected.shape == (32,) and finite):
+        lifted = compare_tensors(actual, expected.float())
+        inverse = compare_tensors(actual.to(torch.bfloat16), expected)
+        result['widening'] = {
+            'reference_lifted_fp32_sha256': lifted['reference_sha256'],
+            'inverse_bf16_sha256': inverse['actual_sha256'],
+            'lift_exact': lifted['equal'], 'inverse_exact': inverse['equal'],
+            'max_absolute_difference_in_fp32': float((actual - expected.float()).abs().max()),
+        }
+        if lifted['equal'] and inverse['equal']:
+            result.update(qualified=True, qualification='lossless_bf16_to_fp32_alog')
+    return result
+
+
 def self_test():
     import torch
     sample = torch.arange(24, dtype=torch.float32).reshape(4, 6).to(torch.bfloat16)
@@ -88,7 +117,21 @@ def self_test():
     bad[0, 0] = float('nan')
     assert not compare_tensors(bad, bad)['equal']
     assert not compare_tensors(torch.tensor([0.0]), torch.tensor([-0.0]))['equal']
-    return {'real_torch_positive_and_negative_cases': 6, 'status': 'ok'}
+    name = 'model.language_model.layers.0.linear_attn.A_log'
+    expected = torch.ones(32, dtype=torch.bfloat16)
+    widened = expected.float()
+    assert qualify_comparison(name, widened, expected)['qualified']
+    assert not qualify_comparison(name, widened, expected)['equal']
+    assert not qualify_comparison(name.replace('layers.0.', 'layers.3.'), widened, expected)['qualified']
+    assert not qualify_comparison('mtp.layers.0.linear_attn.A_log', widened, expected)['qualified']
+    assert not qualify_comparison(name, widened.double(), expected)['qualified']
+    altered = torch.nextafter(widened, torch.full_like(widened, float('inf')))
+    assert torch.equal(altered.to(torch.bfloat16), expected)
+    assert not qualify_comparison(name, altered, expected)['qualified']
+    assert not qualify_comparison(name, widened[:1], expected[:1])['qualified']
+    assert not qualify_comparison('weight', torch.tensor([float('inf')]), torch.tensor([float('inf')]))['qualified']
+    return {'real_torch_positive_and_negative_cases': 13, 'status': 'ok',
+            'includes_sub_bf16_perturbation': True, 'contract_version': 2}
 
 
 def verify_files(root, files):
@@ -121,6 +164,10 @@ def main():
         torch.set_num_threads(8)
         torch.set_grad_enabled(False)
         result['imports'] = validate_imports(run, source, model)
+        if sha256(source / 'miles_plugins/mbridge/qwen3_5.py') != WIDENING_SOURCE_SHA:
+            raise ValueError('Pinned source of the A_log dtype rule has changed.')
+        result['comparison_contract'] = {'version': 2, 'allowlisted_widenings': sorted(ALOG_WIDENINGS),
+                                         'upstream_source_sha256': WIDENING_SOURCE_SHA}
         result['self_test'] = self_test()
         atomic(phase.path / 'self-test.json', result['self_test'])
         conversion_lock = json.loads((Path(__file__).parent / 'converted.lock.json').read_text())
@@ -209,13 +256,15 @@ def main():
                                 raise ValueError('Unexpected fused gate/up reference shape: ' + target)
                             half = shape[1] // 2
                             expected = view[expert, :half] if part == 'gate_proj' else view[expert, half:]
-                        row = dict(compare_tensors(actual, expected), source_name=name, converted_name=converted_name,
+                        row = dict(qualify_comparison(converted_name, actual, expected), source_name=name, converted_name=converted_name,
                                    reference_name=target, expert_id=expert, reference_part=part)
                     counts['compared'] += 1
                     counts['mtp_compared'] += int(converted_name.startswith('mtp.'))
                     counts['equal' if row['equal'] else 'mismatched'] += 1
+                    counts['qualified' if row['qualified'] else 'rejected'] += 1
+                    counts['lossless_widened'] += int(row['qualification'] == 'lossless_bf16_to_fp32_alog')
                     evidence.write(json.dumps(row, allow_nan=False) + '\n')
-                    if not row['equal'] and len(errors) < 25:
+                    if not row['qualified'] and len(errors) < 25:
                         errors.append('Weight parity mismatch: ' + converted_name)
                     if counts['compared'] % 256 == 0:
                         evidence.flush()
@@ -231,6 +280,8 @@ def main():
         errors.extend(check_coverage(index, seen, saved_args.num_experts))
         if counts['mtp_compared'] == 0 or not counts['compared']:
             errors.append('No complete text/MTP weight comparison was made.')
+        if counts['lossless_widened'] != len(ALOG_WIDENINGS):
+            errors.append('The pinned recipe did not exhibit exactly its 30 documented A_log widenings.')
         result['reference_weight_count'] = len(seen)
         result['excluded_vision_weights'] = sorted(k for k in index if k.startswith('model.visual.'))
         atomic(phase.path / 'reference-coverage.json', {k: sorted(v, key=str) for k, v in seen.items()})
@@ -242,7 +293,8 @@ def main():
         errors.append(str(exc))
         atomic(phase.path / 'exception.txt', traceback.format_exc())
     result['findings'] = errors
-    result['scope'] = ('Exact CPU round-trip weight parity for text and MTP only. Vision is deliberately excluded. '
+    result['scope'] = ('Exact CPU numerical round-trip parity for text and MTP, with only the pinned, '
+                       'lossless A_log BF16-to-FP32 widenings admitted. Vision is deliberately excluded. '
                        'Not a forward/logit, EP8 reshard, optimizer, resume, policy or quality test.')
     atomic(phase.path / 'parity-result.json', result)
     phase.finish('fail' if errors else 'ok', results=metrics, metadata=result,

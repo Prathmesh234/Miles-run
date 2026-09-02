@@ -26,7 +26,7 @@ from enroot_run_config import prepare as prepare_enroot_config
 from runtime_inventory import parse_inventory_stdout
 from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows, stop_owned_server
 from model_conversion import conversion_command, checkpoint_files
-from checkpoint_parity import reference_part, check_coverage, required_parts, verify_files
+from checkpoint_parity import ALOG_WIDENINGS, reference_part, check_coverage, required_parts, verify_files
 
 
 class EvidenceTests(unittest.TestCase):
@@ -71,6 +71,9 @@ class EvidenceTests(unittest.TestCase):
 
 class ParserTests(unittest.TestCase):
     def test_parity_requires_complete_nonoverlapping_expert_and_mtp_coverage(self):
+        self.assertEqual(len(ALOG_WIDENINGS), 30)
+        self.assertNotIn('model.language_model.layers.3.linear_attn.A_log', ALOG_WIDENINGS)
+        self.assertNotIn('mtp.layers.0.linear_attn.A_log', ALOG_WIDENINGS)
         weights = {'model.language_model.layers.0.mlp.experts.gate_up_proj': 'part.safetensors',
                    'mtp.layers.0.mlp.experts.down_proj': 'part.safetensors',
                    'model.language_model.norm.weight': 'part.safetensors',

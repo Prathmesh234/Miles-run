@@ -5,6 +5,16 @@ destinations. The parity stage rehashes both sets of input files and compares al
 text and MTP weights exactly, including dtype, shape and byte hashes. Vision
 weights are explicitly excluded because this campaign is text-only.
 
+Job 118 retained 30 strict dtype failures. A separate CPU diagnostic proved that
+all 960 affected `A_log` scalars are exact BF16-to-FP32 widenings, matching the
+pinned bridge's explicit FP32 preservation. Contract version 2 admits **only**
+those 30 named linear-attention tensors, only with the pinned `[32]` shape and
+BF16/FP32 dtype pair, and only when lifted FP32 bytes and inverse BF16 bytes
+match exactly. Nonfinite values and changes smaller than a BF16 rounding unit
+are rejected. The original `equal` field remains false for widened tensors;
+`qualified` records the explicitly versioned numerical-equivalence decision.
+No checkpoint weights or earlier failed records are changed.
+
 The pinned Megatron revision stores common state inside DCP. The older Miles
 standalone reverse-conversion script expects `common.pt`. This checker uses
 Megatron's own current common-state loader, Torch DCP's flat tensor loader, and
@@ -19,7 +29,7 @@ From the repository root, after committing code and locks:
 .venv-launch-tests/bin/python scripts/stage_checkpoint_parity.py \
   --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \
   --kubeconfig /Users/prathmeshbhatt/.kube/vke-config \
-  --attempt 1
+  --attempt 2
 ```
 
 This reserves one whole node in `gpu-nodes` for at most 30 minutes. The tensor

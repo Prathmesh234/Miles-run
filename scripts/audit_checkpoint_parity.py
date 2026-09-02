@@ -24,6 +24,10 @@ else:out['findings'].append('No finalized parity child result.')
 p=phase/'tensor-comparisons.jsonl'
 if p.is_file():
  counts=collections.Counter();digest=hashlib.sha256();names=set();bad=[]
+ contract=out.get('parity',{}).get('comparison_contract',{});version=contract.get('version',1)
+ allowed={f'model.language_model.layers.{i}.linear_attn.A_log' for i in range(40) if i%4!=3}
+ if version==2 and (set(contract['allowlisted_widenings'])!=allowed or contract['upstream_source_sha256']!='2e64b4703a26b786a1c7026be67d3c090f35981947f198a31c80145db472d009'):
+  bad.append('Comparison contract differs from the pinned narrow widening rule.')
  with p.open('rb') as f:
   for line in f:
    digest.update(line);row=json.loads(line);name=row['converted_name']
@@ -32,9 +36,24 @@ if p.is_file():
    counts['equal' if row['equal'] else 'mismatched']+=1
    if row['equal'] and any(row[a]!=row[b] for a,b in [('shape','reference_shape'),('dtype','reference_dtype'),('actual_sha256','reference_sha256')]):
     bad.append('Invalid equality claim: '+name)
+   if version==2:
+    counts['qualified' if row['qualified'] else 'rejected']+=1
+    widened=row['qualification']=='lossless_bf16_to_fp32_alog';counts['lossless_widened']+=int(widened)
+    w=row.get('widening',{})
+    valid_widening=(widened and name in allowed and row['shape']==row['reference_shape']==[32]
+     and row['dtype']=='torch.float32' and row['reference_dtype']=='torch.bfloat16'
+     and w.get('lift_exact') is True and w.get('inverse_exact') is True
+     and w.get('reference_lifted_fp32_sha256')==row['actual_sha256']
+     and w.get('inverse_bf16_sha256')==row['reference_sha256']
+     and w.get('max_absolute_difference_in_fp32')==0)
+    qualified=row['finite'] and ((row['equal'] and row['qualification']=='bitwise_equal') or valid_widening)
+    if row['qualified']!=qualified:bad.append('Invalid qualified parity claim: '+name)
  out['comparison_counts']=dict(counts);out['comparison_sha256']=digest.hexdigest()
  if counts!=collections.Counter(out.get('parity',{}).get('counts',{})):bad.append('Child counts differ from raw comparison rows.')
- if not counts['compared'] or not counts['mtp_compared'] or counts['mismatched']:bad.append('Incomplete or mismatched exact weight comparisons.')
+ if not counts['compared'] or not counts['mtp_compared']:bad.append('Incomplete text/MTP weight comparisons.')
+ if version==1 and counts['mismatched']:bad.append('Mismatched strict dtype/byte comparisons.')
+ if version==2 and (counts['rejected'] or counts['lossless_widened']!=30 or counts['qualified']!=counts['compared']):bad.append('Incomplete or rejected qualified weight comparisons.')
+ if version not in [1,2]:bad.append('Unknown comparison contract version.')
  out['findings'].extend(bad)
 else:out['findings'].append('No finalized full comparison JSONL.')
 paths=[root/f'telemetry/native-checkpoint-parity-v{attempt}/gpu-nodes-0/{name}.jsonl'
