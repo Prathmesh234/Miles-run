@@ -4,8 +4,8 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **2**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **141**, 32 GPUs, 2t2r, 3 requested steps. Fresh three-step synchronous qualification. In-container IB all-reduce and EP8 all-to-all required before Ray/models. No optimizer step yet verified for job141.
-Status snapshot: `2026-09-02T22:34:14.633318+00:00`; inspect Slurm for live state.
+Latest submission: Slurm **141**, 32 GPUs, 2t2r, 3 requested steps. Fresh three-step synchronous qualification; all32 ranks passed actual training-container IB all-reduce and node-local EP8 all-to-all. Ray/Qwen starting; no optimizer update yet verified for job141.
+Status snapshot: `2026-09-02T22:35:19.943723+00:00`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -49,6 +49,7 @@ Status snapshot: `2026-09-02T22:34:14.633318+00:00`; inspect Slurm for live stat
 - Job139 executed two real GRPO optimizer updates (gradient norms0.6023604/1.0913043) and saved two497,292,57x,xxx-byte checkpoints before operator gate stop. All four node phases finalized. Forty-eight durable graded episodes,32passed/16failed-task/zero grading errors; only32 samples accepted before stop. No held-out result.
 - Pinned CPU replay reproduced all32 session comparisons. Candidate unfinished-message verification preserves all32 native sample fields; three expected final closers handled only in comparison; seven real-token negative controls rejected. Targeted launcher suite28passed; root suite39passed. Original failed replay wrapper retained.
 - Read-only CPU A/B container discovery: baseline0verbs devices, explicit RDMA mount14 devices with eight active400G IB rails opened. V1 wrongly counted all active link types and remains failed; corrected link-layer/rate-qualified v2 passed. No global Enroot/Kubernetes settings changed.
+- Job141 mandatory container-fabric gate passed on32GPU ranks. All32 NCCL logs explicitly select IB and list all eight400G HCAs, with no Socket fallback/no-device errors. Two all-reduce message sizes and node-local EP8 all-to-all returned correct results; not a communication throughput benchmark.
 
 ## Remaining gates
 

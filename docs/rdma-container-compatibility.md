@@ -7,6 +7,14 @@ Status: partial
 
 ```json
 {
+  "actual_gpu_gate": {
+    "artifact": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-container-fabric-sync-grpo-v8-audit/result.json",
+    "findings": [],
+    "nccl_logs": 32,
+    "rank_results": 32,
+    "sha256": "902a49b685f5cc668668e5faab993cb75b8f95b653d525ae9590e44d6ee18cfe",
+    "slurm_job_id": 141
+  },
   "classification": "GPU-container deployment omitted RDMA devices under private IPC/dev",
   "cpu_visibility_probe": {
     "cases": [
@@ -273,7 +281,7 @@ Status: partial
   },
   "fix": "Explicit /dev/infiniband mount for GPU Enroot containers only; NCCL_NET=IB and exact eight400G HCA allowlist; all32-rank CUDA collective gate before Ray/models.",
   "limitations": [
-    "GPU transport and throughput still require the new gate to execute.",
+    "Actual32-rank GPU smoke and IB transport passed; full training transport coverage and sustained eight-rail bandwidth remain to be characterized.",
     "Original TCP updates and checkpoints are preserved, not promoted to infrastructure benchmark.",
     "Policy sandboxes retain no device mounts or host access."
   ],
