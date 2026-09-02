@@ -36,9 +36,41 @@ from audit_trainer_probe import validate_rank_evidence
 from report_trainer_probe import analyze_streams
 from prepare_local_task_images import offline_harness, pin_dockerfile
 from local_file_env import validate_archive, tree_archive, atomic_bytes, archive_contents, FileTaskSession
+from grpo_node import cleanup_actions
+from audit_grpo_attempt import audit_remote as audit_grpo_remote
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_grpo_audit_refuses_live_allocation(self):
+        with patch('subprocess.check_output', return_value='138|RUNNING|0:0|00:01:00|start|Unknown|nodes\n'):
+            with self.assertRaisesRegex(ValueError, 'not unambiguously terminal'):
+                audit_grpo_remote('/unused', 5, 138)
+
+    def test_grpo_audit_does_not_infer_training_success_from_exit_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / 'provenance/sync-grpo-code-v5/launch.json'
+            path.parent.mkdir(parents=True)
+            nodes = [{'hostname': f'gpu-nodes-{i}', 'role': 'trainer' if i < 2 else 'rollout',
+                      'gpu_uuids': [f'GPU-{i}-{j}' for j in range(8)]} for i in range(4)]
+            path.write_text(json.dumps({'root_sha': 'root', 'miles_sha': 'miles', 'layout': '2t2r',
+                'task_ids': ['task_1'], 'optimizer_steps_requested': 3, 'host_map': {'nodes': nodes}}))
+            with patch('subprocess.check_output', return_value='138|COMPLETED|0:0|00:01:00|start|end|nodes\n'):
+                data = audit_grpo_remote(root, 5, 138)
+            self.assertIn('Missing finalized driver.finished.json', data['findings'])
+            self.assertTrue(any('optimizer execution' in value for value in data['unverified']))
+            self.assertNotIn('optimizer_steps', data)
+            self.assertTrue(all(not node['phase_finalized'] for node in data['nodes']))
+
+    def test_node_cleanup_retains_failures_and_continues_to_inventory(self):
+        findings, events = ['original training failure'], []
+        def broken():
+            events.append('stop')
+            raise RuntimeError('stop failed')
+        cleanup_actions([('stop', broken), ('inventory', lambda: events.append('inventory'))], findings)
+        self.assertEqual(events, ['stop', 'inventory'])
+        self.assertEqual(findings, ['original training failure', 'Cleanup stop failed: RuntimeError: stop failed'])
+
     def test_bundle_checksums_include_hidden_artifacts_and_nested_manifests(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Run.create(Path(tmp) / 'run', {})

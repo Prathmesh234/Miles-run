@@ -16,8 +16,20 @@ from evidence import atomic, utcnow
 from infra_node import allocated_run, read_inventory
 
 
+def cleanup_actions(actions, findings):
+    """One cleanup failure must not suppress subsequent evidence or cleanup."""
+    for name, action in actions:
+        try:
+            action()
+        except Exception as exc:
+            findings.append(f'Cleanup {name} failed: {type(exc).__name__}: {exc}')
+
+
 def main():
+    cleaning_up = False
     def terminated(signum, frame):
+        if cleaning_up:
+            return  # Finish bounded cleanup; Slurm's hard kill remains effective.
         raise RuntimeError('Slurm terminated this run-owned node process; preserving artifacts and cleaning children.')
     signal.signal(signal.SIGTERM, terminated)
     ap = argparse.ArgumentParser()
@@ -116,6 +128,8 @@ def main():
         child = spawn(command, 'training-container', env=env)
         deadline = time.monotonic() + 5100
         while child.poll() is None:
+            if any((run.root / 'control').glob(label + '-failure-*.json')):
+                raise RuntimeError('A peer node failed; stopping this run-owned child and retaining evidence.')
             if shutil.disk_usage(run.root).free < 256*1024**3:
                 raise RuntimeError('256 GiB free-space reserve reached; stopping current run only.')
             if collector.poll() is not None or time.monotonic() > deadline:
@@ -126,27 +140,40 @@ def main():
     except Exception as exc:
         findings.append(str(exc))
         atomic(phase.path / 'exception.txt', traceback.format_exc())
+        atomic(run.root / 'control' / (label + '-failure-' + host + '.json'),
+               {'time': utcnow(), 'hostname': host, 'failure': str(exc)})
     finally:
-        stop(child)
-        if controller is not None:
+        cleaning_up = True
+        def stop_controller():
+            if controller is None:
+                return
             # Exact container name was created by this process; no global cleanup.
             rc, _, _ = phase.command(['docker', 'stop', '--time=20', controller_name], timeout=30)
             if rc:
                 findings.append('Run-owned OpenEnv controller stop returned an error.')
             stop(controller)
-        atomic(run.root / 'control' / (label + '-telemetry.stop'), {'time': utcnow()})
-        atomic(run.root / 'control' / (label + '-lustre.stop'), {'time': utcnow()})
-        if collector is not None:
+        def stop_collector():
+            if collector is None:
+                return
             try:
                 collector.wait(timeout=15)
             except subprocess.TimeoutExpired:
                 stop(collector)
             if collector.returncode:
                 findings.append('Native telemetry collector failed to finalize.')
+        def end_inventory():
+            if read_inventory(run, label + '-end'):
+                findings.append('Post-allocation GPU reconciliation failed.')
+        cleanup_actions([
+            ('training-child', lambda: stop(child)),
+            ('controller', stop_controller),
+            ('native-stop-marker', lambda: atomic(run.root / 'control' / (label + '-telemetry.stop'), {'time': utcnow()})),
+            ('lustre-stop-marker', lambda: atomic(run.root / 'control' / (label + '-lustre.stop'), {'time': utcnow()})),
+            ('collector', stop_collector),
+            ('post-allocation-inventory', end_inventory),
+        ], findings)
         for handle in handles:
             handle.close()
-        if read_inventory(run, label + '-end'):
-            findings.append('Post-allocation GPU reconciliation failed.')
     phase.finish('fail' if findings else 'ok', failure_summary='; '.join(findings) or None,
                  metadata={'findings': findings, 'role': plan['role'], 'slurm_job_id': os.environ['SLURM_JOB_ID'],
                            'scope': 'Real synchronous GRPO execution; exit zero is not a quality or resume claim.'}, refresh=False)

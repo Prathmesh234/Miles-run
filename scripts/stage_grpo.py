@@ -123,7 +123,9 @@ def main():
     files[prefix + 'miles-delta.json'] = entry(json.dumps(delta, indent=2).encode())
     patch = subprocess.check_output(['git', '-C', str(miles), 'format-patch', '--stdout', BASE_MILES + '..' + miles_sha])
     files[prefix + 'miles.patch'] = entry(patch)
-    launch = ['srun', '--kill-on-bad-exit=1', '--nodes=4', '--ntasks=4', '--ntasks-per-node=1', '--cpus-per-task=32',
+    # Node-local failure markers stop peer children without interrupting their
+    # bounded final inventory and structured failure-report writes.
+    launch = ['srun', '--kill-on-bad-exit=0', '--nodes=4', '--ntasks=4', '--ntasks-per-node=1', '--cpus-per-task=32',
               '--gpus-per-node=8', 'python3', remote + '/' + prefix + 'grpo_node.py', '--run-dir', remote, '--attempt', str(a.attempt)]
     files[prefix + 'submit.sbatch'] = entry(('#!/bin/bash\nset -euo pipefail\nexec ' + shlex.join(launch) + '\n').encode())
     payloads = list(batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=64*1024))
