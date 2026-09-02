@@ -100,7 +100,8 @@ def container_options(image, name, run_id, role, mounts=None):
                 labels={'posttrainingx.run': run_id, 'posttrainingx.role': role},
                 environment={'LANG': 'C.UTF-8', 'UV_OFFLINE': '1', 'UV_PYTHON_DOWNLOADS': 'never',
                              'UV_PYTHON_PREFERENCE': 'only-managed', 'PYTHONNOUSERSITE': '1',
-                             'UV_TOOL_DIR': '/tmp/uv-tools', 'UV_TOOL_BIN_DIR': '/tmp/uv-bin'},
+                             'UV_TOOL_DIR': '/tmp/uv-tools', 'UV_TOOL_BIN_DIR': '/tmp/uv-bin',
+                             'UV_CACHE_DIR': '/tmp/uv-cache'},
                 log_config={'Type': 'json-file', 'Config': {'max-size': '1m', 'max-file': '1'}})
 
 
@@ -161,7 +162,7 @@ class FileTaskSession:
         from docker.types import Mount
         targets = [('/app/task_file', '768m')]
         if role == 'grader':
-            targets += [('/tests', '64m'), ('/logs/verifier', '64m'), ('/root/.cache/uv', '512m')]
+            targets += [('/tests', '64m'), ('/logs/verifier', '64m')]
         mounts = []
         for index, (target, size) in enumerate(targets):
             volume = self.client.volumes.create(name=f'ptx-{self.episode}-{role}-{index}', driver='local',
@@ -302,6 +303,9 @@ class FileTaskSession:
                     self.task['grader_image_id'], 'ptx-grader-' + self.episode, self.root.name, 'grader',
                     self.workspace_mounts('grader')))
                 self.verify_container(self.grader, 'grader')
+                cached = self.grader.exec_run(['cp', '-a', '/root/.cache/uv', '/tmp/uv-cache'])
+                if cached.exit_code:
+                    raise RuntimeError('Pinned grader dependency cache could not be staged in private scratch.')
                 tests = tree_archive(self.source / 'tests', 'tests', {'test.sh': self.harness})
                 if (not self.grader.put_archive('/app/task_file', archive_contents(payload, 'task_file'))
                         or not self.grader.put_archive('/tests', archive_contents(tests, 'tests'))):
