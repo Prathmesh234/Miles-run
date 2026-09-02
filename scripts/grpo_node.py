@@ -96,7 +96,7 @@ def main():
         env['NVIDIA_VISIBLE_DEVICES'] = 'all'
         nccl = run.root / 'telemetry/nccl' / label / host
         nccl.mkdir(parents=True, exist_ok=False)
-        envs = {'NVIDIA_VISIBLE_DEVICES': 'all', 'PYTHONDONTWRITEBYTECODE': '1',
+        envs = {'NVIDIA_VISIBLE_DEVICES': 'all', 'PYTHONDONTWRITEBYTECODE': '1', 'PYTHONUNBUFFERED': '1',
             'SLURM_JOB_ID': os.environ['SLURM_JOB_ID'], 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
             'PYTHONPATH': '/ptx:/miles-source:/root/Megatron-LM', 'OMP_NUM_THREADS': '1',
             'CUDA_DEVICE_MAX_CONNECTIONS': '1', 'NCCL_NVLS_ENABLE': '0', 'NCCL_DEBUG': 'INFO',
