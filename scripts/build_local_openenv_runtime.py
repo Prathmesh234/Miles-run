@@ -1,6 +1,7 @@
 """Build an isolated, pinned OpenEnv controller image without changing Miles."""
 import argparse
 import io
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -30,7 +31,10 @@ def main():
                 raise ValueError('Controller build input changed: ' + name)
         source = parent / 'source'
         source.mkdir()
-        with tarfile.open(code / 'openenv-source.tar.gz', 'r:gz') as archive:
+        payload = b''.join((code / f'archive-parts/{i:04d}').read_bytes() for i in range(manifest['archive_parts']))
+        if hashlib.sha256(payload).hexdigest() != manifest['archive_sha256']:
+            raise ValueError('Reassembled controller source archive changed.')
+        with tarfile.open(fileobj=io.BytesIO(payload), mode='r:gz') as archive:
             for member in archive.getmembers():
                 path = Path(member.name)
                 if path.is_absolute() or '..' in path.parts or not (member.isfile() or member.isdir()):
@@ -45,7 +49,7 @@ def main():
                'RUN python -c "from openenv.core.env_server.http_server import create_app; import docker; print(docker.__version__)"\n')
         if shutil.disk_usage(run.root).free < 128*1024**3 or shutil.disk_usage('/var/lib/docker').free < 128*1024**3:
             raise ValueError('Controller image build requires 128 GiB shared and local reserve.')
-        tag = 'posttrainingx-openenv/' + run.root.name + f'-v{args.attempt}'
+        tag = 'posttrainingx-openenv/' + run.root.name + f':v{args.attempt}'
         rc, _, _ = phase.command(['docker', 'build', '--pull=false', '--network=default', '--label',
                                  'posttrainingx.run=' + run.root.name, '--tag', tag, str(parent)], timeout=600)
         if rc:

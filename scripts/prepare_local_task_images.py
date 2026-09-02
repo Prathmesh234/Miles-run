@@ -19,6 +19,12 @@ from evidence import Run, atomic, metric, sha256
 
 TASK_IDS = ['task_00000', 'task_06652', 'task_14118', 'task_10753', 'task_09467']
 MANIFEST_SHA = 'a61bd1bfa37d60325df6bb4b448c2961cf0113750aa8144688f8cbd6837195eb'
+BASE_IMAGES = {
+    'ubuntu:22.04': 'ubuntu@sha256:2edbbc5dc405e9612ba3584ce95480277e3eb374407b5505fe26f17df77c7dbc',
+    'node:20-slim': 'node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0',
+    'python:3.13-slim-bookworm': 'python@sha256:ed86c82274b3c69b52fb5820f358f0bd7df0b603332063cb5c6e32bd220c3e6e',
+    'ghcr.io/astral-sh/uv:0.9.5': 'ghcr.io/astral-sh/uv@sha256:f459f6f73a8c4ef5d69f4e6fbbdb8af751d6fa40ec34b39a1ab469acd6e289b7',
+}
 
 
 def offline_harness(original):
@@ -87,25 +93,32 @@ def main():
             path = source / 'source' / row['path']
             if path.is_symlink() or not path.is_file() or path.stat().st_size != row['bytes'] or sha256(path) != row['sha256']:
                 raise ValueError('Pinned task source changed: ' + row['path'])
-        for tag in ['ubuntu:22.04', 'node:20-slim', 'python:3.13-slim-bookworm', 'ghcr.io/astral-sh/uv:0.9.5']:
-            command(['docker', 'pull', '--platform=linux/amd64', tag], timeout=300)
-            info = json.loads(command(['docker', 'image', 'inspect', tag]))[0]
+        for tag, pinned in BASE_IMAGES.items():
+            command(['docker', 'pull', '--platform=linux/amd64', pinned], timeout=300)
+            info = json.loads(command(['docker', 'image', 'inspect', pinned]))[0]
             digests = info.get('RepoDigests', [])
-            if len(digests) != 1 or info['Architecture'] != 'amd64' or '@sha256:' not in digests[0]:
+            if pinned not in digests or info['Architecture'] != 'amd64':
                 raise ValueError('Base image resolution is ambiguous or not amd64.')
-            result['bases'][tag] = digests[0]
+            result['bases'][tag] = pinned
             atomic(parent / 'base-images.json', result['bases'])
         for task in TASK_IDS:
             task_source = source / 'source' / task
             context = parent / 'builds' / task
             shutil.copytree(task_source / 'environment', context)
+            empty_tree = not (context / 'task_file').exists()
+            if empty_tree:
+                if task != 'task_14118':
+                    raise ValueError('Unexpected missing public task tree; require explicit task review.')
+                # Git cannot store an empty directory. This task explicitly has
+                # no input files, but its Dockerfile COPY still requires one.
+                (context / 'task_file').mkdir()
             original = (context / 'Dockerfile').read_text()
             atomic(context / 'Dockerfile.original', original)
             atomic(context / 'Dockerfile', pin_dockerfile(original, result['bases']))
             # Build context consists of environment/ only; no tests or solutions.
             if any(p.parts[-1] in ('tests', 'solution') for p in context.rglob('*')):
                 raise ValueError('Forbidden asset in policy build context.')
-            tag = 'posttrainingx-local/' + run.root.name + '-' + task + f'-v{args.attempt}'
+            tag = 'posttrainingx-local/' + run.root.name + '-' + task + f':v{args.attempt}'
             command(['docker', 'build', '--pull=false', '--network=default', '--label', 'posttrainingx.run=' + run.root.name,
                      '--tag', tag, str(context)], timeout=300)
             policy = json.loads(command(['docker', 'image', 'inspect', tag]))[0]
@@ -132,6 +145,8 @@ def main():
                    'original_harness_sha256': sha256(original_harness), 'offline_harness_sha256': sha256(runtime_harness),
                    'runtime_harness_relpath': str(runtime_harness.relative_to(run.root)),
                    'source_relpath': str(task_source.relative_to(run.root)),
+                   'public_tree_relpath': str((context / 'task_file').relative_to(run.root)),
+                   'empty_input_directory_materialized': empty_tree,
                    'profile': 'file-only-v1: read-only root; bounded tmpfs task tree; no network; separate sealed grader',
                    'reference_and_policy_validation': 'not_started'}
             result['images'].append(row)

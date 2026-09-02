@@ -124,7 +124,7 @@ class FileTaskSession:
             self.container = self.client.containers.run(**container_options(
                 self.task['policy_image_id'], 'ptx-' + purpose + '-' + self.episode, self.root.name, purpose))
             self.verify_container(self.container, purpose)
-            data = tree_archive(self.source / 'environment/task_file', 'task_file')
+            data = tree_archive(self.root / self.task['public_tree_relpath'], 'task_file')
             if not self.container.put_archive('/app', data):
                 raise RuntimeError('Public task upload failed.')
             self.record('ready', container_id=self.container.id, staged_public_sha256=hashlib.sha256(data).hexdigest())

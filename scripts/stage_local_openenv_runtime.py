@@ -31,16 +31,24 @@ def main():
     prefix = f'provenance/local-openenv-image-code-v{args.attempt}/'
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes())
              for name in ['evidence.py', 'build_local_openenv_runtime.py']}
-    files[prefix + 'openenv-source.tar.gz'] = entry(archive)
+    chunks = [archive[i:i+32*1024] for i in range(0, len(archive), 32*1024)]
+    for i, chunk in enumerate(chunks):
+        files[prefix + f'archive-parts/{i:04d}'] = entry(chunk)
     files[prefix + 'server.lock'] = entry(lock)
     manifest = {'openenv_revision': openenv, 'root_revision': revision,
-                'files': {'openenv-source.tar.gz': hashlib.sha256(archive).hexdigest(),
-                          'server.lock': hashlib.sha256(lock).hexdigest()}}
+                'archive_sha256': hashlib.sha256(archive).hexdigest(), 'archive_parts': len(chunks),
+                'files': {'server.lock': hashlib.sha256(lock).hexdigest(),
+                          **{f'archive-parts/{i:04d}': hashlib.sha256(chunk).hexdigest() for i, chunk in enumerate(chunks)}}}
     files[prefix + 'input-manifest.json'] = entry(json.dumps(manifest, sort_keys=True).encode())
     argv = ['python3', remote + '/' + prefix + 'build_local_openenv_runtime.py', '--run-dir', remote, '--attempt', str(args.attempt)]
     files[prefix + 'submit.sbatch'] = entry(('#!/bin/bash\nset -euo pipefail\nexec ' + shlex.join(argv) + '\n').encode())
     worker = ['kubectl', '--kubeconfig', args.kubeconfig, '-n', 'slurm', 'exec', '-i', 'slurm-worker-gpu-nodes-0', '--']
-    for payload in batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=64*1024):
+    try:
+        payloads = list(batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=64*1024))
+    except Exception as exc:
+        phase.finish('fail', failure_summary='Controller upload planning failed: ' + str(exc))
+        return 1
+    for payload in payloads:
         rc, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], stdin=payload, timeout=45)
         if rc:
             phase.finish('fail', failure_summary='Controller source staging failed; no build submitted.')
