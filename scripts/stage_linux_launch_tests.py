@@ -20,17 +20,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
+    ap.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
     args = ap.parse_args()
     run = Run(args.run_dir)
     repo = Path(__file__).resolve().parents[1]
     miles = repo / 'vendor/miles'
-    phase = run.phase('00-miles-linux-test-staging')
+    phase = run.phase('00-miles-linux-test-staging' + (f'-v{args.attempt}' if args.attempt > 1 else ''))
     code, revision, _ = phase.command(['git', '-C', str(miles), 'rev-parse', 'HEAD'])
     dirty = subprocess.check_output(['git', '-C', str(miles), 'status', '--porcelain'], text=True)
     if code or dirty.strip():
         phase.finish('fail', failure_summary='Miles must be committed before building the test bundle.')
         return 1
-    local = run.root / 'provenance/linux-launch-tests-v1'
+    prefix = f'provenance/linux-launch-tests-v{args.attempt}/'
+    local = run.root / prefix
     local.mkdir(exist_ok=False)
     tar_path = local / 'miles.tar'
     code, _, _ = phase.command(['git', '-C', str(miles), 'archive', '--format=tar', '--prefix=miles/',
@@ -42,7 +44,6 @@ def main():
     compressed = gzip.compress(tar_path.read_bytes(), mtime=0)
     checksum = hashlib.sha256(compressed).hexdigest()
     files = {}
-    prefix = 'provenance/linux-launch-tests-v1/'
     chunk_size = 128 * 1024
     parts = [compressed[i:i+chunk_size] for i in range(0, len(compressed), chunk_size)]
     for index, part in enumerate(parts):

@@ -29,6 +29,7 @@ from model_conversion import conversion_command, checkpoint_files
 from checkpoint_parity import ALOG_WIDENINGS, reference_part, check_coverage, required_parts, verify_files
 from prepare_terminal_lego import CATALOG_URL, next_page, select_tasks
 from materialize_terminal_lego import configure_git_environment, inventory_tasks
+from materialize_terminal_lego_lfs import copy_verified_sources, lfs_item, tracked_files
 
 
 class EvidenceTests(unittest.TestCase):
@@ -72,6 +73,30 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_task_lfs_completion_checks_original_git_blobs_and_preserves_failed_source(self):
+        payload = b'version https://git-lfs.github.com/spec/v1\noid sha256:' + b'a' * 64 + b'\nsize 12\n'
+        item = lfs_item(payload, 'task_00000/environment/data')
+        self.assertEqual(item['size'], 12)
+        with self.assertRaises(ValueError):
+            lfs_item(payload.replace(b'size 12', b'size 99999999999'), item['path'])
+        blob = hashlib.sha1(f'blob {len(payload)}\0'.encode() + payload).hexdigest()
+        text = f'100644 blob {blob}\t{item["path"]}\0'
+        records = tracked_files(text, {'task_00000'})
+        for bad in (text.replace('100644', '120000'), text.replace('environment/data', '../data'), text + text):
+            with self.assertRaises(ValueError):
+                tracked_files(bad, {'task_00000'})
+        with tempfile.TemporaryDirectory() as tmp:
+            source, destination = Path(tmp).resolve() / 'source', Path(tmp).resolve() / 'new'
+            path = source / item['path']
+            path.parent.mkdir(parents=True)
+            path.write_bytes(payload)
+            self.assertEqual(copy_verified_sources(source, destination, records), [item])
+            self.assertEqual(path.read_bytes(), payload)
+            self.assertFalse(destination.exists())
+            path.write_bytes(b'changed')
+            with self.assertRaises(ValueError):
+                copy_verified_sources(source, destination, records)
+
     def test_task_materialization_labels_grader_assets_and_refuses_linked_inputs(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
