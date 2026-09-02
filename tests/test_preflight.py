@@ -23,6 +23,7 @@ import threading
 from validate_fabric_under_load import validate_records
 from telemetry_lustre_host import stats_records
 from enroot_run_config import prepare as prepare_enroot_config
+from runtime_inventory import parse_inventory_stdout
 
 
 class EvidenceTests(unittest.TestCase):
@@ -55,6 +56,15 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_runtime_inventory_accepts_entrypoint_banner_but_not_ambiguous_records(self):
+        record = {'python': '3.12', 'packages': [], 'torch': {}, 'scope': 'CPU only'}
+        text = 'CUDA banner\n{}\n' + json.dumps(record) + '\n'
+        self.assertEqual(parse_inventory_stdout(text), record)
+        with self.assertRaises(ValueError):
+            parse_inventory_stdout(text + json.dumps(record))
+        with self.assertRaises(ValueError):
+            parse_inventory_stdout('no JSON inventory')
+
     def test_enroot_hook_patch_is_run_scoped_and_rejects_unexpected_hook(self):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / 'system'

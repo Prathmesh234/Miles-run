@@ -7,6 +7,7 @@ import sys
 
 from enroot_run_config import prepare
 from evidence import Run, atomic
+from runtime_inventory import parse_inventory_stdout
 
 
 def main():
@@ -34,7 +35,7 @@ def main():
         errors.append('Enroot startup/package inspection failed with exit code ' + str(rc))
     else:
         try:
-            data = json.loads(out)
+            data = parse_inventory_stdout(out)
             atomic(phase.path / 'packages.json', data)
         except ValueError as exc:
             errors.append('Runtime did not emit a single valid inventory JSON: ' + str(exc))

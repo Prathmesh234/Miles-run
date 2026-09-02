@@ -9,6 +9,20 @@ import sys
 from urllib.parse import urlsplit, urlunsplit
 
 
+def parse_inventory_stdout(text):
+    inventories = []
+    for line in text.splitlines():
+        try:
+            data = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(data, dict) and {'python', 'packages', 'torch', 'scope'}.issubset(data):
+            inventories.append(data)
+    if len(inventories) != 1:
+        raise ValueError('Expected exactly one inventory JSON object, found ' + str(len(inventories)))
+    return inventories[0]
+
+
 def safe_direct_url(text):
     data = json.loads(text)
     parts = urlsplit(data['url'])
