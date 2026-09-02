@@ -4,8 +4,8 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **2**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **140**, 32 GPUs, 2t2r, 3 requested steps. Job140 stopped before optimizer execution because GPU-container RDMA visibility was unqualified; job139 NCCL logs proved TCP fallback.
-Status snapshot: `2026-09-02T22:33:02.566411+00:00`; inspect Slurm for live state.
+Latest submission: Slurm **141**, 32 GPUs, 2t2r, 3 requested steps. Fresh three-step synchronous qualification. In-container IB all-reduce and EP8 all-to-all required before Ray/models. No optimizer step yet verified for job141.
+Status snapshot: `2026-09-02T22:34:14.633318+00:00`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
