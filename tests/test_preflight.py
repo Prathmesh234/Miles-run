@@ -27,6 +27,17 @@ from runtime_inventory import parse_inventory_stdout
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_bundle_checksums_include_hidden_artifacts_and_nested_manifests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Run.create(Path(tmp) / 'run', {})
+            (run.root / 'provenance/.pinned-metadata').write_text('record')
+            (run.root / 'provenance/checksums.sha256').write_text('nested manifest')
+            run.refresh()
+            names = {line.split('  ', 1)[1] for line in (run.root / 'checksums.sha256').read_text().splitlines()}
+            self.assertIn('provenance/.pinned-metadata', names)
+            self.assertIn('provenance/checksums.sha256', names)
+            self.assertNotIn('checksums.sha256', names)
+
     def test_failed_command_cannot_be_success_and_evidence_is_reproducible(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = Run.create(Path(tmp) / 'run', {})

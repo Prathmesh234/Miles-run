@@ -105,7 +105,7 @@ class Run:
         for p in sorted(self.root.rglob('*')):
             if p.is_symlink():
                 raise ValueError(f'Symlink is not permitted in the evidence bundle: {p}')
-            if p.is_file() and p.name != 'checksums.sha256' and not p.name.startswith('.'):
+            if p.is_file() and p != self.root / 'checksums.sha256':
                 hashes.append(f'{sha256(p)}  {p.relative_to(self.root)}')
         atomic(self.root / 'checksums.sha256', '\n'.join(hashes) + '\n')
 
