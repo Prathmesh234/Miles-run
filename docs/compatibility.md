@@ -6,7 +6,7 @@ Generated from `docs/compatibility.json`.
 |---|---|---|---|
 | Miles documented online Verifiers adapter | verifiers>=0.2.0,<0.2.1; openai-agents<0.5; documented SGLang OpenAI==2.6.1 | Strict 0.3.1 combination blocked | Three unsatisfiable resolver results; no installation |
 | Miles OpenEnv online, local Docker | GPU image OpenAI==2.6.1 unchanged. Hash-pinned Python 3.12.11 OpenEnv server in a separate controller image; thin WebSocket client uses the native Miles sampler and TITO tracing. | Local isolated-container runtime qualified for four clean training task IDs; model-driven training validation in progress | Slurm job 134: ten live CPU runtime checks passed, including five reference solutions, isolation, real failure versus harness error, timeout, WebSocket roundtrip and cleanup. Model trajectories and GRPO remain separate qualification gates. |
-| Offline Verifiers/Harbor evaluation | Python 3.12.11; verifiers==0.3.1; harbor==0.21.0; openai==2.54.0; openai-agents==0.20.0; renderers==0.1.11 | Dependency lock resolved; runtime and TB2.1 environment not validated | Hash-pinned Linux lock; no install or evaluation execution |
+| Offline Verifiers/Harbor evaluation | Python 3.12.11; verifiers==0.3.1; harbor==0.21.0; openai==2.54.0; openai-agents==0.20.0; renderers==0.1.11 | Pinned package environment passed; runtime gates remain: missing Docker CLI, image preparation, sealed grading, and missing-verdict error classification. | Job142 built/imported the hash-locked image. Installed-source inspection and an actual HarborTask synthetic-runtime probe are retained; no TB2.1 tasks executed. |
 | Strict Verifiers split-process bridge / upgrade | Not implemented | Blocked before optimizer steps | No equivalence tests have passed |
 
 ## Findings
@@ -19,6 +19,11 @@ Generated from `docs/compatibility.json`.
 - Offline Verifiers evaluation does not generate the OpenEnv online training trajectories. No forced package upgrades were attempted.
 - OpenEnv server dependencies conflict with GPU image OpenAI==2.6.1. The server remains isolated. The local thin WebSocket transport passed a live maintained-OpenEnv protocol roundtrip; it does not re-tokenize or replace Miles sampling. This is not a Verifiers compatibility bridge.
 - The live runtime qualification covers task_00000 (runtime only) and task_06652, task_14118, task_10753, task_09467 (the first four pre-registered training IDs). It does not qualify all 512 training tasks, model trajectories, mid-command WebSocket disconnection, GRPO gradients, or offline TB2.1 evaluation.
+- Installed Verifiers v1 includes a local Docker runtime; no external sandbox provider is intrinsically required. Its default unrestricted runtime uses host networking, and its restricted helper refers to alpine:3.22. Explicit isolated network policy and digest-pinned helper images are required before evaluation.
+- The installed Harbor taskset rejects Dockerfile-only environments unless ignore_dockerfile is enabled. Do not ignore task Dockerfiles: prepare the exact task image and record the derived image binding instead.
+- The installed default shared Harbor scorer stages tests in the still-existing agent runtime. Separate-verifier mode is supported only when task artifacts and verifier environment are declared. Policy background-process isolation must be proved, not inferred from the agent loop ending.
+- Actual pinned HarborTask._graded probe: missing verifier files after exit7 -> reward0.0, legitimate negative ->0.0, positive ->1.0. An explicit missing-verdict error guard is required to avoid reporting runtime failures as task failures.
+- Full clean source audit verified all641 task sources (512 train,128 development,1 runtime). It found313 absent public task_file directories,231 harness-setup reviews,68 additional base-image reviews,and2 policy-context asset-name reviews across all roles. These are structural review requirements, not a reward-based exclusion or a claim of leakage.
 
 ## Strict online acceptance tests
 

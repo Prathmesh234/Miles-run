@@ -8,7 +8,11 @@
     "00-openenv-isolated-development-environment",
     "02-openenv-unmodified-unit-baseline",
     "00-openenv-linux-server-dependency-lock",
-    "02-local-file-runtime-validation-v7"
+    "02-local-file-runtime-validation-v7",
+    "02-offline-evaluation-image-receipt-v1",
+    "02-offline-evaluator-source-inspection-v1",
+    "02-offline-harbor-reward-semantics-v1",
+    "02-clean-corpus-structural-audit-v1"
   ],
   "local_runtime_validation": {
     "checks_passed": 10,
@@ -70,9 +74,9 @@
     },
     {
       "dependencies": "Python 3.12.11; verifiers==0.3.1; harbor==0.21.0; openai==2.54.0; openai-agents==0.20.0; renderers==0.1.11",
-      "evidence": "Hash-pinned Linux lock; no install or evaluation execution",
+      "evidence": "Job142 built/imported the hash-locked image. Installed-source inspection and an actual HarborTask synthetic-runtime probe are retained; no TB2.1 tasks executed.",
       "path": "Offline Verifiers/Harbor evaluation",
-      "status": "Dependency lock resolved; runtime and TB2.1 environment not validated"
+      "status": "Pinned package environment passed; runtime gates remain: missing Docker CLI, image preparation, sealed grading, and missing-verdict error classification."
     },
     {
       "dependencies": "Not implemented",
@@ -90,8 +94,18 @@
     "Terminal-Bench 2.1 metadata is pinned to 7131e4375048a0e408a8fb404b5f499d726b695b with 89 ordered task IDs. Environment-package revision, task-image pins and runtime evaluation remain unvalidated.",
     "Offline Verifiers evaluation does not generate the OpenEnv online training trajectories. No forced package upgrades were attempted.",
     "OpenEnv server dependencies conflict with GPU image OpenAI==2.6.1. The server remains isolated. The local thin WebSocket transport passed a live maintained-OpenEnv protocol roundtrip; it does not re-tokenize or replace Miles sampling. This is not a Verifiers compatibility bridge.",
-    "The live runtime qualification covers task_00000 (runtime only) and task_06652, task_14118, task_10753, task_09467 (the first four pre-registered training IDs). It does not qualify all 512 training tasks, model trajectories, mid-command WebSocket disconnection, GRPO gradients, or offline TB2.1 evaluation."
+    "The live runtime qualification covers task_00000 (runtime only) and task_06652, task_14118, task_10753, task_09467 (the first four pre-registered training IDs). It does not qualify all 512 training tasks, model trajectories, mid-command WebSocket disconnection, GRPO gradients, or offline TB2.1 evaluation.",
+    "Installed Verifiers v1 includes a local Docker runtime; no external sandbox provider is intrinsically required. Its default unrestricted runtime uses host networking, and its restricted helper refers to alpine:3.22. Explicit isolated network policy and digest-pinned helper images are required before evaluation.",
+    "The installed Harbor taskset rejects Dockerfile-only environments unless ignore_dockerfile is enabled. Do not ignore task Dockerfiles: prepare the exact task image and record the derived image binding instead.",
+    "The installed default shared Harbor scorer stages tests in the still-existing agent runtime. Separate-verifier mode is supported only when task artifacts and verifier environment are declared. Policy background-process isolation must be proved, not inferred from the agent loop ending.",
+    "Actual pinned HarborTask._graded probe: missing verifier files after exit7 -> reward0.0, legitimate negative ->0.0, positive ->1.0. An explicit missing-verdict error guard is required to avoid reporting runtime failures as task failures.",
+    "Full clean source audit verified all641 task sources (512 train,128 development,1 runtime). It found313 absent public task_file directories,231 harness-setup reviews,68 additional base-image reviews,and2 policy-context asset-name reviews across all roles. These are structural review requirements, not a reward-based exclusion or a claim of leakage."
   ],
+  "offline_image": {
+    "image_id": "sha256:c2459626611736a65cc6f8e39f15af3d3c61880d3e7e1f7da1fd6bb9ea443f2f",
+    "result": "tests/02-offline-evaluation-image-receipt-v1/captured/tests/02-offline-evaluation-image-v1/result.json",
+    "slurm_job_id": 142
+  },
   "offline_lock": {
     "path": "locks/offline-verifiers-py312-linux.lock",
     "sha256": "e0581971c6c19df4ac6aed6fa3d8cd34665b824137738e87c1e3e9e17df08be0"
