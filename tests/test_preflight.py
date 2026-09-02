@@ -43,6 +43,52 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_grpo_tensor_audit_detects_sample_corruption_and_incomplete_rank_coverage(self):
+        import torch
+        from audit_grpo_tensors import audit_tensors
+
+        for fault in (None, 'tokens', 'rollout_log_probs', 'loss_masks', 'advantages', 'missing_rank', 'duplicate_sample'):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                for folder in ('qualification-groups', 'rollout_data', 'train_data'):
+                    (root / folder).mkdir()
+                samples = [{'index': i, 'group_index': 0, 'tokens': [1, 2, 3],
+                            'response_length': 2, 'rollout_log_probs': [-0.5, -0.25],
+                            'loss_mask': [1, 1], 'reward': float(i < 4), 'weight_versions': ['1']}
+                           for i in range(8)]
+                (root / 'qualification-groups/group.json').write_text(json.dumps({'samples': samples}))
+                torch.save({'rollout_id': 0, 'samples': samples}, root / 'rollout_data/0.pt')
+                for rank in range(2):
+                    indices = list(range(rank * 4, rank * 4 + 4))
+                    # Match the recipe's float32 arithmetic, independently of the audit implementation.
+                    rewards = [(torch.tensor(samples[i]['reward'] - 0.5) /
+                                (torch.sqrt(torch.tensor(2 / 7)) + 1e-6)).item() for i in indices]
+                    data = {'sample_indices': indices, 'raw_reward': [s['reward'] for s in samples],
+                            'rewards': rewards, 'weight_versions': [['1'] for _ in indices]}
+                    for key, source, dtype in (('tokens', 'tokens', torch.int64),
+                                               ('loss_masks', 'loss_mask', torch.int32),
+                                               ('rollout_log_probs', 'rollout_log_probs', torch.float32)):
+                        data[key] = [torch.tensor(samples[i][source], dtype=dtype) for i in indices]
+                    for key in ('advantages', 'returns'):
+                        data[key] = [torch.full((2,), reward) for reward in rewards]
+                    for key in ('log_probs', 'ref_log_probs'):
+                        data[key] = [torch.tensor([-0.5, -0.25]) for _ in indices]
+                    if rank == 0 and fault in ('tokens', 'rollout_log_probs', 'loss_masks', 'advantages'):
+                        data[fault][0][0] += 1
+                    if rank == 0 and fault == 'duplicate_sample':
+                        data['sample_indices'][0] = data['sample_indices'][1]
+                    if rank == 1 and fault == 'missing_rank':
+                        continue
+                    torch.save({'rollout_id': 0, 'rank': rank, 'cp_rank': 0, 'cp_size': 1,
+                                'rollout_data': data}, root / f'train_data/0_{rank}.pt')
+                if fault:
+                    with self.assertRaises(ValueError):
+                        audit_tensors(root, 2)
+                else:
+                    result = audit_tensors(root, 2)
+                    self.assertEqual(result['findings'], [])
+                    self.assertEqual(result['trained_input_samples'], 8)
+
     def test_container_fabric_gate_refuses_tcp_before_verbs_or_gpu_calls(self):
         ports = [(f'mlx5_{i}', '1') for i in range(8)]
         with patch('container_fabric_probe.active_training_ports', return_value=ports), patch.dict(os.environ, {'NCCL_NET':'Socket'}):
