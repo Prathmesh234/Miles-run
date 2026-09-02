@@ -28,6 +28,7 @@ from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows
 from model_conversion import conversion_command, checkpoint_files
 from checkpoint_parity import ALOG_WIDENINGS, reference_part, check_coverage, required_parts, verify_files
 from prepare_terminal_lego import CATALOG_URL, next_page, select_tasks
+from materialize_terminal_lego import configure_git_environment, inventory_tasks
 
 
 class EvidenceTests(unittest.TestCase):
@@ -71,6 +72,27 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_task_materialization_labels_grader_assets_and_refuses_linked_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            task = root / 'task_00001'
+            for name in ('instruction.md', 'task.toml', 'environment/Dockerfile', 'tests/test.sh', 'solution/solve.sh'):
+                path = task / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('[metadata]\ncategory="code"\n' if name == 'task.toml' else 'fixture')
+            result = inventory_tasks(root, ['task_00001'])
+            private = [x['path'] for x in result['files'] if x['access'] == 'grader_only']
+            self.assertEqual(set(private), {'task_00001/tests/test.sh', 'task_00001/solution/solve.sh'})
+            self.assertEqual(result['categories'], {'code': 1})
+            (task / 'environment/link').symlink_to(task / 'solution/solve.sh')
+            with self.assertRaises(ValueError):
+                inventory_tasks(root, ['task_00001'])
+        with patch.dict(os.environ, {'GIT_CURL_VERBOSE': '0', 'GIT_TRACE_CURL': '1'}):
+            configure_git_environment()
+            self.assertNotIn('GIT_CURL_VERBOSE', os.environ)
+            self.assertNotIn('GIT_TRACE_CURL', os.environ)
+            self.assertEqual(os.environ['GIT_TERMINAL_PROMPT'], '0')
+
     def test_clean_split_is_disjoint_deterministic_and_outcome_independent(self):
         tasks = [f'task_{i:05d}' for i in range(20)]
         train, dev = select_tasks(tasks, train_count=8, dev_count=4)

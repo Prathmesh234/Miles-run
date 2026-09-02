@@ -16,6 +16,14 @@ import traceback
 from evidence import Run, atomic, sha256
 
 
+def configure_git_environment():
+    # GIT_CURL_VERBOSE is enabled by presence, even when set to the string "0".
+    # Remove diagnostic flags instead of risking verbose HTTP header logs.
+    for name in ('GIT_TRACE', 'GIT_TRACE_PACKET', 'GIT_TRACE_CURL', 'GIT_CURL_VERBOSE'):
+        os.environ.pop(name, None)
+    os.environ.update({'GIT_TERMINAL_PROMPT': '0', 'GIT_LFS_SKIP_SMUDGE': '1'})
+
+
 def inventory_tasks(root, task_ids):
     tasks, files, categories = [], [], collections.Counter()
     total = 0
@@ -60,12 +68,13 @@ def inventory_tasks(root, task_ids):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
+    ap.add_argument('--attempt', type=int, choices=range(2, 10), default=2)
     args = ap.parse_args()
     run = Run(args.run_dir)
-    phase = run.phase('00-terminal-lego-controller-task-materialization-v1')
+    phase = run.phase(f'00-terminal-lego-controller-task-materialization-v{args.attempt}')
     split = json.loads((Path(__file__).parent / 'terminal-lego-subset.json').read_text())
     task_ids = split['runtime_validation_task_ids'] + split['training_task_ids'] + split['development_task_ids']
-    parent = run.root / 'environments/terminal-lego-controller-v1'
+    parent = run.root / f'environments/terminal-lego-controller-v{args.attempt}'
     root = parent / 'source'
     errors, data = [], {}
     try:
@@ -74,16 +83,15 @@ def main():
         if shutil.disk_usage(run.root).free < 512 * 1024**3:
             raise ValueError('Require a 512 GiB shared-filesystem reserve before task materialization.')
         parent.mkdir(parents=True, mode=0o700, exist_ok=False)
-        os.environ.update({'GIT_TERMINAL_PROMPT': '0', 'GIT_LFS_SKIP_SMUDGE': '1',
-                           'GIT_TRACE': '0', 'GIT_TRACE_PACKET': '0', 'GIT_TRACE_CURL': '0', 'GIT_CURL_VERBOSE': '0'})
+        configure_git_environment()
         git = ['git', '-c', 'credential.helper=', '-c', 'core.hooksPath=/dev/null']
         commands = [git + ['init', str(root)],
                     git + ['-C', str(root), 'remote', 'add', 'origin', 'https://huggingface.co/datasets/' + split['repository']],
-                    git + ['-C', str(root), 'config', 'remote.origin.promisor', 'true'],
-                    git + ['-C', str(root), 'config', 'remote.origin.partialclonefilter', 'blob:none'],
                     git + ['-C', str(root), 'sparse-checkout', 'init', '--no-cone'],
                     git + ['-C', str(root), 'sparse-checkout', 'set', '--no-cone', '--stdin'],
-                    ['timeout', '--kill-after=10s', '600s', *git, '-C', str(root), 'fetch', '--depth=1', '--filter=blob:none', 'origin', split['revision']],
+                    # Avoid the failed bulk promisor-object request. Keep the same
+                    # exact revision and sparse working tree, with a complete shallow pack.
+                    ['timeout', '--kill-after=10s', '600s', *git, '-C', str(root), 'fetch', '--depth=1', 'origin', split['revision']],
                     ['timeout', '--kill-after=10s', '600s', *git, '-C', str(root), 'checkout', '--detach', 'FETCH_HEAD']]
         for command in commands:
             if shutil.disk_usage(run.root).free < 256 * 1024**3:
