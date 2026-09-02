@@ -87,7 +87,7 @@ def archive_contents(payload, root_name):
     return output.getvalue()
 
 
-def container_options(image, name, run_id, role):
+def container_options(image, name, run_id, role, mounts=None):
     if not image.startswith('sha256:') or len(image) != 71:
         raise ValueError('Task containers require an immutable local image ID.')
     return dict(image=image, name=name, entrypoint='/bin/sleep', command=['infinity'], detach=True, runtime='runc',
@@ -95,11 +95,8 @@ def container_options(image, name, run_id, role):
                 cap_drop=['ALL'], security_opt=['no-new-privileges:true'],
                 mem_limit='1g', memswap_limit='1g', nano_cpus=1_000_000_000, pids_limit=128,
                 ulimits=[{'Name': 'nofile', 'Soft': 1024, 'Hard': 1024}],
-                tmpfs={'/app/task_file': 'rw,nosuid,nodev,size=5g,mode=0755',
-                       '/tmp': 'rw,nosuid,nodev,size=128m,mode=1777',
-                       '/run': 'rw,nosuid,nodev,size=16m,mode=0755',
-                       **({'/tests': 'rw,nosuid,nodev,size=64m,mode=0755',
-                           '/logs/verifier': 'rw,nosuid,nodev,size=64m,mode=0755'} if role == 'grader' else {})},
+                mounts=mounts or [],
+                tmpfs={'/tmp': 'rw,nosuid,nodev,size=128m,mode=1777', '/run': 'rw,nosuid,nodev,size=16m,mode=0755'},
                 labels={'posttrainingx.run': run_id, 'posttrainingx.role': role},
                 environment={'LANG': 'C.UTF-8', 'UV_OFFLINE': '1', 'UV_PYTHON_DOWNLOADS': 'never',
                              'UV_PYTHON_PREFERENCE': 'only-managed', 'PYTHONNOUSERSITE': '1'},
@@ -128,6 +125,7 @@ class FileTaskSession:
         self.directory = self.manifest_path.parent / 'episodes' / self.episode
         self.directory.mkdir(parents=True, mode=0o700)
         self.container = self.grader = None
+        self.volumes = []
         self.sealed = False
         self.lock = threading.RLock()
         self.command_index = 0
@@ -136,7 +134,8 @@ class FileTaskSession:
         try:
             self.guard()
             self.container = self.client.containers.run(**container_options(
-                self.task['policy_image_id'], 'ptx-' + purpose + '-' + self.episode, self.root.name, purpose))
+                self.task['policy_image_id'], 'ptx-' + purpose + '-' + self.episode, self.root.name, purpose,
+                self.workspace_mounts(purpose)))
             self.verify_container(self.container, purpose)
             initial = self.root / self.task['initial_tree_archive_relpath']
             if initial.is_symlink() or sha256(initial) != self.task['initial_tree_archive_sha256']:
@@ -149,6 +148,21 @@ class FileTaskSession:
         except Exception:
             self.close()
             raise
+
+    def workspace_mounts(self, role):
+        from docker.types import Mount
+        targets = [('/app/task_file', '768m')]
+        if role == 'grader':
+            targets += [('/tests', '64m'), ('/logs/verifier', '64m'), ('/root/.cache/uv', '512m')]
+        mounts = []
+        for index, (target, size) in enumerate(targets):
+            volume = self.client.volumes.create(name=f'ptx-{self.episode}-{role}-{index}', driver='local',
+                driver_opts={'type': 'tmpfs', 'device': 'tmpfs', 'o': f'size={size},nosuid,nodev'},
+                labels={'posttrainingx.run': self.root.name, 'posttrainingx.episode': self.episode})
+            self.volumes.append(volume)
+            mounts.append(Mount(target=target, source=volume.name, type='volume'))
+            self.record('workspace_volume_created', volume=volume.name, target=target, size=size)
+        return mounts
 
     def record(self, event, **fields):
         row = dict(time=utcnow(), monotonic_s=time.monotonic(), event=event,
@@ -277,7 +291,8 @@ class FileTaskSession:
                     raise ValueError('Pinned offline harness changed.')
                 payload = self.seal()
                 self.grader = self.client.containers.run(**container_options(
-                    self.task['grader_image_id'], 'ptx-grader-' + self.episode, self.root.name, 'grader'))
+                    self.task['grader_image_id'], 'ptx-grader-' + self.episode, self.root.name, 'grader',
+                    self.workspace_mounts('grader')))
                 self.verify_container(self.grader, 'grader')
                 tests = tree_archive(self.source / 'tests', 'tests', {'test.sh': self.harness})
                 if (not self.grader.put_archive('/app/task_file', archive_contents(payload, 'task_file'))
@@ -331,6 +346,17 @@ class FileTaskSession:
                     if getattr(exc, 'status_code', None) != 404:
                         failures.append({'container_id': container.id, 'error_type': type(exc).__name__})
             self.container = self.grader = None
+            for volume in self.volumes:
+                try:
+                    volume.reload()
+                    if volume.attrs.get('Labels', {}).get('posttrainingx.episode') != self.episode:
+                        raise ValueError('Refusing removal of another session volume.')
+                    volume.remove()
+                    self.record('workspace_volume_removed', volume=volume.name)
+                except Exception as exc:
+                    if getattr(exc, 'status_code', None) != 404:
+                        failures.append({'volume': volume.name, 'error_type': type(exc).__name__})
+            self.volumes = []
             self.client.close()
             if failures:
                 atomic(self.directory / 'cleanup-errors.json', failures)
