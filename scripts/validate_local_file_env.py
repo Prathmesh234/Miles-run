@@ -4,6 +4,7 @@ import asyncio
 import io
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -23,6 +24,9 @@ def check(value, message):
 
 
 def main():
+    def terminated(signum, frame):
+        raise TimeoutError('Validation received termination; cleaning owned sessions.')
+    signal.signal(signal.SIGTERM, terminated)
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--images-manifest', required=True)
