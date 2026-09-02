@@ -15,6 +15,9 @@ from telemetry_native import GPU_FIELDS, gpu_records, nvlink_records
 from submit_native_preflight import batches, entry
 from fabric_probe import active_training_ports, perfquery_command, perfquery_records
 from summarize_native import counter_rate, summary
+from pull_pinned_model import download_file, validate_manifest
+import io
+import threading
 
 
 class EvidenceTests(unittest.TestCase):
@@ -47,6 +50,27 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_model_download_checks_hash_size_and_never_overwrites(self):
+        payload = b'pinned model data'
+        class Response(io.BytesIO):
+            status = 200
+        item = {'path': 'model.safetensors', 'size': len(payload),
+                'lfs': {'sha256': hashlib.sha256(payload).hexdigest()}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            result = download_file(item, 'https://example.invalid/pinned', root,
+                                   threading.Event(), opener=lambda *a, **k: Response(payload))
+            self.assertEqual(result['sha256'], item['lfs']['sha256'])
+            self.assertEqual((root/item['path']).read_bytes(), payload)
+            with self.assertRaises(ValueError):
+                download_file(item, 'https://example.invalid/pinned', root, threading.Event())
+            bad = dict(item, path='bad.safetensors')
+            with self.assertRaises(ValueError):
+                download_file(bad, 'https://example.invalid/pinned', root,
+                              threading.Event(), opener=lambda *a, **k: Response(b'bad'))
+            self.assertFalse((root/'bad.safetensors').exists())
+            self.assertTrue((root/'bad.safetensors.partial').exists())
+
     def test_statistics_and_counter_discontinuities_are_not_zero_filled(self):
         result = summary([1, 2, 3, 4])
         self.assertEqual(result['median'], 2.5)
