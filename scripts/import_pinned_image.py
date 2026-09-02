@@ -15,14 +15,14 @@ from evidence import Run, atomic, metric, sha256, utcnow
 IMAGE = 'docker://registry-1.docker.io#radixark/miles@sha256:59a11219eae0defc6594ec678fafe4e897c16904263223f79968cd3e0209a502'
 
 
-def guarded_import(root, output):
+def guarded_import(root, output, cache_path=None, temporary_reserve_bytes=0):
     env = os.environ.copy()
     for key, directory in {
         'ENROOT_CACHE_PATH': 'cache', 'ENROOT_DATA_PATH': 'data',
         'ENROOT_RUNTIME_PATH': 'runtime', 'ENROOT_TEMP_PATH': 'tmp',
         'ENROOT_CONFIG_PATH': 'config', 'TMPDIR': 'tmp',
     }.items():
-        path = root / directory
+        path = cache_path if key == 'ENROOT_CACHE_PATH' and cache_path is not None else root / directory
         path.mkdir(exist_ok=True)
         env[key] = str(path)
     env.update(ENROOT_MAX_PROCESSORS='8', ENROOT_MAX_CONNECTIONS='4',
@@ -39,12 +39,14 @@ def guarded_import(root, output):
     with (root / 'import-progress.jsonl').open('x') as log:
         while process.poll() is None:
             free = shutil.disk_usage(root).free
+            temporary_free = shutil.disk_usage(root / 'tmp').free
             elapsed = time.monotonic() - started
             log.write(json.dumps({'time': utcnow(), 'monotonic_s': time.monotonic(),
-                'pid': process.pid, 'elapsed_s': elapsed, 'free_bytes': free}) + '\n')
+                'pid': process.pid, 'elapsed_s': elapsed, 'free_bytes': free,
+                'temporary_free_bytes': temporary_free}) + '\n')
             log.flush()
-            if free < 200*1024**3 or elapsed > 1800:
-                reason = 'free_space_guard' if free < 200*1024**3 else 'walltime_guard'
+            if free < 200*1024**3 or temporary_free < temporary_reserve_bytes or elapsed > 1800:
+                reason = 'walltime_guard' if elapsed > 1800 else 'free_space_guard'
                 print(json.dumps({'stopping_owned_process_group': process.pid, 'reason': reason}), flush=True)
                 os.killpg(process.pid, signal.SIGTERM)
                 try:
