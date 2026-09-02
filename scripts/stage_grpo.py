@@ -98,6 +98,8 @@ def main():
         'ray_port': 19379, 'dashboard_port': 18265, 'env_port': 18243,
         'task_ids': ['task_06652', 'task_14118', 'task_10753', 'task_09467'],
         'layout': '2t2r', 'optimizer_steps_requested': 3, 'group_size': 8, 'global_batch_size': 16,
+        'sglang_moe_runner_backend': 'triton', 'verify_initial_weight_broadcast': True,
+        'backend_change_reason': 'Job 137 rejected BF16 broadcast into auto-selected FlashInfer packed expert weights; pinned-loader CPU reproduction retained.',
         'scope': 'Initial synchronous GRPO validation, not the final 400-step hill climb or placement benchmark.'}
     atomic(phase.path / 'launch.json', config)
     names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py',

@@ -91,6 +91,7 @@ def main():
                     '--openenv-max-turns', '8', '--openenv-max-rollout-time-seconds', '900',
                     '--openenv-message-timeout-s', '360', '--sglang-max-running-requests', '16',
                     '--session-server-workers', '4']
+                launch += ['--verify-initial-weight-broadcast']
                 atomic(output / 'training-command.json', {'argv': launch, 'time': utcnow(),
                     'scope': 'Three real synchronous GRPO optimizer steps, initial validation only; not a quality result.'})
                 with (logs / 'miles.out').open('x') as out2, (logs / 'miles.err').open('x') as err2:
