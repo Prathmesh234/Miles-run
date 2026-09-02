@@ -37,6 +37,15 @@ controller reachability, missing verdicts, disconnect cleanup, and task-semantic
 equivalence. The original failed gate must remain in the run bundle after any
 patch; a new validation phase records the outcome of the proposed fix.
 
+The first narrow patch, `7b212b00b3a8881b463bc1bf630a79194ef837c4`, rejects
+symlinks, hard links, special files, oversized archives and failed Docker uploads
+during task staging. The patch is exported in `patches/openenv-posttrainingx.patch`
+and replays to the recorded Git tree. The unmodified fake-container suite passed
+26 tests with one skip; the patched suite passed 32 with the same skip. This is
+not the live-container/grader isolation fix, and the policy-execution gate remains
+closed. Server development uses a separate hash-locked Python 3.12.11 environment;
+the pinned OpenEnv server's OpenAI dependency conflicts with the GPU image pin.
+
 ## Source evidence
 
 Miles is pinned to `0709889b2848f293b5575d50aa3340fa4de5a20d`.
