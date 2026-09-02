@@ -60,6 +60,11 @@ def main():
     phase = run.phase(f'02-sync-grpo-submission-v{a.attempt}')
     tito_gate = run.root / 'tests/02-tito-candidate-validation-v1/result.json'
     tito_proof = json.loads(tito_gate.read_text())
+    rdma_gate = run.root / 'tests/02-rdma-container-visibility-v2/result.json'
+    rdma_proof = json.loads(rdma_gate.read_text())
+    if rdma_proof['findings'] or len(rdma_proof.get('training_hca_ports', [])) != 8:
+        phase.finish('fail', failure_summary='Pinned-container RDMA discovery gate has not passed.', refresh=False)
+        return 1
     if (tito_proof['findings'] or tito_proof.get('samples_unchanged') != 32
             or len(tito_proof.get('negative_controls', [])) != 7
             or not all(case['rejected'] for case in tito_proof['negative_controls'])
@@ -109,14 +114,18 @@ def main():
         'sglang_moe_runner_backend': 'triton', 'verify_initial_weight_broadcast': True,
         'tito_comparison_contract': 'qwen36_length_limited_final_message_v1',
         'tito_candidate_validation_sha256': sha256(tito_gate),
+        'rdma_devices': '/dev/infiniband mounted into GPU containers only', 'nccl_net': 'IB',
+        'rdma_visibility_validation_sha256': sha256(rdma_gate),
+        'container_fabric_gate': '32-GPU all-reduce and node-local EP8 all-to-all before Ray/model initialization',
         'backend_change_reason': 'Job 137 rejected BF16 broadcast into auto-selected FlashInfer packed expert weights; pinned-loader CPU reproduction retained.',
         'scope': 'Initial synchronous GRPO validation, not the final 400-step hill climb or placement benchmark.'}
     atomic(phase.path / 'launch.json', config)
     names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py',
-             'telemetry_lustre_host.py', 'grpo_node.py', 'grpo_container.py', 'local_file_env.py', 'local_openenv_app.py']
+             'telemetry_lustre_host.py', 'grpo_node.py', 'grpo_container.py', 'container_fabric_probe.py', 'local_file_env.py', 'local_openenv_app.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     files[prefix + 'launch.json'] = entry((json.dumps(config, indent=2) + '\n').encode())
     files[prefix + 'tito-validation.json'] = entry(tito_gate.read_bytes())
+    files[prefix + 'rdma-validation.json'] = entry(rdma_gate.read_bytes())
     files[prefix + 'host-map.json'] = entry((json.dumps(host_map, indent=2) + '\n').encode())
     system = ('You are an autonomous terminal agent solving a Linux task. You will be given the task instruction, '
               'then interact with a real Linux shell. On each turn respond with EXACTLY ONE shell command inside '

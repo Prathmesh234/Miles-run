@@ -36,6 +36,16 @@ def main():
         import torch
         if torch.cuda.device_count() != 8:
             raise RuntimeError('Container does not expose the complete eight-GPU node.')
+        # Exercise the actual training image/devices before any model loads.
+        # IB is mandatory; NCCL may not silently select TCP for this gate.
+        node_rank = next(i for i, n in enumerate(config['host_map']['nodes']) if n['hostname'] == host)
+        fabric_env = dict(os.environ, PTX_FABRIC_LABEL=label,
+                         NCCL_DEBUG_FILE=str(root / 'telemetry/nccl' / label / host / 'probe.%h.%p.log'))
+        fabric_command = ['torchrun', '--nnodes=4', '--nproc-per-node=8', '--node-rank=' + str(node_rank),
+            '--master-addr=' + head, '--master-port=19378', '/ptx/container_fabric_probe.py']
+        atomic(logs / 'fabric-smoke-command.json', fabric_command)
+        with (logs / 'fabric-smoke.out').open('x') as out, (logs / 'fabric-smoke.err').open('x') as err:
+            subprocess.run(fabric_command, env=fabric_env, stdout=out, stderr=err, check=True, timeout=240)
         command = ['ray', 'start', '--block', '--node-ip-address=' + plan['ray_node_ip'], '--num-gpus=8',
             '--num-cpus=32', '--disable-usage-stats', '--object-store-memory=17179869184',
             '--min-worker-port=24000', '--max-worker-port=24999']

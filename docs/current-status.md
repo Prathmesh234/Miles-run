@@ -4,8 +4,8 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **2**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **140**, 32 GPUs, 2t2r, 3 requested steps. Fresh three-step synchronous qualification after exact truncated-token replay. No optimizer step yet verified for job140; two prior updates belong to failed job139.
-Status snapshot: `2026-09-02T22:26:40.191809+00:00`; inspect Slurm for live state.
+Latest submission: Slurm **140**, 32 GPUs, 2t2r, 3 requested steps. Job140 stopped before optimizer execution because GPU-container RDMA visibility was unqualified; job139 NCCL logs proved TCP fallback.
+Status snapshot: `2026-09-02T22:33:02.566411+00:00`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -48,6 +48,7 @@ Status snapshot: `2026-09-02T22:26:40.191809+00:00`; inspect Slurm for live stat
 - Post-allocation audits retained jobs137/138 as failed, including collection timeouts and incomplete node-finalization artifacts. Rootafcbf71 adds coordinated peer-failure cleanup and a read-only terminal audit. No historical results overwritten.
 - Job139 executed two real GRPO optimizer updates (gradient norms0.6023604/1.0913043) and saved two497,292,57x,xxx-byte checkpoints before operator gate stop. All four node phases finalized. Forty-eight durable graded episodes,32passed/16failed-task/zero grading errors; only32 samples accepted before stop. No held-out result.
 - Pinned CPU replay reproduced all32 session comparisons. Candidate unfinished-message verification preserves all32 native sample fields; three expected final closers handled only in comparison; seven real-token negative controls rejected. Targeted launcher suite28passed; root suite39passed. Original failed replay wrapper retained.
+- Read-only CPU A/B container discovery: baseline0verbs devices, explicit RDMA mount14 devices with eight active400G IB rails opened. V1 wrongly counted all active link types and remains failed; corrected link-layer/rate-qualified v2 passed. No global Enroot/Kubernetes settings changed.
 
 ## Remaining gates
 

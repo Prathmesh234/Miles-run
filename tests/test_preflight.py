@@ -39,9 +39,22 @@ from local_file_env import validate_archive, tree_archive, atomic_bytes, archive
 from grpo_node import cleanup_actions
 from audit_grpo_attempt import audit_remote as audit_grpo_remote
 from audit_local_episodes import summarize_episode
+from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_container_fabric_gate_refuses_tcp_before_verbs_or_gpu_calls(self):
+        ports = [(f'mlx5_{i}', '1') for i in range(8)]
+        with patch('container_fabric_probe.active_training_ports', return_value=ports), patch.dict(os.environ, {'NCCL_NET':'Socket'}):
+            with self.assertRaisesRegex(RuntimeError, 'non-IB'):
+                verify_rdma()
+
+    def test_container_fabric_gate_refuses_a_different_hca_selection(self):
+        ports = [(f'mlx5_{i}', '1') for i in range(8)]
+        with patch('container_fabric_probe.active_training_ports', return_value=ports), patch.dict(os.environ, {'NCCL_NET':'IB','NCCL_IB_HCA':'mlx5_0'}):
+            with self.assertRaisesRegex(RuntimeError, 'selection differs'):
+                verify_rdma()
+
     def test_episode_audit_keeps_missing_verdict_distinct_and_rejects_leaky_order(self):
         def rows(events):
             return [dict(event=e, episode_id='episode', task_id='task', time=str(i), monotonic_s=i,

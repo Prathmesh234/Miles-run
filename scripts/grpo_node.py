@@ -14,6 +14,7 @@ import urllib.request
 from enroot_run_config import prepare
 from evidence import atomic, utcnow
 from infra_node import allocated_run, read_inventory
+from fabric_probe import active_training_ports
 
 
 def cleanup_actions(actions, findings):
@@ -114,6 +115,8 @@ def main():
             'CUDA_DEVICE_MAX_CONNECTIONS': '1', 'NCCL_NVLS_ENABLE': '0', 'NCCL_DEBUG': 'INFO',
             'NCCL_DEBUG_SUBSYS': 'INIT,NET,GRAPH,COLL', 'GLOO_SOCKET_IFNAME': config['network_interface'],
             'NCCL_SOCKET_IFNAME': config['network_interface'],
+            'NCCL_NET': 'IB',
+            'NCCL_IB_HCA': '=' + ','.join(hca + ':' + port for hca, port in active_training_ports()),
             'NCCL_DEBUG_FILE': '/run-artifacts/telemetry/nccl/' + label + '/' + host + '/nccl.%h.%p.log',
             'RAY_USAGE_STATS_ENABLED': '0', 'WANDB_MODE': 'disabled'}
         command = ['enroot', 'start', '--pid', '--ipc', '--rw']
@@ -121,7 +124,8 @@ def main():
             command += ['--env', key + '=' + value]
         for source, target, mode in [(run.root, '/run-artifacts', 'rw'), (code, '/ptx', 'ro'),
             (run.root / config['miles_source'], '/miles-source', 'ro'),
-            (run.root / config['hf_model'], '/model', 'ro'), (run.root / config['converted_model'], '/checkpoint', 'ro')]:
+            (run.root / config['hf_model'], '/model', 'ro'), (run.root / config['converted_model'], '/checkpoint', 'ro'),
+            (Path('/dev/infiniband'), '/dev/infiniband', 'rw')]:
             command += ['--mount', str(source) + ':' + target + ':none:bind,' + mode + ',x-create=dir']
         command += [str(run.root / 'images/enroot-import-v2/miles-amd64.sqsh'),
                     'python3', '/ptx/grpo_container.py', '--attempt', str(a.attempt)]
