@@ -48,7 +48,7 @@ def checkpoint_files(root):
     return files
 
 
-def validate_imports(run, source, model):
+def validate_imports(run, source, model, miles_sha=MILES_SHA):
     import torch
     import miles
     import megatron.core
@@ -72,7 +72,7 @@ def validate_imports(run, source, model):
     runpy.run_path(str(source / 'tools/convert_hf_to_torch_dist.py'), run_name='posttrainingx_import_probe')
     import mbridge
     from importlib.metadata import version
-    return {'miles_git_sha': MILES_SHA, 'miles_import': miles.__file__, 'megatron_git_sha': mega,
+    return {'miles_git_sha': miles_sha, 'miles_import': miles.__file__, 'megatron_git_sha': mega,
             'megatron_import': megatron.core.__file__, 'mbridge_import': mbridge.__file__,
             'mbridge_version': version('mbridge'), 'torch': torch.__version__,
             'cuda': torch.version.cuda, 'gpu_uuids': sorted(actual)}

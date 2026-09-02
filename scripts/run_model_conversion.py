@@ -14,10 +14,10 @@ from infra_node import allocated_run, read_inventory
 from model_conversion import MILES_SHA
 
 
-def verify_sources(run):
-    source = run.root / 'provenance/training-source-v1'
+def verify_sources(run, source_version=1, revision=MILES_SHA):
+    source = run.root / f'provenance/training-source-v{source_version}'
     manifest = json.loads((source / 'manifest.json').read_text())
-    if manifest['source_git_sha'] != MILES_SHA:
+    if manifest['source_git_sha'] != revision:
         raise ValueError('Materialized Miles source revision differs from conversion pin.')
     for item in manifest['files']:
         path = source / item['path']

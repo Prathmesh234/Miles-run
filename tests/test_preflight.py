@@ -30,6 +30,7 @@ from checkpoint_parity import ALOG_WIDENINGS, reference_part, check_coverage, re
 from prepare_terminal_lego import CATALOG_URL, next_page, select_tasks
 from materialize_terminal_lego import configure_git_environment, inventory_tasks
 from materialize_terminal_lego_lfs import copy_verified_sources, lfs_item, tracked_files
+from trainer_probe import trainer_command, parameter_hashes, gradient_statistics
 
 
 class EvidenceTests(unittest.TestCase):
@@ -73,6 +74,42 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_trainer_probe_keeps_ep8_mtp_and_prohibits_optimizer_loading(self):
+        command = trainer_command('/evidence', '--mtp-num-layers 1 --moe-token-dispatcher-type alltoall')
+        for flag, value in {'--tensor-model-parallel-size': '1', '--pipeline-model-parallel-size': '1',
+                            '--expert-model-parallel-size': '8', '--expert-tensor-parallel-size': '1',
+                            '--context-parallel-size': '1', '--moe-token-dispatcher-type': 'flex',
+                            '--global-batch-size': '8', '--seq-length': '128'}.items():
+            self.assertEqual(command.count(flag), 1)
+            self.assertEqual(command[command.index(flag) + 1], value)
+        self.assertIn('--no-load-optim', command)
+        self.assertIn('--enable-mtp-training', command)
+        self.assertNotIn('--save', command)
+        with self.assertRaises(ValueError):
+            trainer_command('/evidence', '--mtp-num-layers 0 --moe-token-dispatcher-type alltoall')
+
+    def test_parameter_and_gradient_audit_rejects_mutation_nonfinite_and_missing_mtp(self):
+        import torch
+        model = torch.nn.Module()
+        model.base = torch.nn.Linear(2, 2, bias=False)
+        model.mtp = torch.nn.Linear(2, 2, bias=False)
+        wrapper = torch.nn.Module()
+        wrapper.module = model
+        before = parameter_hashes([wrapper])
+        self.assertEqual(before, parameter_hashes([wrapper]))
+        for param in wrapper.parameters():
+            param.grad = torch.ones_like(param)
+        self.assertEqual(len(gradient_statistics([wrapper])), 2)
+        model.mtp.weight.grad.zero_()
+        with self.assertRaises(ValueError):
+            gradient_statistics([wrapper])
+        model.mtp.weight.grad.fill_(float('nan'))
+        with self.assertRaises(ValueError):
+            gradient_statistics([wrapper])
+        with torch.no_grad():
+            model.base.weight[0, 0] += 1
+        self.assertNotEqual(before, parameter_hashes([wrapper]))
+
     def test_task_lfs_completion_checks_original_git_blobs_and_preserves_failed_source(self):
         payload = b'version https://git-lfs.github.com/spec/v1\noid sha256:' + b'a' * 64 + b'\nsize 12\n'
         item = lfs_item(payload, 'task_00000/environment/data')

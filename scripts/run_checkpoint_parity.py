@@ -47,7 +47,7 @@ def native_collector(run, code, attempt):
     return rc
 
 
-def run_child(phase, command, attempt):
+def run_child(phase, command, attempt, stage='checkpoint-parity', execution_limit_s=1500):
     run = phase.run
     started, timestamp = time.monotonic(), utcnow()
     stdout, stderr = phase.path / 'logs/container.out', phase.path / 'logs/container.err'
@@ -56,14 +56,14 @@ def run_child(phase, command, attempt):
         child = subprocess.Popen(command, stdout=out, stderr=err, start_new_session=True)
         try:
             while child.poll() is None:
-                if time.monotonic() - started > 1500:
-                    timed_out, stop_reason = True, 'Parity exceeded its 25-minute execution cap.'
+                if time.monotonic() - started > execution_limit_s:
+                    timed_out, stop_reason = True, f'{stage} exceeded its {execution_limit_s}s execution cap.'
                     break
                 if shutil.disk_usage(run.root).free < 128 * 1024**3:
-                    stop_reason = 'Parity free-space reserve reached 128 GiB.'
+                    stop_reason = f'{stage} free-space reserve reached 128 GiB.'
                     break
-                if (run.root / f'control/checkpoint-parity-v{attempt}.stop').exists():
-                    stop_reason = 'Explicit parity stop marker received.'
+                if (run.root / f'control/{stage}-v{attempt}.stop').exists():
+                    stop_reason = f'Explicit {stage} stop marker received.'
                     break
                 time.sleep(1)
         finally:
