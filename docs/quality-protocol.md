@@ -40,8 +40,11 @@ The prospective Terminal-Lego split is now recorded in
 `locks/terminal-lego-subset.json`: 512 training IDs and 128 development IDs from
 revision `9c197f1c2e87b64cc316b1a5bfcef57b584929f0`, with `task_00000` reserved
 only for runtime validation. Selection used deterministic ID hashes before any
-baseline outcomes. Sources are materialized and hash-verified, but images,
-reference-solution correctness and runtime eligibility are not yet validated.
+baseline outcomes. Sources are materialized and hash-verified. Live CPU runtime job 134 qualified
+reference solutions and isolated grading for the runtime task and the first four
+training IDs: `task_06652`, `task_14118`, `task_10753`, and `task_09467`. The
+remaining training images and runtime eligibility are not yet qualified. This
+small gate contains no model trajectories or evidence of quality improvement.
 Failed tasks must remain in the accounting; any split amendment must be explicit
 and prospective, never a silent replacement selected after model outcomes.
 
