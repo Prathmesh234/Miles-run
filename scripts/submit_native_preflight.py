@@ -1,6 +1,7 @@
 """Stage immutable code and submit one bounded four-node Slurm preflight."""
 import argparse
 import base64
+import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -13,9 +14,9 @@ from evidence import Run, atomic
 
 
 BOOTSTRAP = r'''
-import base64,hashlib,json,os,re,shutil,subprocess,sys,tempfile
+import base64,gzip,hashlib,json,os,re,shutil,subprocess,sys,tempfile
 from pathlib import Path
-p=json.load(sys.stdin)
+p=json.loads(gzip.decompress(base64.b64decode(sys.stdin.read(),validate=True)))
 root=Path(p['root'])
 if not re.fullmatch(r'/shared/posttrainingx/runs/vultr-b200-slurm/[0-9]{8}-[0-9]{6}-[a-z0-9]+',str(root)):
  raise ValueError('Invalid remote run path.')
@@ -29,11 +30,13 @@ if p['create']:
  root.mkdir(parents=True,exist_ok=False)
 elif not (root/'run.json').is_file():
  raise ValueError('Existing run manifest required.')
+elif hashlib.sha256((root/'run.json').read_bytes()).hexdigest()!=p['manifest_sha256']:
+ raise ValueError('The staged run manifest differs from the expected manifest.')
 for rel,entry in p['files'].items():
  path=root/rel
  if Path(rel).is_absolute() or '..' in Path(rel).parts:
   raise ValueError('Unsafe artifact path.')
- if not p['create'] and not rel.startswith('tests/01-native-submission/'):
+ if p.get('followup') and not rel.startswith('tests/'+p['phase_name']+'/'):
   raise ValueError('Follow-up upload is restricted to submission evidence.')
  for parent in [path]+list(path.parents):
   if parent.is_symlink(): raise ValueError('Symlink in artifact path.')
@@ -56,10 +59,33 @@ def entry(data):
     return {'data': base64.b64encode(data).decode(), 'sha256': hashlib.sha256(data).hexdigest()}
 
 
+def pack(payload):
+    return base64.b64encode(gzip.compress(json.dumps(payload).encode())).decode()
+
+
+def batches(common, files, limit=128*1024):
+    """Bound each exec upload; the receiver verifies every uncompressed file."""
+    batch = {}
+    for name, item in files.items():
+        candidate = dict(batch, **{name: item})
+        if len(pack(dict(common, files=candidate))) > limit:
+            if not batch:
+                raise ValueError('An artifact exceeds the bounded upload size: ' + name)
+            yield pack(dict(common, files=batch))
+            batch = {name: item}
+            if len(pack(dict(common, files=batch))) > limit:
+                raise ValueError('An artifact exceeds the bounded upload size: ' + name)
+        else:
+            batch = candidate
+    if batch:
+        yield pack(dict(common, files=batch))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
+    ap.add_argument('--attempt', type=int, default=1)
     args = ap.parse_args()
     run = Run(args.run_dir)
     workspace = Path(__file__).resolve().parents[1]
@@ -73,7 +99,10 @@ def main():
         'partition': 'gpu-nodes', 'nodes': 4, 'gpus_per_node': 8, 'walltime_minutes': 15,
         'scope': 'Bounded native inventory, all-reduce, telemetry, and storage smoke.'}
     atomic(run.root / 'run.json', manifest)
-    phase = run.phase('01-native-submission')
+    if args.attempt < 1:
+        raise ValueError('Attempt number must be positive.')
+    name = '01-native-submission' + (f'-attempt-{args.attempt}' if args.attempt > 1 else '')
+    phase = run.phase(name)
     k = ['kubectl', '--kubeconfig', str(Path(args.kubeconfig).resolve()), '--request-timeout=45s']
     worker = k + ['-n', 'slurm', 'exec', '-i', 'slurm-worker-gpu-nodes-0', '--']
     code, out, _ = phase.command(k + ['get', 'nodes', '-o', 'json'])
@@ -101,11 +130,15 @@ def main():
     files['provenance/native-preflight.sbatch'] = entry(shell.encode())
     files['provenance/native-source-revision.txt'] = entry((revision + '\n').encode())
     atomic(run.root / 'provenance/native-bootstrap.py', BOOTSTRAP)
-    code, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], timeout=120,
-                               stdin=json.dumps({'root': remote, 'create': True, 'files': files}))
-    if code:
-        phase.finish('fail', failure_summary='Run staging failed. Inspect the remote directory before any retry.')
-        return 1
+    common = {'root': remote, 'create': False, 'manifest_sha256': files['run.json']['sha256']}
+    first = pack(dict(common, create=True, files={'run.json': files.pop('run.json')}))
+    payloads = [first] + list(batches(common, files))
+    for index, payload in enumerate(payloads):
+        code, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], timeout=45, stdin=payload)
+        if code:
+            phase.finish('fail', failure_summary='Bounded run staging failed. Inspect the remote directory before any retry.',
+                         metadata={'upload_index': index, 'upload_count': len(payloads), 'payload_bytes': len(payload)})
+            return 1
     argv = worker + ['sbatch', '--parsable', '--partition=gpu-nodes', '--nodes=4',
            '--nodelist=gpu-nodes-[0-3]', '--ntasks-per-node=1', '--cpus-per-task=16',
            '--gres=gpu:8', '--exclusive', '--time=00:15:00', '--no-requeue',
@@ -121,13 +154,19 @@ def main():
                                 'scope': 'Submission only. Execution and measurement gates are not yet proven.'})
     # Copy the now-complete submission phase without changing any staged artifact.
     complete = {str(p.relative_to(run.root)): entry(p.read_bytes()) for p in phase.path.rglob('*') if p.is_file()}
-    result = subprocess.run(worker + ['python3', '-c', BOOTSTRAP], text=True, capture_output=True, timeout=45,
-                            input=json.dumps({'root': remote, 'create': False, 'files': complete}))
+    output, stderr, returncode = [], [], 0
+    for payload in batches(dict(common, followup=True, phase_name=name), complete):
+        result = subprocess.run(worker + ['python3', '-c', BOOTSTRAP], text=True, capture_output=True, timeout=45, input=payload)
+        output.append(result.stdout)
+        stderr.append(result.stderr)
+        returncode = result.returncode
+        if returncode:
+            break
     atomic(run.root / 'provenance/submission-evidence-mirror.json',
-           {'exit_code': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr, 'slurm_job_id': job_id})
+           {'exit_code': returncode, 'stdout': ''.join(output), 'stderr': ''.join(stderr), 'slurm_job_id': job_id})
     run.refresh()
-    print(json.dumps({'slurm_job_id': job_id, 'remote_run_dir': remote, 'mirror_exit_code': result.returncode}))
-    return result.returncode
+    print(json.dumps({'slurm_job_id': job_id, 'remote_run_dir': remote, 'mirror_exit_code': returncode}))
+    return returncode
 
 
 if __name__ == '__main__':

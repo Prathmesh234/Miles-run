@@ -1,4 +1,8 @@
 import json
+import base64
+import gzip
+import hashlib
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -8,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from evidence import Run, markdown, sha256
 from infra_controller import parse_nccl, srun
 from telemetry_native import GPU_FIELDS, gpu_records, nvlink_records
+from submit_native_preflight import batches, entry
 
 
 class EvidenceTests(unittest.TestCase):
@@ -40,6 +45,20 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_staging_batches_bound_payload_and_preserve_hashes(self):
+        original = {str(i): entry(os.urandom(4000)) for i in range(5)}
+        payloads = list(batches({'root': '/example', 'create': False}, original, limit=10000))
+        self.assertGreater(len(payloads), 1)
+        rebuilt = {}
+        for payload in payloads:
+            self.assertLessEqual(len(payload), 10000)
+            rebuilt.update(json.loads(gzip.decompress(base64.b64decode(payload)))['files'])
+        self.assertEqual(rebuilt, original)
+        for item in rebuilt.values():
+            self.assertEqual(hashlib.sha256(base64.b64decode(item['data'])).hexdigest(), item['sha256'])
+        with self.assertRaises(ValueError):
+            list(batches({}, {'too-large': entry(os.urandom(20000))}, limit=10000))
+
     def test_nccl_requires_success_and_preserves_modes_and_units(self):
         output = '8388608 2097152 float sum -1 10.0 800.0 1400.0 0 11.0 700.0 1300.0 0\n# Out of bounds values : 0 OK\n'
         rows = parse_nccl(output, 4)
