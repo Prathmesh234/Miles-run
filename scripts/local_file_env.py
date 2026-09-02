@@ -118,7 +118,7 @@ class FileTaskSession:
         self.lock = threading.RLock()
         self.command_index = 0
         self.started = time.monotonic()
-        self.record('created', purpose=purpose, task_id=task_id, image_manifest_sha256=sha256(self.manifest_path))
+        self.record('created', image_manifest_sha256=sha256(self.manifest_path))
         try:
             self.guard()
             self.container = self.client.containers.run(**container_options(
