@@ -96,6 +96,12 @@ def main():
                 raise ValueError('Evidence symlinks are forbidden.')
             tar.add(p, arcname=name, recursive=False)
     payload = buffer.getvalue()
+    archive_path = phase.path / 'diagnostic-evidence.tar.gz'
+    with Path(str(archive_path) + '.partial').open('xb') as f:
+        f.write(payload)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(str(archive_path) + '.partial', archive_path)
     chunks = [payload[i:i+128*1024] for i in range(0, len(payload), 128*1024)]
     prefix = 'provenance/diagnostic-evidence-sync-v1/'
     manifest = {'schema_version': 1, 'source_revision': revision,
