@@ -31,7 +31,8 @@ def server_command(model, mtp):
         '--nnodes', '1', '--node-rank', '0', '--context-length', '2048', '--max-total-tokens', '4096',
         '--max-running-requests', '2', '--mem-fraction-static', '0.7', '--cuda-graph-bs', '1', '2',
         '--dtype', 'bfloat16', '--random-seed', '1234',
-        '--skip-server-warmup', '--enable-draft-weights-cpu-backup', '--enable-metrics']
+        '--skip-server-warmup', '--enable-draft-weights-cpu-backup', '--enable-metrics',
+        '--decode-log-interval', '1']
     if mtp:
         command += ['--speculative-algorithm', 'EAGLE', '--speculative-num-steps', '2',
                     '--speculative-eagle-topk', '1', '--speculative-num-draft-tokens', '3',
@@ -53,8 +54,18 @@ def prometheus_rows(text):
     for family in text_string_to_metric_families(text):
         for sample in family.samples:
             if not math.isfinite(sample.value):
+                # At this pinned revision the timer explicitly invalidates this
+                # optional gauge on startup/idle. Retain the unavailable sample;
+                # do not invent a number or exempt other non-finite metrics.
+                if sample.name == 'sglang:fwd_occupancy' and math.isnan(sample.value):
+                    rows.append({'metric': 'collector_error', 'value': None, 'unit': 'event',
+                                 'requested_metric': sample.name, 'labels': sample.labels,
+                                 'error': 'Forward timing window unavailable',
+                                 'reason': 'upstream_timer_window_unavailable', 'fatal': False})
+                    continue
                 rows.append({'metric': 'collector_error', 'value': None, 'unit': 'event',
-                             'requested_metric': sample.name, 'error': 'Non-finite Prometheus sample'})
+                             'requested_metric': sample.name, 'labels': sample.labels,
+                             'error': 'Non-finite Prometheus sample', 'fatal': True})
             else:
                 rows.append({'metric': sample.name, 'value': sample.value, 'unit': 'exporter_native',
                              'labels': sample.labels})
@@ -78,7 +89,7 @@ def collect_metrics(root, stopped, errors):
                 errors.append(str(exc))
                 rows = [{'metric': 'collector_error', 'value': None, 'unit': 'event', 'error': str(exc)}]
             for row in rows:
-                if row['metric'] == 'collector_error' and row.get('error') not in errors:
+                if row['metric'] == 'collector_error' and row.get('fatal', True) and row.get('error') not in errors:
                     errors.append(row.get('error', 'Metrics collector error'))
                 normalized.write(json.dumps(dict(common, **row), allow_nan=False) + '\n')
             normalized.flush()
@@ -105,9 +116,16 @@ def wait_ready(process, root):
     raise TimeoutError('SGLang did not become ready within 540 seconds.')
 
 
-def generate(root, tokenizer, index, prompt):
+def prompt_token_ids(tokenizer, prompt):
     ids = tokenizer.apply_chat_template([{'role': 'user', 'content': prompt}], tokenize=True,
-                                       add_generation_prompt=True, enable_thinking=False)
+                                       add_generation_prompt=True, enable_thinking=False, return_dict=False)
+    if not isinstance(ids, list) or not ids or any(type(x) is not int or x < 0 for x in ids):
+        raise ValueError('Chat renderer must return one nonempty flat list of integer token IDs.')
+    return ids
+
+
+def generate(root, tokenizer, index, prompt):
+    ids = prompt_token_ids(tokenizer, prompt)
     payload = {'input_ids': ids, 'sampling_params': {'temperature': 0, 'max_new_tokens': 64, 'top_p': 1.0},
                'return_logprob': True, 'logprob_start_len': 0, 'stream': True}
     atomic(root / f'request-{index}.json', payload)
@@ -141,11 +159,57 @@ def generate(root, tokenizer, index, prompt):
     return result
 
 
+def stop_owned_server(server, grace_s=30):
+    """Signal only the parent so its watchdog can stop before workers exit."""
+    import psutil
+    result = {'requested_signal': None, 'forced_cleanup': False, 'errors': []}
+    try:
+        owned = psutil.Process(server.pid).children(recursive=True)
+    except psutil.NoSuchProcess:
+        owned = []
+    result['descendant_pids_before'] = [p.pid for p in owned]
+    if server.poll() is None:
+        server.terminate()
+        result['requested_signal'] = 'SIGTERM_parent_only'
+        try:
+            server.wait(timeout=grace_s)
+        except subprocess.TimeoutExpired:
+            os.killpg(server.pid, signal.SIGKILL)
+            server.wait(timeout=10)
+            result['forced_cleanup'] = True
+            result['errors'].append('Owned SGLang process group exceeded graceful shutdown timeout.')
+    _, alive = psutil.wait_procs(owned, timeout=5)
+    live = []
+    for process in alive:
+        try:
+            if process.is_running() and process.status() != psutil.STATUS_ZOMBIE:
+                live.append(process)
+        except psutil.NoSuchProcess:
+            pass
+    alive = live
+    result['descendant_pids_after_grace'] = [p.pid for p in alive]
+    if alive:
+        result['forced_cleanup'] = True
+        result['errors'].append('Owned SGLang descendants survived parent shutdown.')
+        for process in alive:
+            try:
+                process.kill()  # psutil guards against PID reuse.
+            except psutil.NoSuchProcess:
+                pass
+        _, remaining = psutil.wait_procs(alive, timeout=5)
+        result['descendant_pids_after_forced_cleanup'] = [p.pid for p in remaining]
+    result['server_exit_code'] = server.returncode
+    # This pinned SGLang kills its own process tree after graceful drain. Do not
+    # call -9 a clean exit; require its explicit drain log when interpreting it.
+    return result
+
+
 def child(run, mtp, attempt):
     root = run.root / 'tests' / case_name(mtp, attempt)
     model = Path('/model')
     command = server_command(model, mtp)
-    env = dict(os.environ, HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
+    env = dict(os.environ, HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
+               SGLANG_ENABLE_METRICS_DEVICE_TIMER='1')
     stopped, metric_errors = threading.Event(), []
     collector, server = None, None
     result = {'started_at': utcnow(), 'mtp_enabled': mtp, 'command': command, 'errors': []}
@@ -155,7 +219,7 @@ def child(run, mtp, attempt):
             server = subprocess.Popen(command, stdout=out, stderr=err, env=env, start_new_session=True)
             result['server_pid'] = server.pid
             result['startup_s'] = wait_ready(server, root)
-            atomic(root / 'server-info.json', json.loads(request('/get_server_info', timeout=10)))
+            atomic(root / 'server-info.json', json.loads(request('/server_info', timeout=10)))
             collector = threading.Thread(target=collect_metrics, args=(root, stopped, metric_errors), daemon=True)
             collector.start()
             from transformers import AutoTokenizer
@@ -182,16 +246,23 @@ def child(run, mtp, attempt):
                 if collector.is_alive():
                     result['errors'].append('Metrics collector did not stop.')
             result['errors'].extend(metric_errors)
+            if (root / 'sglang.jsonl').exists():
+                rows = [json.loads(line) for line in (root / 'sglang.jsonl').read_text().splitlines()]
+                result['metrics_coverage'] = {
+                    'records': len(rows),
+                    'unavailable_forward_timer_samples': sum(r.get('reason') == 'upstream_timer_window_unavailable' for r in rows),
+                    'finite_forward_timer_samples': sum(r['metric'] == 'sglang:fwd_occupancy' for r in rows),
+                    'scope': 'Smoke exporter coverage only; required full-workload metrics gate remains separate.'}
             if server is not None:
-                if server.poll() is None:
-                    os.killpg(server.pid, signal.SIGTERM)
-                    try:
-                        server.wait(timeout=20)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(server.pid, signal.SIGKILL)
-                        server.wait(timeout=10)
-                        result['errors'].append('Owned SGLang process group required SIGKILL during cleanup.')
+                result['cleanup'] = stop_owned_server(server)
+                result['errors'].extend(result['cleanup']['errors'])
                 result['server_exit_code'] = server.returncode
+                logs = (root / 'logs/server.err').read_text() + (root / 'logs/server.out').read_text()
+                drained = 'Gracefully exiting... Remaining number of requests 0.' in logs
+                crashed = 'crashed with exit code' in logs or 'SIGQUIT received' in logs
+                result['cleanup']['upstream_zero_request_drain_logged'] = drained
+                if crashed or (server.returncode not in (0, -signal.SIGTERM) and not drained):
+                    result['errors'].append('Server shutdown lacks a clean exit or verified zero-request drain.')
     result['ended_at'] = utcnow()
     atomic(root / 'probe-result.json', result)
     print(json.dumps({'mtp_enabled': mtp, 'errors': result['errors'], 'startup_s': result.get('startup_s')}), flush=True)

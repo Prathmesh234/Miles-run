@@ -24,7 +24,7 @@ from validate_fabric_under_load import validate_records
 from telemetry_lustre_host import stats_records
 from enroot_run_config import prepare as prepare_enroot_config
 from runtime_inventory import parse_inventory_stdout
-from qwen_serving_probe import server_command
+from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows, stop_owned_server
 
 
 class EvidenceTests(unittest.TestCase):
@@ -68,6 +68,55 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_server_cleanup_signals_parent_and_reports_surviving_workers(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        server, child = Mock(pid=22, returncode=-9), Mock(pid=23)
+        server.poll.return_value = None
+        child.is_running.return_value = True
+        child.status.return_value = 'running'
+        ps = SimpleNamespace(Process=lambda _: SimpleNamespace(children=lambda **_: [child]),
+                             wait_procs=Mock(side_effect=[([], [child]), ([child], [])]),
+                             NoSuchProcess=ProcessLookupError, STATUS_ZOMBIE='zombie')
+        with patch.dict(sys.modules, {'psutil': ps}), patch('qwen_serving_probe.os.killpg') as killpg:
+            result = stop_owned_server(server)
+        server.terminate.assert_called_once()
+        killpg.assert_not_called()
+        child.kill.assert_called_once()
+        self.assertTrue(result['forced_cleanup'])
+        self.assertTrue(result['errors'])
+        self.assertEqual(result['descendant_pids_after_grace'], [23])
+
+    def test_prometheus_nonfinite_values_are_preserved_not_zero_filled(self):
+        # A fake parser isolates normalization from optional monitoring packages.
+        from types import SimpleNamespace
+        samples = [SimpleNamespace(name=name, value=value, labels={'node': 'n'}) for name, value in
+                   [('sglang:fwd_occupancy', float('nan')), ('sglang:queue', float('nan')),
+                    ('sglang:fwd_occupancy', float('inf')), ('sglang:queue', 3)]]
+        parser = SimpleNamespace(text_string_to_metric_families=lambda _: [SimpleNamespace(samples=samples)])
+        with patch.dict(sys.modules, {'prometheus_client': SimpleNamespace(), 'prometheus_client.parser': parser}):
+            rows = prometheus_rows('retained raw document')
+        self.assertFalse(rows[0]['fatal'])
+        self.assertEqual(rows[0]['reason'], 'upstream_timer_window_unavailable')
+        self.assertTrue(rows[1]['fatal'])
+        self.assertTrue(rows[2]['fatal'])
+        self.assertIsNone(rows[0]['value'])
+        self.assertEqual(rows[3]['value'], 3)
+        json.dumps(rows, allow_nan=False)
+
+    def test_chat_renderer_requests_and_preserves_exact_unbatched_ids(self):
+        from unittest.mock import Mock
+        tokenizer = Mock()
+        tokenizer.apply_chat_template.return_value = [151644, 872, 198, 19]
+        self.assertEqual(prompt_token_ids(tokenizer, 'text'), [151644, 872, 198, 19])
+        tokenizer.apply_chat_template.assert_called_once_with(
+            [{'role': 'user', 'content': 'text'}], tokenize=True,
+            add_generation_prompt=True, enable_thinking=False, return_dict=False)
+        for invalid in ({'input_ids': [1]}, [[1]], [True], [], [1.5], [-1]):
+            tokenizer.apply_chat_template.return_value = invalid
+            with self.assertRaises(ValueError):
+                prompt_token_ids(tokenizer, 'text')
+
     def test_serving_smoke_preserves_node_local_ep8_and_mtp_control(self):
         off, on = server_command('/model', False), server_command('/model', True)
         for argv in (off, on):
