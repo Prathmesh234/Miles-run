@@ -4,7 +4,9 @@
     "00-compatibility-openai-pin",
     "00-compatibility-agents-range",
     "00-compatibility-offline-evaluation",
-    "00-dependency-metadata"
+    "00-dependency-metadata",
+    "00-openenv-isolated-development-environment",
+    "02-openenv-unmodified-unit-baseline"
   ],
   "locked_metadata": {
     "harbor==0.21.0": {
@@ -51,10 +53,10 @@
       "status": "Strict 0.3.1 combination blocked"
     },
     {
-      "dependencies": "Pinned Miles and OpenEnv sources; GPU image and task-runtime package locks pending",
-      "evidence": "No policy trajectories or optimizer steps yet",
+      "dependencies": "GPU image OpenAI==2.6.1; pinned OpenEnv 0.4.2.dev0 requires OpenAI>=2.7.2. Server must remain separate; online client transport not yet locked.",
+      "evidence": "Separate hashed macOS Python 3.12.11 development environment: 26 unmodified OpenEnv unit tests passed, 1 skipped. No real task or policy trajectories.",
       "path": "Miles OpenEnv online, local Docker",
-      "status": "Recommended architecture; environment-isolation gate failed"
+      "status": "Local isolated-container architecture selected; isolation and compatible client gates open"
     },
     {
       "dependencies": "Python 3.12.11; verifiers==0.3.1; harbor==0.21.0; openai==2.54.0; openai-agents==0.20.0; renderers==0.1.11",
@@ -71,16 +73,22 @@
   ],
   "miles_base_revision": "0709889b2848f293b5575d50aa3340fa4de5a20d",
   "notes": [
-    "The exact Miles adapter requirements come from examples/experimental/verifiers/requirements.txt at the recorded source revision. The 2.6.1 SGLang pin is documented there, not yet verified from the selected GPU image.",
+    "Miles adapter requirements are recorded from the pinned source; OpenAI==2.6.1 has now also been verified inside the pinned GPU image.",
     "Published Verifiers 0.3.1 metadata directly requires OpenAI>=2.9.0 and Python>=3.11,<3.14. Its Harbor extra activates harbor==0.21.0 only on Python>=3.12; Harbor itself requires Python>=3.12.",
     "The offline lock resolves OpenAI 2.54.0. That resolved version must not be confused with Verifiers direct minimum requirement. The frozen openai-agents 0.20.0 requires OpenAI>=2.45.0,<3.",
     "Resolution used uv 0.11.19, Python target 3.12.11, x86_64-unknown-linux-gnu and package cutoff 2026-09-02T00:00:00Z. It is not proof that task loading, tools, rewards, cleanup, or inference work.",
-    "The Prime terminal-bench-2 environment package revision and untouched TB2.1 taskset still need exact pins. This lock covers the evaluator framework, not a fully validated TB2.1 task runtime.",
-    "Offline Verifiers evaluation does not generate the OpenEnv online training trajectories. No forced package upgrades were attempted."
+    "Terminal-Bench 2.1 metadata is pinned to 7131e4375048a0e408a8fb404b5f499d726b695b with 89 ordered task IDs. Environment-package revision, task-image pins and runtime evaluation remain unvalidated.",
+    "Offline Verifiers evaluation does not generate the OpenEnv online training trajectories. No forced package upgrades were attempted.",
+    "OpenEnv b9d8c1f953e0c3e0bbee2f3f6f6c73d8eae61f5f declares OpenAI>=2.7.2, conflicting with the GPU image OpenAI==2.6.1. The server development environment is isolated; no forced installation into Miles occurred. A compatible pinned client or tested transport is still required."
   ],
   "offline_lock": {
     "path": "locks/offline-verifiers-py312-linux.lock",
     "sha256": "e0581971c6c19df4ac6aed6fa3d8cd34665b824137738e87c1e3e9e17df08be0"
+  },
+  "openenv_development_lock": {
+    "path": "locks/openenv-server-py312-macos.lock",
+    "scope": "macOS CPU development only; not the Linux cluster server deployment lock",
+    "sha256": "be25b5fdfac79d651578949c1b768ed3d43ec1fd981d4649e5126c287552e461"
   },
   "reproducer": "python3 scripts/check_compatibility.py --run-dir /absolute/path/to/a/fresh/run",
   "run_id": "20260902-172037-a3b210",

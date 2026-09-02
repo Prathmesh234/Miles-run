@@ -5,18 +5,19 @@ Generated from `docs/compatibility.json`.
 | Path | Dependencies | Status | Evidence |
 |---|---|---|---|
 | Miles documented online Verifiers adapter | verifiers>=0.2.0,<0.2.1; openai-agents<0.5; documented SGLang OpenAI==2.6.1 | Strict 0.3.1 combination blocked | Three unsatisfiable resolver results; no installation |
-| Miles OpenEnv online, local Docker | Pinned Miles and OpenEnv sources; GPU image and task-runtime package locks pending | Recommended architecture; environment-isolation gate failed | No policy trajectories or optimizer steps yet |
+| Miles OpenEnv online, local Docker | GPU image OpenAI==2.6.1; pinned OpenEnv 0.4.2.dev0 requires OpenAI>=2.7.2. Server must remain separate; online client transport not yet locked. | Local isolated-container architecture selected; isolation and compatible client gates open | Separate hashed macOS Python 3.12.11 development environment: 26 unmodified OpenEnv unit tests passed, 1 skipped. No real task or policy trajectories. |
 | Offline Verifiers/Harbor evaluation | Python 3.12.11; verifiers==0.3.1; harbor==0.21.0; openai==2.54.0; openai-agents==0.20.0; renderers==0.1.11 | Dependency lock resolved; runtime and TB2.1 environment not validated | Hash-pinned Linux lock; no install or evaluation execution |
 | Strict Verifiers split-process bridge / upgrade | Not implemented | Blocked before optimizer steps | No equivalence tests have passed |
 
 ## Findings
 
-- The exact Miles adapter requirements come from examples/experimental/verifiers/requirements.txt at the recorded source revision. The 2.6.1 SGLang pin is documented there, not yet verified from the selected GPU image.
+- Miles adapter requirements are recorded from the pinned source; OpenAI==2.6.1 has now also been verified inside the pinned GPU image.
 - Published Verifiers 0.3.1 metadata directly requires OpenAI>=2.9.0 and Python>=3.11,<3.14. Its Harbor extra activates harbor==0.21.0 only on Python>=3.12; Harbor itself requires Python>=3.12.
 - The offline lock resolves OpenAI 2.54.0. That resolved version must not be confused with Verifiers direct minimum requirement. The frozen openai-agents 0.20.0 requires OpenAI>=2.45.0,<3.
 - Resolution used uv 0.11.19, Python target 3.12.11, x86_64-unknown-linux-gnu and package cutoff 2026-09-02T00:00:00Z. It is not proof that task loading, tools, rewards, cleanup, or inference work.
-- The Prime terminal-bench-2 environment package revision and untouched TB2.1 taskset still need exact pins. This lock covers the evaluator framework, not a fully validated TB2.1 task runtime.
+- Terminal-Bench 2.1 metadata is pinned to 7131e4375048a0e408a8fb404b5f499d726b695b with 89 ordered task IDs. Environment-package revision, task-image pins and runtime evaluation remain unvalidated.
 - Offline Verifiers evaluation does not generate the OpenEnv online training trajectories. No forced package upgrades were attempted.
+- OpenEnv b9d8c1f953e0c3e0bbee2f3f6f6c73d8eae61f5f declares OpenAI>=2.7.2, conflicting with the GPU image OpenAI==2.6.1. The server development environment is isolated; no forced installation into Miles occurred. A compatible pinned client or tested transport is still required.
 
 ## Strict online acceptance tests
 
@@ -36,15 +37,18 @@ All must pass before enabling optimizer steps:
 python3 scripts/check_compatibility.py --run-dir /absolute/path/to/a/fresh/run
 ```
 
-Uses dependency resolution only. Expected strict combinations emit failed phase JSON; they do not install packages.
+Dependency resolution only; expected conflicts never trigger forced installation.
 
-Offline lock: `locks/offline-verifiers-py312-linux.lock` (SHA-256 `e0581971c6c19df4ac6aed6fa3d8cd34665b824137738e87c1e3e9e17df08be0`).
+## Locks
+
+- `locks/offline-verifiers-py312-linux.lock`: SHA256 `e0581971c6c19df4ac6aed6fa3d8cd34665b824137738e87c1e3e9e17df08be0`.
+- `locks/openenv-server-py312-macos.lock`: SHA256 `be25b5fdfac79d651578949c1b768ed3d43ec1fd981d4649e5126c287552e461`.
 
 ## Sources
 
-- [verifiers==0.3.1](https://pypi.org/pypi/verifiers/0.3.1/json)
 - [harbor==0.21.0](https://pypi.org/pypi/harbor/0.21.0/json)
-- [openai-agents==0.8.2](https://pypi.org/pypi/openai-agents/0.8.2/json)
 - [openai-agents==0.20.0](https://pypi.org/pypi/openai-agents/0.20.0/json)
+- [openai-agents==0.8.2](https://pypi.org/pypi/openai-agents/0.8.2/json)
+- [verifiers==0.3.1](https://pypi.org/pypi/verifiers/0.3.1/json)
 
 Evidence run: `20260902-172037-a3b210`.
