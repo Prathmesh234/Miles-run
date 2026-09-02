@@ -19,7 +19,7 @@ def validate_candidate(root, source):
     exec(compile(source, 'posttrainingx_local_agent.py', 'exec'), module.__dict__)
     args = SimpleNamespace(n_samples_per_prompt=8, tito_model='qwen36', hf_checkpoint='/model',
         chat_template_path='/miles-source/miles/utils/chat_template_utils/templates/qwen3.6_fixed.jinja',
-        chat_template_kwargs={'preserve_thinking': True})
+        apply_chat_template_kwargs={'preserve_thinking': True})
     samples, corrections = [], []
     for path in sorted(Path(root).glob('*.json')):
         group = [Sample.from_dict(s) for s in json.loads(path.read_text())['samples']]
@@ -34,7 +34,7 @@ def validate_candidate(root, source):
         samples.extend(group)
     base = next(s for s in samples if s.index == 11)
     tito = module._qwen_comparator(args.hf_checkpoint, args.chat_template_path,
-                                   json.dumps(args.chat_template_kwargs, sort_keys=True))
+                                   json.dumps(args.apply_chat_template_kwargs, sort_keys=True))
     expected = tito.apply_chat_template(base.metadata['messages'], add_generation_prompt=False, tokenize=True)
     end_id = tito.tokenizer.convert_tokens_to_ids('<|im_end|>')
     cases = []
