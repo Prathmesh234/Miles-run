@@ -1,6 +1,6 @@
-# PostTrainingX on Vultr B200
+# Miles-run
 
-This workspace implements the gated Miles GRPO campaign requested by Pratt Bhatt.
+PostTrainingX infrastructure and Miles GRPO qualification on Vultr B200.
 The complete objective uses four nodes and 32 B200 GPUs. Infrastructure evidence,
 exact accounting, training correctness, and held-out quality are independent gates.
 Completion of a process does not establish benchmark success.
@@ -61,15 +61,43 @@ recorded in [docs/quality-protocol.md](docs/quality-protocol.md).
 ## Implementation and current evidence
 
 The committed Miles implementation and exact base/patched revisions are recorded
-in [patches/manifest.json](patches/manifest.json). The three commits replay onto
-the pinned upstream base with an identical final source tree. The launcher
+in [patches/manifest.json](patches/manifest.json). The cumulative patch includes
+all 16 local Miles commits and replays onto the pinned upstream base with an
+identical final source tree. The launcher
 supports all three whole-node layouts and requires an external, explicitly mapped
 Ray cluster. CPU tests do not prove placement or training correctness on GPUs.
 
 [The compatibility report](docs/compatibility.md) separates the blocked strict
 online combination from OpenEnv online training and separately locked offline
 evaluation. [The current status](docs/current-status.md) lists the failed and
-unvalidated gates. No model training or Terminal-Bench quality result exists yet.
+unvalidated gates. The four-node synchronous qualification completed three real
+optimizer updates with 48 audited training samples. Its telemetry has collection
+failures, and it is not a completed asynchronous benchmark. No held-out
+Terminal-Bench quality result or full resume equivalence has been established.
+
+## Repository contents and source setup
+
+This repository contains the project source, tests, documentation, version locks,
+and patches. Private ClusterMAX sources, kubeconfigs and credentials, virtual
+environments, model/checkpoint binaries, raw task data, and run evidence are not
+published. Raw evidence remains in the run directory on shared storage. Older
+dummy-run checkpoint payloads were pruned with explicit operator authorization;
+the newest full checkpoint and the older metadata/logs were retained.
+
+Reconstruct the exact public Miles source tree from the pinned base and patch:
+
+```sh
+git clone https://github.com/radixark/miles.git vendor/miles
+git -C vendor/miles checkout --detach 0709889b2848f293b5575d50aa3340fa4de5a20d
+git -C vendor/miles apply --index ../../patches/miles-posttrainingx.patch
+```
+
+The reconstructed tree hash must match `source_tree_sha1` in the patch manifest.
+The local launcher is then available at
+`vendor/miles/scripts/run_qwen3_6_35b_a3b_posttrainingx.py`. The OpenEnv patch and
+its exact revisions are recorded separately in `locks/openenv-patches.json`.
+Third-party source retains its upstream license. Do not force upgrades into the
+training environment to resolve the separate offline evaluator's dependencies.
 
 To resolve the documented dependency combinations without installing them:
 
@@ -86,7 +114,7 @@ To render the retained native telemetry into statistics and a plot:
 The latter requires the finalized native telemetry to be present locally. It
 refuses to replace an existing report phase; diagnostic reruns must retain their
 own phase identity. Dependency freezes for CPU checks and analysis are separate
-from the unvalidated GPU image and the offline evaluator lock.
+from the pinned GPU image and the offline evaluator lock.
 
 ## Native four-node preflight entrypoint
 
@@ -114,11 +142,12 @@ CollectiveX, or the role-layout benchmark.
 
 Submission is not completion. Inspect the returned Slurm job ID and its phase
 results before proceeding. An ambiguous submission must be reconciled with
-`squeue` and `sacct`, not repeated. The local environment-isolation gate remains
-failed until a versioned fix passes the required tests.
+`squeue` and `sacct`, not repeated. The latest local environment gate passed ten
+CPU-only checks in job 146; that result does not qualify the full task corpus or
+replace model-driven and asynchronous accounting tests.
 
 Run the local parser and evidence checks with:
 
 ```sh
-python3 -m unittest discover -s tests -v
+python3.12 -m unittest discover -s tests -v
 ```

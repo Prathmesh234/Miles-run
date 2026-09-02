@@ -2,10 +2,10 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job143:1 observed so far; prior failed job139:2 historical updates, excluded from clean benchmark**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job 143: 3; prior failed job 139: 2 historical updates, excluded from the clean benchmark**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **143**, 32 GPUs, 2t2r, 3 requested steps. Fresh sync validation: first update at22:57:57.204Z, gradient norm0.41870978474617004. Batch0 all16 native-to-trainer tensor identities/GRPO advantages passed. Overall run/checkpoints/resume/quality not yet qualified.
-Status snapshot: `2026-09-02T22:59:29.293015Z`; inspect Slurm for live state.
+Latest training allocation: Slurm **143**, 32 GPUs, 2t2r, 3 requested steps. Three synchronous optimizer updates and three checkpoint saves completed. All 48 trained samples passed native token/logprob/mask and GRPO tensor audits. Collector timeouts, exact environment accounting, resume and quality gates remain open.
+Status snapshot: `2026-09-02T23:24:48.679479+00:00`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -56,16 +56,23 @@ Status snapshot: `2026-09-02T22:59:29.293015Z`; inspect Slurm for live state.
 - Job142 completed the separate hash-locked offline Verifiers0.3.1/Harbor0.21.0 image build and import gate. Image c2459626611736a65cc6f8e39f15af3d3c61880d3e7e1f7da1fd6bb9ea443f2f. No TB task executed.
 - Full641-source structural audit completed, preserving512 training/128 development/1 runtime IDs. All18 task base tags plus uv helper now have frozen digest bindings; original qualified pins unchanged. Image builds and full-corpus reference qualification remain pending.
 - Read-only DCGM discovery confirmed delivered node3 daemon reports8 active GPUs but24 NULL identity fields; other3 nodes report real identities. Separate run-owned read-only probe queued as CPU job144 after143; shared daemon untouched.
+- Job 143 completed all three real synchronous updates and checkpoint saves on four nodes / 32 GPUs. The tensor audit covered 48 samples across all 16 trainer ranks; policy versions advanced 1, 2, 3. No held-out quality claim.
+- Job 143 infrastructure JSON/Markdown/PNG report contains 2,216 per-entity distributions and 145,368 plotted samples. Twelve native command timeouts are retained, including NVLink timeouts during the first checkpoint save; measured-run eligibility remains failed.
+- Job 144 completed the separate run-owned DCGM probe on node 3: eight real GPU identities and 24 numeric samples; owned child reaped and shared daemon unchanged. Continuous collection under training load remains unqualified.
+- Job 145 caught a forbidden data field in the new OpenEnv state request. Corrected job 146 passed all ten local sandbox cases with controller episode IDs joining durable events, isolation/timeout checks, and no leaked containers.
+- Miles 977bdee2f reads canonical SGLang speculative draft counters. Twenty-three wire-codec tests passed in the pinned GPU image on CPU. Job 143 reported acceptance rate zero because the old field names were missing; that value is not a valid model acceptance measurement.
+- Operator-authorized dummy-run retention removed four older checkpoint payload sets (1,989,034,824,640 bytes), retaining the newest full checkpoint, older metadata/debug logs, and data-position states. Shared free space was verified at approximately 3.0 TB. No S3 archive was configured.
+- Current root parser/evidence suite: 44 passed. OpenEnv suite: 101 passed / 3 skipped; targeted launcher suite: 28 passed. Full Miles baseline failures remain separately documented.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
-| Hidden-test isolation | Ten live local-runtime checks passed in job134 for four training IDs and the separate runtime task. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Native collectors active for143. Delivered DCGM node3 returns NULL identities; CPU probe144 queued after143. Native timeout/fabric/RL completeness still requires final audit. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
+| Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
+| Full infrastructure telemetry | Job 143 has 12 native command timeouts on trainer nodes; rollout-node native streams have no errors. Separate run-owned DCGM probe 144 returned eight real identities and 24 numeric samples without modifying the shared daemon. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
-| GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Independently compare each loaded EP8 parameter shard against the qualified checkpoint, then compare teacher-forced logprobs with serving. Diagnostic cross-entropy is not GRPO correctness or optimizer/resume validation. |
-| GRPO, async and resume fidelity | Job143 first optimizer update and batch0 tensor/advantage audit passed; remaining sync steps/checkpoints, async, and complete resume still unverified. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
+| GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
+| GRPO, async and resume fidelity | Job 143 completed three updates and saves; all 48 trained sample tensors audited. Eighty controller episodes versus 48 trained samples require an exact lifecycle join. New episode-ID adapter passed unit and live protocol tests, not yet model-driven accounting. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
@@ -74,4 +81,4 @@ Status snapshot: `2026-09-02T22:59:29.293015Z`; inspect Slurm for live state.
 
 ## Quality budget
 
-Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. Two optimizer updates were observed in failed qualification job139. No held-out quality delta or complete resume has been verified; no improvement is guaranteed.
+Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at 0/50/100/200/400 after correctness and infrastructure gates. The three-step dummy validation is not the quality budget. Prospective common batch 96 implies 38,400 eligible trajectories; Stage 4 reference remains 64. No held-out quality delta or complete resume has been verified; improvement is not guaranteed. Retention of superseded dummy checkpoints is operator-authorized.

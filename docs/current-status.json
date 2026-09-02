@@ -1,25 +1,15 @@
 {
-  "active_submission": {
-    "gpus": 32,
-    "layout": "2t2r",
-    "miles_sha": "df8cde5bedc0b19603b3f53433b5a00b76e1d687",
-    "optimizer_steps_requested": 3,
-    "root_sha": "5687a1f8a4bef1938dbffa5dedc313897a29c4a9",
-    "scope": "Fresh sync validation: first update at22:57:57.204Z, gradient norm0.41870978474617004. Batch0 all16 native-to-trainer tensor identities/GRPO advantages passed. Overall run/checkpoints/resume/quality not yet qualified.",
-    "slurm_job_id": "143",
-    "status": "RUNNING at last authoritative observation; first optimizer update verified",
-    "steps_requested": 3
-  },
+  "active_submission": null,
   "blocked_or_unvalidated": [
     {
       "gate": "Hidden-test isolation",
       "smallest_next_step": "Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency.",
-      "state": "Ten live local-runtime checks passed in job134 for four training IDs and the separate runtime task."
+      "state": "Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images."
     },
     {
       "gate": "Full infrastructure telemetry",
       "smallest_next_step": "Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps.",
-      "state": "Native collectors active for143. Delivered DCGM node3 returns NULL identities; CPU probe144 queued after143. Native timeout/fabric/RL completeness still requires final audit."
+      "state": "Job 143 has 12 native command timeouts on trainer nodes; rollout-node native streams have no errors. Separate run-owned DCGM probe 144 returned eight real identities and 24 numeric samples without modifying the shared daemon."
     },
     {
       "gate": "Broad launcher suite",
@@ -28,13 +18,13 @@
     },
     {
       "gate": "GPU runtime and provenance",
-      "smallest_next_step": "Independently compare each loaded EP8 parameter shard against the qualified checkpoint, then compare teacher-forced logprobs with serving. Diagnostic cross-entropy is not GRPO correctness or optimizer/resume validation.",
+      "smallest_next_step": "Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark.",
       "state": "Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs."
     },
     {
       "gate": "GRPO, async and resume fidelity",
       "smallest_next_step": "Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated.",
-      "state": "Job143 first optimizer update and batch0 tensor/advantage audit passed; remaining sync steps/checkpoints, async, and complete resume still unverified."
+      "state": "Job 143 completed three updates and saves; all 48 trained sample tensors audited. Eighty controller episodes versus 48 trained samples require an exact lifecycle join. New episode-ID adapter passed unit and live protocol tests, not yet model-driven accounting."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -109,7 +99,14 @@
     "Job143:32-rank actual-container InfiniBand correctness gate passed; initial broadcast passed; first real optimizer update observed22:57:57.204Z. Independent CPU audit matched all16 batch0 sampled token IDs, float32 logprobs, masks, reward normalization, advantages and returns across all16 trainer ranks.",
     "Job142 completed the separate hash-locked offline Verifiers0.3.1/Harbor0.21.0 image build and import gate. Image c2459626611736a65cc6f8e39f15af3d3c61880d3e7e1f7da1fd6bb9ea443f2f. No TB task executed.",
     "Full641-source structural audit completed, preserving512 training/128 development/1 runtime IDs. All18 task base tags plus uv helper now have frozen digest bindings; original qualified pins unchanged. Image builds and full-corpus reference qualification remain pending.",
-    "Read-only DCGM discovery confirmed delivered node3 daemon reports8 active GPUs but24 NULL identity fields; other3 nodes report real identities. Separate run-owned read-only probe queued as CPU job144 after143; shared daemon untouched."
+    "Read-only DCGM discovery confirmed delivered node3 daemon reports8 active GPUs but24 NULL identity fields; other3 nodes report real identities. Separate run-owned read-only probe queued as CPU job144 after143; shared daemon untouched.",
+    "Job 143 completed all three real synchronous updates and checkpoint saves on four nodes / 32 GPUs. The tensor audit covered 48 samples across all 16 trainer ranks; policy versions advanced 1, 2, 3. No held-out quality claim.",
+    "Job 143 infrastructure JSON/Markdown/PNG report contains 2,216 per-entity distributions and 145,368 plotted samples. Twelve native command timeouts are retained, including NVLink timeouts during the first checkpoint save; measured-run eligibility remains failed.",
+    "Job 144 completed the separate run-owned DCGM probe on node 3: eight real GPU identities and 24 numeric samples; owned child reaped and shared daemon unchanged. Continuous collection under training load remains unqualified.",
+    "Job 145 caught a forbidden data field in the new OpenEnv state request. Corrected job 146 passed all ten local sandbox cases with controller episode IDs joining durable events, isolation/timeout checks, and no leaked containers.",
+    "Miles 977bdee2f reads canonical SGLang speculative draft counters. Twenty-three wire-codec tests passed in the pinned GPU image on CPU. Job 143 reported acceptance rate zero because the old field names were missing; that value is not a valid model acceptance measurement.",
+    "Operator-authorized dummy-run retention removed four older checkpoint payload sets (1,989,034,824,640 bytes), retaining the newest full checkpoint, older metadata/debug logs, and data-position states. Shared free space was verified at approximately 3.0 TB. No S3 archive was configured.",
+    "Current root parser/evidence suite: 44 passed. OpenEnv suite: 101 passed / 3 skipped; targeted launcher suite: 28 passed. Full Miles baseline failures remain separately documented."
   ],
   "failed_slurm_jobs": [
     {
@@ -151,6 +148,10 @@
     {
       "job_id": 140,
       "reason": "Operator stopped identical container configuration after job139 logs proved missing RDMA devices and TCP fallback. New scoped mount + mandatory IB + in-container collective preflight prepared."
+    },
+    {
+      "job_id": 145,
+      "reason": "New episode-ID client sent a forbidden data field with the OpenEnv state request. Nine checks passed, final protocol check failed, no leaked containers. Fixed and passed in job 146."
     }
   ],
   "heldout_quality_measured": false,
@@ -167,15 +168,26 @@
     127,
     134
   ],
+  "last_training_submission": {
+    "gpus": 32,
+    "layout": "2t2r",
+    "miles_sha": "df8cde5bedc0b19603b3f53433b5a00b76e1d687",
+    "optimizer_steps_requested": 3,
+    "root_sha": "5687a1f8a4bef1938dbffa5dedc313897a29c4a9",
+    "scope": "Three synchronous optimizer updates and three checkpoint saves completed. All 48 trained samples passed native token/logprob/mask and GRPO tensor audits. Collector timeouts, exact environment accounting, resume and quality gates remain open.",
+    "slurm_job_id": "143",
+    "status": "COMPLETED, Slurm exit 0:0; benchmark qualification remains incomplete",
+    "steps_requested": 3
+  },
   "model_trajectories_started": true,
-  "optimizer_steps_verified": "Job143:1 observed so far; prior failed job139:2 historical updates, excluded from clean benchmark",
+  "optimizer_steps_verified": "Job 143: 3; prior failed job 139: 2 historical updates, excluded from the clean benchmark",
   "proposed_optimizer_steps": 400,
-  "quality_note": "Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. Two optimizer updates were observed in failed qualification job139. No held-out quality delta or complete resume has been verified; no improvement is guaranteed.",
+  "quality_note": "Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at 0/50/100/200/400 after correctness and infrastructure gates. The three-step dummy validation is not the quality budget. Prospective common batch 96 implies 38,400 eligible trajectories; Stage 4 reference remains 64. No held-out quality delta or complete resume has been verified; improvement is not guaranteed. Retention of superseded dummy checkpoints is operator-authorized.",
   "quality_protocol": "docs/quality-protocol.md",
   "run_id": "20260902-172037-a3b210",
   "schema_version": 1,
-  "state": "in_progress",
+  "state": "synchronous_validation_completed_async_benchmark_unqualified",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-02T22:59:29.293015Z"
+  "updated_at": "2026-09-02T23:24:48.679479+00:00"
 }
