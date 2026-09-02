@@ -17,12 +17,20 @@ import urllib.request
 from evidence import Run, atomic, metric, sha256, utcnow
 
 
+def attempt_suffix(attempt):
+    return '' if attempt == 1 else '-attempt-' + str(attempt)
+
+
+def case_name(mtp, attempt):
+    return ('02-qwen-serving-mtp-on' if mtp else '02-qwen-serving-mtp-off') + attempt_suffix(attempt)
+
+
 def server_command(model, mtp):
     command = [sys.executable, '-m', 'sglang.launch_server', '--model-path', str(model),
         '--host', '127.0.0.1', '--port', '31872', '--tp-size', '8', '--ep-size', '8',
         '--nnodes', '1', '--node-rank', '0', '--context-length', '2048', '--max-total-tokens', '4096',
         '--max-running-requests', '2', '--mem-fraction-static', '0.7', '--cuda-graph-bs', '1', '2',
-        '--dtype', 'bfloat16', '--random-seed', '1234', '--language-model-only',
+        '--dtype', 'bfloat16', '--random-seed', '1234',
         '--skip-server-warmup', '--enable-draft-weights-cpu-backup', '--enable-metrics']
     if mtp:
         command += ['--speculative-algorithm', 'EAGLE', '--speculative-num-steps', '2',
@@ -133,11 +141,11 @@ def generate(root, tokenizer, index, prompt):
     return result
 
 
-def child(run, mtp):
-    root = run.root / 'tests' / ('02-qwen-serving-mtp-on' if mtp else '02-qwen-serving-mtp-off')
+def child(run, mtp, attempt):
+    root = run.root / 'tests' / case_name(mtp, attempt)
     model = Path('/model')
     command = server_command(model, mtp)
-    env = dict(os.environ, SGLANG_ENABLE_SPEC_V2='1' if mtp else '0', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
+    env = dict(os.environ, HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
     stopped, metric_errors = threading.Event(), []
     collector, server = None, None
     result = {'started_at': utcnow(), 'mtp_enabled': mtp, 'command': command, 'errors': []}
@@ -195,14 +203,15 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--child', action='store_true')
     ap.add_argument('--mtp', action='store_true')
+    ap.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
     args = ap.parse_args()
     run = Run(args.run_dir)
     if args.child:
-        return child(run, args.mtp)
+        return child(run, args.mtp, args.attempt)
     for mtp in (False, True):
-        phase = run.phase('02-qwen-serving-mtp-on' if mtp else '02-qwen-serving-mtp-off')
+        phase = run.phase(case_name(mtp, args.attempt))
         rc, _, _ = phase.command([sys.executable, str(Path(__file__).resolve()), '--run-dir', str(run.root),
-                                 '--child'] + (['--mtp'] if mtp else []), timeout=950)
+                                 '--child', '--attempt', str(args.attempt)] + (['--mtp'] if mtp else []), timeout=950)
         result_file = phase.path / 'probe-result.json'
         data = json.loads(result_file.read_text()) if result_file.exists() else {'errors': ['Probe result missing.']}
         results = [metric('server_startup', data['startup_s'], 's', socket.gethostname())] if 'startup_s' in data else []
@@ -216,7 +225,7 @@ def main():
                       'artifacts': [str(phase.path.relative_to(run.root))]}, refresh=False)
         if rc:
             if not mtp:
-                run.phase('02-qwen-serving-mtp-on').finish('skip', reason='mtp_off_serving_gate_failed', refresh=False)
+                run.phase(case_name(True, args.attempt)).finish('skip', reason='mtp_off_serving_gate_failed', refresh=False)
             return rc
     return 0
 

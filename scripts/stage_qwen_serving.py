@@ -9,12 +9,14 @@ import sys
 from evidence import Run, atomic, sha256
 from probe_host_lustre import pod_manifest
 from submit_native_preflight import BOOTSTRAP, batches, entry
+from qwen_serving_probe import attempt_suffix
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
+    ap.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
     args = ap.parse_args()
     run = Run(args.run_dir)
     repo = Path(__file__).resolve().parents[1]
@@ -22,8 +24,8 @@ def main():
         raise ValueError('Commit the serving implementation before cluster submission.')
     revision = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
-    prefix = 'provenance/qwen-serving-code-v1/'
-    phase = run.phase('02-qwen-serving-submission')
+    prefix = f'provenance/qwen-serving-code-v{args.attempt}/'
+    phase = run.phase('02-qwen-serving-submission' + attempt_suffix(args.attempt))
     k = ['kubectl', '--kubeconfig', str(Path(args.kubeconfig).resolve()), '-n', 'slurm']
     worker = k + ['exec', '-i', 'slurm-worker-gpu-nodes-0', '--']
     rc, out, _ = phase.command(worker + ['squeue', '--noheader', '--format=%i %j %T %D'])
@@ -41,21 +43,23 @@ def main():
              'telemetry_lustre_host.py', 'qwen_serving_probe.py', 'run_qwen_serving_validation.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     files[prefix + 'source-revision.txt'] = entry((revision + '\n').encode())
-    command = ['python3', remote + '/' + prefix + 'run_qwen_serving_validation.py', '--run-dir', remote]
+    command = ['python3', remote + '/' + prefix + 'run_qwen_serving_validation.py', '--run-dir', remote,
+               '--attempt', str(args.attempt)]
     files[prefix + 'submit.sbatch'] = entry(('#!/bin/bash\nset -euo pipefail\nexec ' + shlex.join(command) + '\n').encode())
     for payload in batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=64*1024):
         rc, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], timeout=45, stdin=payload)
         if rc:
             phase.finish('fail', failure_summary='Immutable serving-code staging failed. Inspect before retrying.')
             return 1
-    name = 'ptx-qwen-lustre-' + run.root.name
+    name = 'ptx-qwen-lustre-' + run.root.name + '-v' + str(args.attempt)
     pod = pod_manifest(name, 'b200-nodepool-ac23753e6cfa', run.root.name)
     pod['metadata']['labels']['component'] = 'qwen-serving-lustre'
     pod['spec']['activeDeadlineSeconds'] = 2180
     container = pod['spec']['containers'][0]
     container['command'] = ['python3', '/run-artifacts/' + prefix + 'telemetry_lustre_host.py', '--run-dir', '/run-artifacts',
-        '--hostname', 'gpu-nodes-0', '--duration-s', '2130', '--stream-label', 'lustre-qwen-serving-v1',
-        '--job-marker', 'control/qwen-serving-job.json', '--stop-marker', 'control/qwen-serving-lustre.stop',
+        '--hostname', 'gpu-nodes-0', '--duration-s', '2130', '--stream-label', f'lustre-qwen-serving-v{args.attempt}',
+        '--job-marker', f'control/qwen-serving-job-v{args.attempt}.json',
+        '--stop-marker', f'control/qwen-serving-lustre-v{args.attempt}.stop',
         '--role', 'rollout-serving-validation']
     container['volumeMounts'] = [{'name': 'host-lustre', 'mountPath': '/host-lustre', 'readOnly': True},
         {'name': 'run-artifacts', 'mountPath': '/run-artifacts', 'subPath': 'posttrainingx/runs/vultr-b200-slurm/' + run.root.name}]
@@ -70,9 +74,9 @@ def main():
         return 1
     rc, out, _ = phase.command(worker + ['sbatch', '--parsable', '--partition=gpu-nodes', '--nodes=1',
         '--nodelist=gpu-nodes-0', '--ntasks-per-node=1', '--cpus-per-task=32', '--gres=gpu:8', '--exclusive',
-        '--time=00:35:00', '--no-requeue', '--job-name=ptx-qwen-serve-' + run.root.name, '--chdir=' + remote,
-        '--output=' + remote + '/provenance/qwen-serving-slurm-%j.out',
-        '--error=' + remote + '/provenance/qwen-serving-slurm-%j.err', remote + '/' + prefix + 'submit.sbatch'])
+        '--time=00:35:00', '--no-requeue', '--job-name=ptx-qwen-serve-' + run.root.name + '-v' + str(args.attempt), '--chdir=' + remote,
+        '--output=' + remote + f'/provenance/qwen-serving-v{args.attempt}-slurm-%j.out',
+        '--error=' + remote + f'/provenance/qwen-serving-v{args.attempt}-slurm-%j.err', remote + '/' + prefix + 'submit.sbatch'])
     job = out.strip().split(';')[0]
     okay = not rc and job.isdigit()
     phase.finish('ok' if okay else 'fail', failure_summary=None if okay else 'Submission ambiguous; inspect unique job name before retry.',
