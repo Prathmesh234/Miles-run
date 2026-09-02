@@ -1,0 +1,201 @@
+"""Read-only one-second GPU, NVLink, IB, CPU, NUMA, and Lustre sampling.
+
+Each worker owns its streams. The controller merges them after all writers stop.
+Counter values remain cumulative; reset-aware rates are derived during analysis.
+"""
+import argparse
+import concurrent.futures
+import csv
+import json
+import os
+from pathlib import Path
+import re
+import socket
+import subprocess
+import time
+
+from evidence import utcnow
+from infra_node import allocated_run
+
+
+GPU_FIELDS = [
+    ('index', None), ('uuid', None), ('utilization.gpu', '%'), ('utilization.memory', '%'),
+    ('memory.total', 'MiB'), ('memory.free', 'MiB'), ('memory.used', 'MiB'),
+    ('temperature.gpu', 'degC'), ('power.draw', 'W'), ('clocks.current.sm', 'MHz'),
+    ('clocks.current.memory', 'MHz'), ('ecc.errors.corrected.volatile.total', 'count'),
+    ('ecc.errors.uncorrected.volatile.total', 'count'),
+]
+
+
+def gpu_records(text):
+    records = []
+    rows = list(csv.reader(text.splitlines(), skipinitialspace=True))
+    if len(rows) != 8:
+        raise ValueError(f'Expected eight GPUs, found {len(rows)}.')
+    for row in rows:
+        if len(row) != len(GPU_FIELDS):
+            raise ValueError('Unexpected GPU CSV shape.')
+        for (field, unit), value in zip(GPU_FIELDS[2:], row[2:]):
+            try:
+                parsed = float(value)
+            except ValueError:
+                records.append(dict(metric='collector_error', value=None, unit='event',
+                                    gpu_uuid=row[1], requested_metric=field, error=value))
+                continue
+            records.append(dict(metric=field, value=parsed, unit=unit, gpu_uuid=row[1]))
+    return records
+
+
+def nvlink_records(text):
+    records, uuid = [], None
+    for line in text.splitlines():
+        header = re.search(r'UUID: (GPU-[^)]+)', line)
+        if header:
+            uuid = header.group(1)
+        found = re.search(r'Link\s+(\d+):\s+Data (Tx|Rx):\s+(\d+) KiB', line)
+        if found and uuid:
+            link, direction, kib = found.groups()
+            records.append(dict(metric='nvlink_data_' + direction.lower() + '_bytes_total',
+                                value=int(kib)*1024, unit='B', gpu_uuid=uuid, link=int(link)))
+    if len(records) != 8 * 18 * 2:
+        raise ValueError(f'Expected 288 NVLink counters, found {len(records)}.')
+    return records
+
+
+def capture(argv):
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=5)
+        return {'argv': argv, 'exit_code': p.returncode, 'stdout': p.stdout, 'stderr': p.stderr}
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {'argv': argv, 'exit_code': 124 if isinstance(exc, subprocess.TimeoutExpired) else 127,
+                'stdout': '', 'stderr': str(exc)}
+
+
+class Streams:
+    def __init__(self, root):
+        self.root = root
+        self.files = {}
+
+    def write(self, name, record):
+        if name not in self.files:
+            self.files[name] = (self.root / (name + '.jsonl.partial')).open('x')
+        self.files[name].write(json.dumps(record, sort_keys=True, allow_nan=False) + '\n')
+
+    def flush(self):
+        for f in self.files.values():
+            f.flush()
+            os.fsync(f.fileno())
+
+    def close(self):
+        self.flush()
+        for name, f in self.files.items():
+            f.close()
+            os.replace(self.root / (name + '.jsonl.partial'), self.root / (name + '.jsonl'))
+
+
+def sample_files(streams, common):
+    raw = {}
+    paths = ['/proc/stat', '/proc/meminfo', '/proc/vmstat', '/proc/loadavg', '/proc/softirqs']
+    paths += [str(p) for p in Path('/sys/devices/system/node').glob('node*/numastat')]
+    for name in paths:
+        try:
+            raw[name] = Path(name).read_text()
+        except OSError as exc:
+            streams.write('cpu-memory-numa', dict(common, source='proc-sysfs', metric='collector_error',
+                                                value=None, unit='event', path=name, error=str(exc)))
+    streams.write('raw-system', dict(common, source='proc-sysfs', files=raw))
+    for line in raw.get('/proc/meminfo', '').splitlines():
+        cells = line.split()
+        if len(cells) >= 2:
+            streams.write('cpu-memory-numa', dict(common, source='proc-meminfo', metric=cells[0].rstrip(':'),
+                                                value=int(cells[1]) * (1024 if len(cells) == 3 else 1),
+                                                unit='B' if len(cells) == 3 else 'count'))
+    for line in raw.get('/proc/stat', '').splitlines():
+        cells = line.split()
+        if cells and cells[0] == 'cpu':
+            names = ['user', 'nice', 'system', 'idle', 'iowait', 'irq', 'softirq', 'steal', 'guest', 'guest_nice']
+            for key, value in zip(names, cells[1:]):
+                streams.write('cpu-memory-numa', dict(common, source='proc-stat', metric='cpu_' + key,
+                                                    value=int(value), unit='USER_HZ_ticks'))
+    for line in raw.get('/proc/vmstat', '').splitlines():
+        name, value = line.split()
+        streams.write('cpu-memory-numa', dict(common, source='proc-vmstat', metric=name, value=int(value), unit='count'))
+    ib_paths = sorted(Path('/sys/class/infiniband').glob('*/ports/*/counters/*'))
+    ib_paths += sorted(Path('/sys/class/infiniband').glob('*/ports/*/hw_counters/*'))
+    if not ib_paths:
+        streams.write('infiniband', dict(common, source='ib-sysfs', metric='collector_error',
+                                        value=None, unit='event', error='No IB counters found.'))
+    for p in ib_paths:
+        attrs = dict(common, source='ib-sysfs', hca=p.parts[-5], hca_port=p.parts[-3],
+                     counter_group=p.parts[-2], metric=p.name)
+        try:
+            value = int(p.read_text().strip())
+            unit = '4_octets' if p.name in ('port_xmit_data', 'port_rcv_data') else 'counter_units'
+            streams.write('infiniband', dict(attrs, value=value, unit=unit))
+        except (OSError, ValueError) as exc:
+            streams.write('infiniband', dict(attrs, metric='collector_error', value=None, unit='event', error=str(exc)))
+    v = os.statvfs(streams.root)
+    for name, value, unit in [('capacity', v.f_blocks*v.f_frsize, 'B'),
+                              ('available', v.f_bavail*v.f_frsize, 'B'), ('free_inodes', v.f_favail, 'count')]:
+        streams.write('lustre', dict(common, source='statvfs', metric=name, value=value, unit=unit))
+    stats = list(Path('/proc/fs/lustre/llite').glob('*/stats'))
+    if not stats:
+        streams.write('lustre', dict(common, source='lustre-llite', metric='collector_error',
+                                  value=None, unit='event', error='Lustre client stats unavailable in this namespace.'))
+    for p in stats:
+        try:
+            streams.write('raw-lustre', dict(common, source='lustre-llite', path=str(p), text=p.read_text()))
+        except OSError as exc:
+            streams.write('lustre', dict(common, source='lustre-llite', metric='collector_error',
+                                      value=None, unit='event', path=str(p), error=str(exc)))
+
+
+def collect(run, stop_file, limit_s):
+    host = socket.gethostname()
+    root = run.root / 'telemetry' / 'native' / host
+    root.mkdir(parents=True, exist_ok=False)
+    streams = Streams(root)
+    start = time.monotonic()
+    commands = {
+        'nvidia-smi': (['nvidia-smi', '--query-gpu=' + ','.join(x[0] for x in GPU_FIELDS),
+                        '--format=csv,noheader,nounits'], gpu_records),
+        'nvlink': (['nvidia-smi', 'nvlink', '-gt', 'd'], nvlink_records),
+    }
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            while time.monotonic() - start < limit_s and not stop_file.exists():
+                tick = time.monotonic()
+                common = {'time': utcnow(), 'monotonic_s': tick, 'hostname': host,
+                          'slurm_job_id': os.environ['SLURM_JOB_ID'], 'role': 'infrastructure-preflight'}
+                pending = {name: pool.submit(capture, argv) for name, (argv, _) in commands.items()}
+                sample_files(streams, common)
+                for name, future in pending.items():
+                    raw = future.result()
+                    streams.write('raw-' + name, dict(common, source=name, **raw))
+                    try:
+                        if raw['exit_code']:
+                            raise ValueError(raw['stderr'])
+                        for row in commands[name][1](raw['stdout']):
+                            streams.write(name, dict(common, source=name, **row))
+                    except ValueError as exc:
+                        streams.write(name, dict(common, source=name, metric='collector_error',
+                                                value=None, unit='event', error=str(exc)))
+                streams.write('cpu-memory-numa', dict(common, source='collector', metric='collection_duration',
+                                                    value=time.monotonic()-tick, unit='s'))
+                streams.flush()
+                time.sleep(max(0, 1 - (time.monotonic()-tick)))
+    finally:
+        streams.close()
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--run-dir', required=True)
+    ap.add_argument('--limit-s', type=int, default=840)
+    args = ap.parse_args()
+    run = allocated_run(args.run_dir)
+    collect(run, run.root / 'control' / 'native-telemetry.stop', args.limit_s)
+
+
+if __name__ == '__main__':
+    main()
