@@ -36,6 +36,15 @@ Training uses only the pinned Terminal-Lego or TMAX subset. Terminal-Bench 2.1
 remains evaluation-only. Held-out tests, solutions, verifier output, and oracle
 traces cannot enter policy inputs or training data.
 
+The prospective Terminal-Lego split is now recorded in
+`locks/terminal-lego-subset.json`: 512 training IDs and 128 development IDs from
+revision `9c197f1c2e87b64cc316b1a5bfcef57b584929f0`, with `task_00000` reserved
+only for runtime validation. Selection used deterministic ID hashes before any
+baseline outcomes. Sources are materialized and hash-verified, but images,
+reference-solution correctness and runtime eligibility are not yet validated.
+Failed tasks must remain in the accounting; any split amendment must be explicit
+and prospective, never a silent replacement selected after model outcomes.
+
 Use a separate development subset from the training corpus for curriculum and
 stopping decisions. Run the untouched TB2.1 suite at the pre-registered base and
 checkpoint points. Do not tune task selection, hyperparameters, checkpoint

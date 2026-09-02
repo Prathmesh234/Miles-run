@@ -57,6 +57,7 @@ def main():
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--tag', default='v1')
     ap.add_argument('--prefixes', nargs='+', default=list(PREFIXES))
+    ap.add_argument('--include-relpaths', nargs='*', default=[])
     args = ap.parse_args()
     run = Run(args.run_dir)
     phase = run.phase('00-diagnostic-evidence-sync' + ('-' + args.tag if args.tag != 'v1' else ''))
@@ -76,6 +77,14 @@ def main():
                 and p.relative_to(run.root/'tests').parts[0].startswith(tuple(args.prefixes))
                 and phase.path not in p.parents]
     selected += [p for p in (run.root/'reports').rglob('*') if p.is_file()]
+    for name in args.include_relpaths:
+        relative = Path(name)
+        if relative.is_absolute() or '..' in relative.parts:
+            raise ValueError('Additional evidence must stay inside the run.')
+        target = run.root / relative
+        if not target.exists() or target.is_symlink():
+            raise ValueError('Additional evidence is missing or linked.')
+        selected += [target] if target.is_file() else [p for p in target.rglob('*') if p.is_file()]
     selected += [source_path, run.root/'provenance/miles-patch-verification.tar.gz']
     files = {str(p.relative_to(run.root)): p for p in selected}
     worker = ['kubectl', '--kubeconfig', args.kubeconfig, '--request-timeout=0', '-n', 'slurm',

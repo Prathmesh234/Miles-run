@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 
 from evidence import Run, atomic
 
@@ -9,22 +10,23 @@ from evidence import Run, atomic
 REMOTE = r'''
 import hashlib,json,pathlib,shutil,sys,tarfile
 root=pathlib.Path(sys.argv[1]).resolve()
+attempt=int(sys.argv[2]);revision=sys.argv[3]
 if not root.is_relative_to('/shared/posttrainingx/runs/vultr-b200-slurm'):
  raise ValueError('Destination outside campaign run scope')
 sys.path.insert(0,str(root/'provenance/qwen-serving-code-v3'))
 from evidence import Run,atomic,sha256
-run=Run(root);phase=run.phase('00-pinned-training-source-materialization')
+run=Run(root);phase=run.phase('00-pinned-training-source-materialization'+(f'-v{attempt}' if attempt>1 else ''))
 try:
- source=root/'provenance/linux-launch-tests-v1'
+ source=root/f'provenance/linux-launch-tests-v{attempt}'
  manifest=json.loads((source/'manifest.json').read_text())
- if manifest['source_revision']!='b61dbe83ee815412b72c84ed367ffd329d7922d4':
+ if manifest['source_revision']!=revision:
   raise ValueError('Archive revision differs from committed campaign Miles')
  archive=source/'miles.tar.gz'
  if sha256(archive)!=manifest['source_archive_sha256']:
   raise ValueError('Pinned source archive checksum mismatch')
  if shutil.disk_usage(root).free < 2*1024**3:
   raise ValueError('Source preparation requires 2 GiB free')
- target=root/'provenance/training-source-v1'
+ target=root/f'provenance/training-source-v{attempt}'
  target.mkdir(exist_ok=False)
  omitted=[]
  with tarfile.open(archive) as tar:
@@ -68,15 +70,22 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run-dir', required=True)
     parser.add_argument('--kubeconfig', required=True)
+    parser.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
+    parser.add_argument('--miles-sha', default='b61dbe83ee815412b72c84ed367ffd329d7922d4')
     args = parser.parse_args()
     run = Run(args.run_dir)
-    phase = run.phase('00-pinned-training-source-materialization-controller')
+    if not re.fullmatch('[0-9a-f]{40}', args.miles_sha):
+        raise ValueError('An exact Miles commit is required.')
+    phase = run.phase('00-pinned-training-source-materialization-controller' +
+                      (f'-v{args.attempt}' if args.attempt > 1 else ''))
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
     rc, out, _ = phase.command(['kubectl', '--kubeconfig', str(Path(args.kubeconfig).resolve()), '-n', 'slurm',
-        'exec', 'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', REMOTE, remote], timeout=90)
+        'exec', 'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', REMOTE, remote,
+        str(args.attempt), args.miles_sha], timeout=90)
     receipt = json.loads(out) if not rc else {}
     if not rc:
-        atomic(run.root / 'provenance/training-source-materialization.json', receipt)
+        name = 'training-source-materialization' + (f'-v{args.attempt}' if args.attempt > 1 else '')
+        atomic(run.root / 'provenance' / (name + '.json'), receipt)
     phase.finish('ok' if not rc else 'fail', failure_summary='Source materialization failed; preserve partial directory.' if rc else None,
                  metadata=receipt)
     print(json.dumps(receipt))
