@@ -100,7 +100,9 @@ def audit_tensors(root, expected_ranks):
                 rows.append({'sample_index': index, 'group_index': sample['group_index'],
                              'rank': dump['rank'], 'raw_reward': sample['reward'],
                              'normalized_reward': expected[index], 'response_length': response_length,
-                             'sampled_loss_tokens': sum(sample['loss_mask'])})
+                             'sampled_loss_tokens': sum(sample['loss_mask']),
+                             'policy_versions': sample['weight_versions'],
+                             'spec_info': sample.get('spec_info')})
         if sorted(ranks) != list(range(expected_ranks)):
             raise ValueError('Missing, duplicate, or unexpected trainer rank dumps.')
         if sorted(seen) != sorted(samples):
@@ -113,7 +115,7 @@ def audit_tensors(root, expected_ranks):
         findings.append('Audit must not allocate GPUs.')
     return {'schema_version': 1, 'findings': findings, 'batches': batches, 'artifacts': artifacts,
             'native_samples': len(native), 'trained_input_samples': sum(len(b['samples']) for b in batches),
-            'scope': 'Exact sampled IDs/masks and float32 logprobs through trainer inputs; independent n8 GRPO normalization and finite response-aligned tensors. Dumps are pre-optimizer, not proof of updates, gradients, complete episode accounting, or quality improvement.'}
+            'scope': 'Exact sampled IDs/masks and float32 logprobs through trainer inputs; independent n8 GRPO normalization and finite response-aligned tensors. Retained training inputs do not independently prove optimizer updates, gradients, complete episode accounting, or quality improvement.'}
 
 
 def main():

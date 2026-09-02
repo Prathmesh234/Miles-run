@@ -2,12 +2,12 @@
   "active_submission": {
     "gpus": 32,
     "layout": "2t2r",
-    "miles_sha": "1e4d5af3f57cf4215e6793b60c4c59aebe1c9881",
+    "miles_sha": "df8cde5bedc0b19603b3f53433b5a00b76e1d687",
     "optimizer_steps_requested": 3,
-    "root_sha": "2ac625e8506b1e3b8b365fd00ab7d42d22132aff",
-    "scope": "Fresh three-step synchronous qualification; all32 ranks passed actual training-container IB all-reduce and node-local EP8 all-to-all. Ray/Qwen starting; no optimizer update yet verified for job141.",
-    "slurm_job_id": "141",
-    "status": "RUNNING;32-rank in-container IB gate passed",
+    "root_sha": "5687a1f8a4bef1938dbffa5dedc313897a29c4a9",
+    "scope": "Fresh sync validation: first update at22:57:57.204Z, gradient norm0.41870978474617004. Batch0 all16 native-to-trainer tensor identities/GRPO advantages passed. Overall run/checkpoints/resume/quality not yet qualified.",
+    "slurm_job_id": "143",
+    "status": "RUNNING at last authoritative observation; first optimizer update verified",
     "steps_requested": 3
   },
   "blocked_or_unvalidated": [
@@ -19,7 +19,7 @@
     {
       "gate": "Full infrastructure telemetry",
       "smallest_next_step": "Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps.",
-      "state": "Job139 finalized24 native/host-Lustre streams; one NVLink timeout occurred during second backward at22:18:42 and four collection-error records around shutdown. Full telemetry remains unqualified; no fabric-fault attribution."
+      "state": "Native collectors active for143. Delivered DCGM node3 returns NULL identities; CPU probe144 queued after143. Native timeout/fabric/RL completeness still requires final audit."
     },
     {
       "gate": "Broad launcher suite",
@@ -34,7 +34,7 @@
     {
       "gate": "GRPO, async and resume fidelity",
       "smallest_next_step": "Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated.",
-      "state": "Job139 executed two updates, but was stopped on an incomplete strict TITO gate. Narrow comparison fix passed pinned CPU replay; fresh GPU qualification required."
+      "state": "Job143 first optimizer update and batch0 tensor/advantage audit passed; remaining sync steps/checkpoints, async, and complete resume still unverified."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -44,7 +44,7 @@
     {
       "gate": "Task corpus and offline TB2.1 runtime",
       "smallest_next_step": "Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1.",
-      "state": "641 task sources verified. Pinned images and reference solutions qualified for four training IDs plus runtime task. TB2.1 evaluation remains unexecuted."
+      "state": "Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open."
     },
     {
       "gate": "Placement sweep and quality hill climb",
@@ -103,7 +103,13 @@
     "Job139 executed two real GRPO optimizer updates (gradient norms0.6023604/1.0913043) and saved two497,292,57x,xxx-byte checkpoints before operator gate stop. All four node phases finalized. Forty-eight durable graded episodes,32passed/16failed-task/zero grading errors; only32 samples accepted before stop. No held-out result.",
     "Pinned CPU replay reproduced all32 session comparisons. Candidate unfinished-message verification preserves all32 native sample fields; three expected final closers handled only in comparison; seven real-token negative controls rejected. Targeted launcher suite28passed; root suite39passed. Original failed replay wrapper retained.",
     "Read-only CPU A/B container discovery: baseline0verbs devices, explicit RDMA mount14 devices with eight active400G IB rails opened. V1 wrongly counted all active link types and remains failed; corrected link-layer/rate-qualified v2 passed. No global Enroot/Kubernetes settings changed.",
-    "Job141 mandatory container-fabric gate passed on32GPU ranks. All32 NCCL logs explicitly select IB and list all eight400G HCAs, with no Socket fallback/no-device errors. Two all-reduce message sizes and node-local EP8 all-to-all returned correct results; not a communication throughput benchmark."
+    "Job141 mandatory container-fabric gate passed on32GPU ranks. All32 NCCL logs explicitly select IB and list all eight400G HCAs, with no Socket fallback/no-device errors. Two all-reduce message sizes and node-local EP8 all-to-all returned correct results; not a communication throughput benchmark.",
+    "Job141 failed before optimizer on our adapter using chat_template_kwargs instead of Miles apply_chat_template_kwargs. Failure retained; corrected candidate replay preserved32 samples and rejected7 corruption cases;28 launcher tests passed.",
+    "Miles df8cde5 preserves MTP speculative counters through the sample wire protocol and fixes the renderer-argument field;20 codec tests passed in the pinned GPU image on CPU. No live source was mutated.",
+    "Job143:32-rank actual-container InfiniBand correctness gate passed; initial broadcast passed; first real optimizer update observed22:57:57.204Z. Independent CPU audit matched all16 batch0 sampled token IDs, float32 logprobs, masks, reward normalization, advantages and returns across all16 trainer ranks.",
+    "Job142 completed the separate hash-locked offline Verifiers0.3.1/Harbor0.21.0 image build and import gate. Image c2459626611736a65cc6f8e39f15af3d3c61880d3e7e1f7da1fd6bb9ea443f2f. No TB task executed.",
+    "Full641-source structural audit completed, preserving512 training/128 development/1 runtime IDs. All18 task base tags plus uv helper now have frozen digest bindings; original qualified pins unchanged. Image builds and full-corpus reference qualification remain pending.",
+    "Read-only DCGM discovery confirmed delivered node3 daemon reports8 active GPUs but24 NULL identity fields; other3 nodes report real identities. Separate run-owned read-only probe queued as CPU job144 after143; shared daemon untouched."
   ],
   "failed_slurm_jobs": [
     {
@@ -162,7 +168,7 @@
     134
   ],
   "model_trajectories_started": true,
-  "optimizer_steps_verified": 2,
+  "optimizer_steps_verified": "Job143:1 observed so far; prior failed job139:2 historical updates, excluded from clean benchmark",
   "proposed_optimizer_steps": 400,
   "quality_note": "Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. Two optimizer updates were observed in failed qualification job139. No held-out quality delta or complete resume has been verified; no improvement is guaranteed.",
   "quality_protocol": "docs/quality-protocol.md",
@@ -171,5 +177,5 @@
   "state": "in_progress",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-02T22:35:19.943723+00:00"
+  "updated_at": "2026-09-02T22:59:29.293015Z"
 }

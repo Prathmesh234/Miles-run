@@ -2,10 +2,10 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Optimizer steps verified: **2**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job143:1 observed so far; prior failed job139:2 historical updates, excluded from clean benchmark**. Held-out quality measured: **False**.
 
-Latest submission: Slurm **141**, 32 GPUs, 2t2r, 3 requested steps. Fresh three-step synchronous qualification; all32 ranks passed actual training-container IB all-reduce and node-local EP8 all-to-all. Ray/Qwen starting; no optimizer update yet verified for job141.
-Status snapshot: `2026-09-02T22:35:19.943723+00:00`; inspect Slurm for live state.
+Latest submission: Slurm **143**, 32 GPUs, 2t2r, 3 requested steps. Fresh sync validation: first update at22:57:57.204Z, gradient norm0.41870978474617004. Batch0 all16 native-to-trainer tensor identities/GRPO advantages passed. Overall run/checkpoints/resume/quality not yet qualified.
+Status snapshot: `2026-09-02T22:59:29.293015Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -50,18 +50,24 @@ Status snapshot: `2026-09-02T22:35:19.943723+00:00`; inspect Slurm for live stat
 - Pinned CPU replay reproduced all32 session comparisons. Candidate unfinished-message verification preserves all32 native sample fields; three expected final closers handled only in comparison; seven real-token negative controls rejected. Targeted launcher suite28passed; root suite39passed. Original failed replay wrapper retained.
 - Read-only CPU A/B container discovery: baseline0verbs devices, explicit RDMA mount14 devices with eight active400G IB rails opened. V1 wrongly counted all active link types and remains failed; corrected link-layer/rate-qualified v2 passed. No global Enroot/Kubernetes settings changed.
 - Job141 mandatory container-fabric gate passed on32GPU ranks. All32 NCCL logs explicitly select IB and list all eight400G HCAs, with no Socket fallback/no-device errors. Two all-reduce message sizes and node-local EP8 all-to-all returned correct results; not a communication throughput benchmark.
+- Job141 failed before optimizer on our adapter using chat_template_kwargs instead of Miles apply_chat_template_kwargs. Failure retained; corrected candidate replay preserved32 samples and rejected7 corruption cases;28 launcher tests passed.
+- Miles df8cde5 preserves MTP speculative counters through the sample wire protocol and fixes the renderer-argument field;20 codec tests passed in the pinned GPU image on CPU. No live source was mutated.
+- Job143:32-rank actual-container InfiniBand correctness gate passed; initial broadcast passed; first real optimizer update observed22:57:57.204Z. Independent CPU audit matched all16 batch0 sampled token IDs, float32 logprobs, masks, reward normalization, advantages and returns across all16 trainer ranks.
+- Job142 completed the separate hash-locked offline Verifiers0.3.1/Harbor0.21.0 image build and import gate. Image c2459626611736a65cc6f8e39f15af3d3c61880d3e7e1f7da1fd6bb9ea443f2f. No TB task executed.
+- Full641-source structural audit completed, preserving512 training/128 development/1 runtime IDs. All18 task base tags plus uv helper now have frozen digest bindings; original qualified pins unchanged. Image builds and full-corpus reference qualification remain pending.
+- Read-only DCGM discovery confirmed delivered node3 daemon reports8 active GPUs but24 NULL identity fields; other3 nodes report real identities. Separate run-owned read-only probe queued as CPU job144 after143; shared daemon untouched.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Ten live local-runtime checks passed in job134 for four training IDs and the separate runtime task. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Job139 finalized24 native/host-Lustre streams; one NVLink timeout occurred during second backward at22:18:42 and four collection-error records around shutdown. Full telemetry remains unqualified; no fabric-fault attribution. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
+| Full infrastructure telemetry | Native collectors active for143. Delivered DCGM node3 returns NULL identities; CPU probe144 queued after143. Native timeout/fabric/RL completeness still requires final audit. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Independently compare each loaded EP8 parameter shard against the qualified checkpoint, then compare teacher-forced logprobs with serving. Diagnostic cross-entropy is not GRPO correctness or optimizer/resume validation. |
-| GRPO, async and resume fidelity | Job139 executed two updates, but was stopped on an incomplete strict TITO gate. Narrow comparison fix passed pinned CPU replay; fresh GPU qualification required. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
+| GRPO, async and resume fidelity | Job143 first optimizer update and batch0 tensor/advantage audit passed; remaining sync steps/checkpoints, async, and complete resume still unverified. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
-| Task corpus and offline TB2.1 runtime | 641 task sources verified. Pinned images and reference solutions qualified for four training IDs plus runtime task. TB2.1 evaluation remains unexecuted. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
+| Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
 | Local sandbox disk quota | Docker VFS hard quota unsupported; file-only runtime uses read-only root and size-limited run-owned tmpfs volumes. Live isolation/timeout/cleanup tests passed. | Retain bounded resources and free-space guards; do not generalize this runtime to unrestricted service tasks. |
 | CollectiveX normal EP8 runtime | Pinned Miles image exports legacy Buffer, not required ElasticBuffer | Qualify a separate pinned collective runtime for DeepEP V2. Upstream setup overrides NCCL to2.30.4; do not apply it to Miles. No BF16/FP8 CollectiveX GPU case has run. |
