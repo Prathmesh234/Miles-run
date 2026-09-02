@@ -18,6 +18,7 @@ Run: `20260902-172037-a3b210`. Training started: **False**. Held-out quality mea
 - Native job 111: verified 2 GiB fio per node and 180 one-second host Lustre samples per node; all four collectors passed load coverage without errors. Host statistics are read-only mounts in run-owned pods; cluster settings unchanged.
 - Native job 112: all eight B200 GPUs in the node-0 Enroot container reconcile to the frozen UUIDs; deterministic BF16 matmul passed on every GPU. Run-scoped NVIDIA_VISIBLE_DEVICES=all; no model or optimizer step.
 - Root preparation/evidence suite: 17 tests passed. The full Miles suite remains at its previously documented baseline failures.
+- Terminal-Bench 2.1 evaluation metadata frozen: 89 ordered task IDs at git 7131e4375048a0e408a8fb404b5f499d726b695b. No task instructions, hidden tests, solutions or oracle files fetched by this metadata stage; Harbor 0.21 compatibility remains untested.
 
 ## Remaining gates
 
@@ -29,7 +30,7 @@ Run: `20260902-172037-a3b210`. Training started: **False**. Held-out quality mea
 | GPU runtime and provenance | model/image hashed; CPU provenance and eight-GPU runtime passed | Bind the committed Miles checkout instead of bundled image Miles, pin full Megatron git SHA, validate EP8 Qwen serving with MTP on/off, and convert/checksum the training checkpoint. |
 | GRPO, async and resume fidelity | not executed | Prove grouping/logprobs/gradient updates and full restart state. Miles async buffer/policy accounting restore is not implemented yet. |
 | 3T/1R batch compatibility | unvalidated | Check pinned Megatron dense-DP microbatch divisibility. Do not silently round or drop the fixed global batch. |
-| Task corpus and offline TB2.1 runtime | not executed | Pin ordered clean training subset and untouched evaluation suite; validate environment and evaluator before examining baseline outcomes. |
+| Task corpus and offline TB2.1 runtime | TB2.1 evaluation metadata pinned; clean training subset and evaluator not validated | Freeze a diverse clean training subset; fetch evaluation files only into an isolated evaluator workspace, pin task images, and run the separate Verifiers/Harbor smoke before baseline outcomes. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
 
 ## Quality budget
