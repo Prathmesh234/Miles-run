@@ -38,9 +38,21 @@ from prepare_local_task_images import offline_harness, pin_dockerfile
 from local_file_env import validate_archive, tree_archive, atomic_bytes, archive_contents, FileTaskSession
 from grpo_node import cleanup_actions
 from audit_grpo_attempt import audit_remote as audit_grpo_remote
+from audit_local_episodes import summarize_episode
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_episode_audit_keeps_missing_verdict_distinct_and_rejects_leaky_order(self):
+        def rows(events):
+            return [dict(event=e, episode_id='episode', task_id='task', time=str(i), monotonic_s=i,
+                         **({'reward': 0.0} if e == 'graded' else {})) for i, e in enumerate(events)]
+        missing = summarize_episode(rows(['created', 'workspace_volume_created', 'workspace_volume_removed']))
+        self.assertEqual((missing['category'], missing['reward'], missing['findings']), ('no_verdict', None, []))
+        failed = summarize_episode(rows(['created', 'policy_stopped', 'grader_assets_staged', 'graded']))
+        self.assertEqual((failed['category'], failed['reward'], failed['findings']), ('graded', 0.0, []))
+        unsafe = summarize_episode(rows(['created', 'grader_assets_staged', 'policy_stopped', 'graded']))
+        self.assertTrue(unsafe['findings'])
+
     def test_grpo_audit_refuses_live_allocation(self):
         with patch('subprocess.check_output', return_value='138|RUNNING|0:0|00:01:00|start|Unknown|nodes\n'):
             with self.assertRaisesRegex(ValueError, 'not unambiguously terminal'):
