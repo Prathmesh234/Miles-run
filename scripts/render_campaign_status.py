@@ -8,8 +8,14 @@ from evidence import atomic
 
 def render(data):
     lines = ['# Campaign status', '', 'Generated from `docs/current-status.json`.', '',
-             f"Run: `{data['run_id']}`. Training started: **{data['training_started']}**. "
-             f"Held-out quality measured: **{data['heldout_quality_measured']}**.", '', '## Completed work', '']
+             f"Run: `{data['run_id']}`. Optimizer steps verified: **{data.get('optimizer_steps_verified', 'unverified')}**. "
+             f"Held-out quality measured: **{data['heldout_quality_measured']}**."]
+    if data.get('active_submission'):
+        current = data['active_submission']
+        lines += ['', f"Latest submission: Slurm **{current['slurm_job_id']}**, {current['gpus']} GPUs, "
+                  f"{current['layout']}, {current['steps_requested']} requested steps. {current['scope']}",
+                  f"Status snapshot: `{data.get('updated_at', 'unknown')}`; inspect Slurm for live state."]
+    lines += ['', '## Historical milestones (later gates supersede earlier limits)', '']
     lines.extend('- ' + item for item in data['completed'])
     lines += ['', '## Remaining gates', '', '| Gate | State | Smallest next step |', '|---|---|---|']
     for gate in data['blocked_or_unvalidated']:

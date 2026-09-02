@@ -2,9 +2,12 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Training started: **False**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **0**. Held-out quality measured: **False**.
 
-## Completed work
+Latest submission: Slurm **139**, 32 GPUs, 2t2r, 3 requested steps. Initial synchronous validation. Submission is not optimizer execution or quality success.
+Status snapshot: `2026-09-02T22:05:10.417681Z`; inspect Slurm for live state.
+
+## Historical milestones (later gates supersede earlier limits)
 
 - Native job 109: four nodes, 32 reconciled B200 GPUs, all-reduce correctness on each node and all four nodes, 256 MiB verified fio per node.
 - Committed B200 Miles launcher, whole-node host mapping and safe external-Ray option. Four patches replay to the exact same Git tree.
@@ -39,22 +42,26 @@ Run: `20260902-172037-a3b210`. Training started: **False**. Held-out quality mea
 - Independent finalized-record audit passed for job120: eight distinct CUDA UUIDs,128-token packed input per rank,127 finite teacher-forced logprobs consistent with diagnostic CE, raw gradient counts cross-checked. This is not independent shard-value parity, serving-logprob equivalence, GRPO, resume or quality validation.
 - Job120 telemetry: six finalized streams with zero collector errors,329 native sampling ticks and348 host-Lustre ticks; maximum native gap2.58s. Generated554 per-entity metric distributions and13,838 plot-source rows. No counter discontinuities. Reports/trainer-probe-v1 JSON/Markdown/PNG retain explicit non-steady-state and non-process-exclusive caveats.
 - Root preparation/evidence suite now31passed. Reporting dependency check failed because .venv-launch-tests lacks Matplotlib; original failure retained. Rendering used the pre-existing isolated Python3.12.11/Matplotlib3.10.6 analysis environment with package freeze captured. No training-stack package changes.
+- Job134 completed with ten live CPU runtime checks: five reference solutions, sealed background-process isolation, failed-task versus grader-error distinction, command timeout, maintained OpenEnv WebSocket roundtrip and no leaked containers. No model or optimizer in that job.
+- Job138 passed initial broadcast and target/MTP weight equality on both EP8 rollout engines using Triton MoE. Model-driven local terminal execution produced a first recorded reward1.0, but our text-only placeholder guard stopped the first group before optimization.
+- Pinned-image CPU reproduction confirmed all four Qwen text-only prompts produce images=None/videos=None. Miles1181014c3 permits these placeholders, still rejects media/invalid groups and saves full pre-optimizer native group evidence. Nineteen targeted tests passed; root evidence/cleanup suite38passed.
+- Post-allocation audits retained jobs137/138 as failed, including collection timeouts and incomplete node-finalization artifacts. Rootafcbf71 adds coordinated peer-failure cleanup and a read-only terminal audit. No historical results overwritten.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
-| Hidden-test isolation | failed source review | Archive-staging hardening passed unit tests. Still implement and adversarially test local policy/grader separation, resource/network limits, and a dependency-compatible client before policy execution. |
-| Full infrastructure telemetry | partially recovered; full gate still open | Use validated perfquery and host Lustre collectors in workload launchers. DCGM still misses node 3; full required GPU/fabric/CPU/Ray/SGLang/Miles coverage has not been proved during RL. |
+| Hidden-test isolation | Ten live local-runtime checks passed in job134 for four training IDs and the separate runtime task. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
+| Full infrastructure telemetry | Native GPU/NVLink/IB/CPU and host-Lustre streams captured across all four GRPO nodes; GPU/NVLink collection timeouts occurred around weight broadcasts in jobs137/138. Full gate remains open. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Independently compare each loaded EP8 parameter shard against the qualified checkpoint, then compare teacher-forced logprobs with serving. Diagnostic cross-entropy is not GRPO correctness or optimizer/resume validation. |
-| GRPO, async and resume fidelity | not executed | Prove grouping/logprobs/gradient updates and full restart state. Miles async buffer/policy accounting restore is not implemented yet. |
+| GRPO, async and resume fidelity | Job138 passed target/MTP broadcast equality and generated local terminal trajectories, then failed our false-positive text-only guard before optimizer execution. Job139 submitted with the tested fix. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
-| Task corpus and offline TB2.1 runtime | Prospective clean split pinned; 641 controller-only task sources and all5097 files verified. Runtime and evaluator remain unvalidated. | Pin task image digests and validate local sandbox/grader isolation, task correctness and separate offline Verifiers/Harbor runtime. Never replace failed tasks implicitly or train on TB2.1. |
+| Task corpus and offline TB2.1 runtime | 641 task sources verified. Pinned images and reference solutions qualified for four training IDs plus runtime task. TB2.1 evaluation remains unexecuted. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
-| Local sandbox disk quota | Hard quota probe failed before task container start | Docker VFS backing filesystem does not support the requested per-container quota. Qualify a bounded alternative with free-space monitoring; no daemon/cluster changes or implicit resource guarantees. |
+| Local sandbox disk quota | Docker VFS hard quota unsupported; file-only runtime uses read-only root and size-limited run-owned tmpfs volumes. Live isolation/timeout/cleanup tests passed. | Retain bounded resources and free-space guards; do not generalize this runtime to unrestricted service tasks. |
 | CollectiveX normal EP8 runtime | Pinned Miles image exports legacy Buffer, not required ElasticBuffer | Qualify a separate pinned collective runtime for DeepEP V2. Upstream setup overrides NCCL to2.30.4; do not apply it to Miles. No BF16/FP8 CollectiveX GPU case has run. |
 
 ## Quality budget
 
-Initial plan: 400 optimizer steps, with TB2.1 evaluation at steps 0/50/100/200/400 and approximately one-second infrastructure collectors throughout. Prospective common batch96 implies 38,400 eligible training trajectories; Stage4 reference remains64. Budget cap and remaining correctness/isolation gates still need resolution. This is not a guarantee of improvement; training and held-out quality measurement have not started.
+Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. No optimizer step or held-out quality delta has yet been verified, and no improvement is guaranteed.

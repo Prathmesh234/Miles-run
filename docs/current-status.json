@@ -1,14 +1,23 @@
 {
+  "active_submission": {
+    "gpus": 32,
+    "layout": "2t2r",
+    "miles_sha": "1181014c3c78ed290d4e53fbc33ef8d4cdb1949a",
+    "root_sha": "afcbf71f0db9cd828b8e680a1054cb7b68dc9a31",
+    "scope": "Initial synchronous validation. Submission is not optimizer execution or quality success.",
+    "slurm_job_id": 139,
+    "steps_requested": 3
+  },
   "blocked_or_unvalidated": [
     {
       "gate": "Hidden-test isolation",
-      "smallest_next_step": "Archive-staging hardening passed unit tests. Still implement and adversarially test local policy/grader separation, resource/network limits, and a dependency-compatible client before policy execution.",
-      "state": "failed source review"
+      "smallest_next_step": "Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency.",
+      "state": "Ten live local-runtime checks passed in job134 for four training IDs and the separate runtime task."
     },
     {
       "gate": "Full infrastructure telemetry",
-      "smallest_next_step": "Use validated perfquery and host Lustre collectors in workload launchers. DCGM still misses node 3; full required GPU/fabric/CPU/Ray/SGLang/Miles coverage has not been proved during RL.",
-      "state": "partially recovered; full gate still open"
+      "smallest_next_step": "Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps.",
+      "state": "Native GPU/NVLink/IB/CPU and host-Lustre streams captured across all four GRPO nodes; GPU/NVLink collection timeouts occurred around weight broadcasts in jobs137/138. Full gate remains open."
     },
     {
       "gate": "Broad launcher suite",
@@ -22,8 +31,8 @@
     },
     {
       "gate": "GRPO, async and resume fidelity",
-      "smallest_next_step": "Prove grouping/logprobs/gradient updates and full restart state. Miles async buffer/policy accounting restore is not implemented yet.",
-      "state": "not executed"
+      "smallest_next_step": "Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated.",
+      "state": "Job138 passed target/MTP broadcast equality and generated local terminal trajectories, then failed our false-positive text-only guard before optimizer execution. Job139 submitted with the tested fix."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -32,8 +41,8 @@
     },
     {
       "gate": "Task corpus and offline TB2.1 runtime",
-      "smallest_next_step": "Pin task image digests and validate local sandbox/grader isolation, task correctness and separate offline Verifiers/Harbor runtime. Never replace failed tasks implicitly or train on TB2.1.",
-      "state": "Prospective clean split pinned; 641 controller-only task sources and all5097 files verified. Runtime and evaluator remain unvalidated."
+      "smallest_next_step": "Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1.",
+      "state": "641 task sources verified. Pinned images and reference solutions qualified for four training IDs plus runtime task. TB2.1 evaluation remains unexecuted."
     },
     {
       "gate": "Placement sweep and quality hill climb",
@@ -42,8 +51,8 @@
     },
     {
       "gate": "Local sandbox disk quota",
-      "smallest_next_step": "Docker VFS backing filesystem does not support the requested per-container quota. Qualify a bounded alternative with free-space monitoring; no daemon/cluster changes or implicit resource guarantees.",
-      "state": "Hard quota probe failed before task container start"
+      "smallest_next_step": "Retain bounded resources and free-space guards; do not generalize this runtime to unrestricted service tasks.",
+      "state": "Docker VFS hard quota unsupported; file-only runtime uses read-only root and size-limited run-owned tmpfs volumes. Live isolation/timeout/cleanup tests passed."
     },
     {
       "gate": "CollectiveX normal EP8 runtime",
@@ -84,7 +93,11 @@
     "Job120 completed exit0 in5m51s on node0: all eight ranks resolved TP1/EP8/PP1/CP1/ETP1, denseDP8/expertDP1, retained native MTP and loaded the converted checkpoint. Each rank recorded3,191 identical before/after parameter hashes; all gradient buffers finite with nonzero main/MTP gradients. No optimizer or scheduler was constructed, zero optimizer steps.",
     "Independent finalized-record audit passed for job120: eight distinct CUDA UUIDs,128-token packed input per rank,127 finite teacher-forced logprobs consistent with diagnostic CE, raw gradient counts cross-checked. This is not independent shard-value parity, serving-logprob equivalence, GRPO, resume or quality validation.",
     "Job120 telemetry: six finalized streams with zero collector errors,329 native sampling ticks and348 host-Lustre ticks; maximum native gap2.58s. Generated554 per-entity metric distributions and13,838 plot-source rows. No counter discontinuities. Reports/trainer-probe-v1 JSON/Markdown/PNG retain explicit non-steady-state and non-process-exclusive caveats.",
-    "Root preparation/evidence suite now31passed. Reporting dependency check failed because .venv-launch-tests lacks Matplotlib; original failure retained. Rendering used the pre-existing isolated Python3.12.11/Matplotlib3.10.6 analysis environment with package freeze captured. No training-stack package changes."
+    "Root preparation/evidence suite now31passed. Reporting dependency check failed because .venv-launch-tests lacks Matplotlib; original failure retained. Rendering used the pre-existing isolated Python3.12.11/Matplotlib3.10.6 analysis environment with package freeze captured. No training-stack package changes.",
+    "Job134 completed with ten live CPU runtime checks: five reference solutions, sealed background-process isolation, failed-task versus grader-error distinction, command timeout, maintained OpenEnv WebSocket roundtrip and no leaked containers. No model or optimizer in that job.",
+    "Job138 passed initial broadcast and target/MTP weight equality on both EP8 rollout engines using Triton MoE. Model-driven local terminal execution produced a first recorded reward1.0, but our text-only placeholder guard stopped the first group before optimization.",
+    "Pinned-image CPU reproduction confirmed all four Qwen text-only prompts produce images=None/videos=None. Miles1181014c3 permits these placeholders, still rejects media/invalid groups and saves full pre-optimizer native group evidence. Nineteen targeted tests passed; root evidence/cleanup suite38passed.",
+    "Post-allocation audits retained jobs137/138 as failed, including collection timeouts and incomplete node-finalization artifacts. Rootafcbf71 adds coordinated peer-failure cleanup and a read-only terminal audit. No historical results overwritten."
   ],
   "failed_slurm_jobs": [
     {
@@ -102,6 +115,22 @@
     {
       "job_id": 118,
       "reason": "Strict dtype parity rejected30 intentional A_log BF16-to-FP32 widenings. Independent diagnostic proved exact values; separate contractv2/job119 subsequently qualified the documented widenings. Original failure retained."
+    },
+    {
+      "job_id": 135,
+      "reason": "Lustre collector CLI capped duration at3600s while launch requested5460s; stopped before model execution. Parser fixed in scoped commit."
+    },
+    {
+      "job_id": 136,
+      "reason": "Explicit Ray host placement queried state before connecting to existing cluster; fixed ray.init(address=auto), no new shared Ray service."
+    },
+    {
+      "job_id": 137,
+      "reason": "SGLang auto FlashInfer BF16 packed expert hot reload rejected64-versus2048 shape. CPU image-source reproduction confirmed; Triton control and job138 target/MTP equality passed."
+    },
+    {
+      "job_id": 138,
+      "reason": "False-positive custom text-only guard treated null media placeholders as actual media. Image-native CPU reproduction and targeted negative controls passed; no optimizer steps executed."
     }
   ],
   "heldout_quality_measured": false,
@@ -113,13 +142,20 @@
     115,
     117,
     119,
-    120
+    120,
+    126,
+    127,
+    134
   ],
+  "model_trajectories_started": true,
+  "optimizer_steps_verified": 0,
   "proposed_optimizer_steps": 400,
-  "quality_note": "Initial plan: 400 optimizer steps, with TB2.1 evaluation at steps 0/50/100/200/400 and approximately one-second infrastructure collectors throughout. Prospective common batch96 implies 38,400 eligible training trajectories; Stage4 reference remains64. Budget cap and remaining correctness/isolation gates still need resolution. This is not a guarantee of improvement; training and held-out quality measurement have not started.",
+  "quality_note": "Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at0/50/100/200/400 after correctness and infrastructure gates. The three-step validation is not the quality budget. Prospective common batch96 implies38,400 eligible trajectories; Stage4 reference remains64. No optimizer step or held-out quality delta has yet been verified, and no improvement is guaranteed.",
   "quality_protocol": "docs/quality-protocol.md",
   "run_id": "20260902-172037-a3b210",
   "schema_version": 1,
   "state": "in_progress",
-  "training_started": false
+  "training_job_submitted": true,
+  "training_started": false,
+  "updated_at": "2026-09-02T22:05:10.417681Z"
 }
