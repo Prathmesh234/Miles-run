@@ -22,6 +22,7 @@ import io
 import threading
 from validate_fabric_under_load import validate_records
 from telemetry_lustre_host import stats_records
+from enroot_run_config import prepare as prepare_enroot_config
 
 
 class EvidenceTests(unittest.TestCase):
@@ -54,6 +55,22 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_enroot_hook_patch_is_run_scoped_and_rejects_unexpected_hook(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / 'system'
+            hook = source / 'hooks.d/10-devices.sh'
+            hook.parent.mkdir(parents=True)
+            original = '#!/bin/bash\n/dev/log /dev/log none x-create=file,bind,rw,private\n'
+            hook.write_text(original)
+            env = prepare_enroot_config(Path(tmp) / 'run', source)
+            self.assertEqual(hook.read_text(), original)
+            self.assertEqual((Path(env['ENROOT_SYSCONF_PATH']) / 'hooks.d/10-devices.sh').read_text(),
+                             original.replace('private', 'private,nofail,silent'))
+            self.assertEqual(env['ENROOT_MOUNT_HOME'], 'n')
+            hook.write_text('#!/bin/bash\n')
+            with self.assertRaises(ValueError):
+                prepare_enroot_config(Path(tmp) / 'invalid-run', source)
+
     def test_lustre_aggregate_units_and_saturated_moment_are_not_invented(self):
         text = 'snapshot_time 123 secs.nsecs\nread_bytes 4 samples [bytes] 1 8 16 9223372036854775807\nopen 2 samples [usecs] 1 3 4 10\nioctl 3 samples [reqs]\n'
         rows = {r['metric']: r for r in stats_records(text)}
