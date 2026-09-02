@@ -99,7 +99,8 @@ def container_options(image, name, run_id, role, mounts=None):
                 tmpfs={'/tmp': 'rw,nosuid,nodev,size=128m,mode=1777', '/run': 'rw,nosuid,nodev,size=16m,mode=0755'},
                 labels={'posttrainingx.run': run_id, 'posttrainingx.role': role},
                 environment={'LANG': 'C.UTF-8', 'UV_OFFLINE': '1', 'UV_PYTHON_DOWNLOADS': 'never',
-                             'UV_PYTHON_PREFERENCE': 'only-managed', 'PYTHONNOUSERSITE': '1'},
+                             'UV_PYTHON_PREFERENCE': 'only-managed', 'PYTHONNOUSERSITE': '1',
+                             'UV_TOOL_DIR': '/tmp/uv-tools', 'UV_TOOL_BIN_DIR': '/tmp/uv-bin'},
                 log_config={'Type': 'json-file', 'Config': {'max-size': '1m', 'max-file': '1'}})
 
 
