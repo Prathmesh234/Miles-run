@@ -26,6 +26,7 @@ def main():
     archive = gzip.compress(subprocess.check_output(['git', '-C', str(repo / 'vendor/openenv'), 'archive', openenv,
                                                     'src/openenv', 'envs/tbench2_env']), mtime=0)
     lock = (repo / 'locks/openenv-server-py312-linux.lock').read_bytes()
+    lock_chunks = [lock[i:i+32*1024] for i in range(0, len(lock), 32*1024)]
     phase = run.phase(f'02-local-openenv-image-submission-v{args.attempt}')
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
     prefix = f'provenance/local-openenv-image-code-v{args.attempt}/'
@@ -34,10 +35,12 @@ def main():
     chunks = [archive[i:i+32*1024] for i in range(0, len(archive), 32*1024)]
     for i, chunk in enumerate(chunks):
         files[prefix + f'archive-parts/{i:04d}'] = entry(chunk)
-    files[prefix + 'server.lock'] = entry(lock)
+    for i, chunk in enumerate(lock_chunks):
+        files[prefix + f'lock-parts/{i:04d}'] = entry(chunk)
     manifest = {'openenv_revision': openenv, 'root_revision': revision,
                 'archive_sha256': hashlib.sha256(archive).hexdigest(), 'archive_parts': len(chunks),
-                'files': {'server.lock': hashlib.sha256(lock).hexdigest(),
+                'lock_sha256': hashlib.sha256(lock).hexdigest(), 'lock_parts': len(lock_chunks),
+                'files': {**{f'lock-parts/{i:04d}': hashlib.sha256(chunk).hexdigest() for i, chunk in enumerate(lock_chunks)},
                           **{f'archive-parts/{i:04d}': hashlib.sha256(chunk).hexdigest() for i, chunk in enumerate(chunks)}}}
     files[prefix + 'input-manifest.json'] = entry(json.dumps(manifest, sort_keys=True).encode())
     argv = ['python3', remote + '/' + prefix + 'build_local_openenv_runtime.py', '--run-dir', remote, '--attempt', str(args.attempt)]

@@ -40,7 +40,10 @@ def main():
                 if path.is_absolute() or '..' in path.parts or not (member.isfile() or member.isdir()):
                     raise ValueError('Unsafe OpenEnv source archive member.')
             archive.extractall(source, filter='data')
-        shutil.copyfile(code / 'server.lock', parent / 'server.lock')
+        lock = b''.join((code / f'lock-parts/{i:04d}').read_bytes() for i in range(manifest['lock_parts']))
+        if hashlib.sha256(lock).hexdigest() != manifest['lock_sha256']:
+            raise ValueError('Reassembled controller dependency lock changed.')
+        atomic(parent / 'server.lock', lock.decode())
         atomic(parent / 'Dockerfile', 'FROM ' + IMAGE + '\n'
                'COPY server.lock /opt/server.lock\n'
                'RUN python -m pip install --no-cache-dir --require-hashes -r /opt/server.lock\n'
