@@ -73,6 +73,20 @@ def tree_archive(source, root_name, overrides=None):
     return payload
 
 
+def archive_contents(payload, root_name):
+    """Upload *inside* a writable tmpfs, never through its read-only parent."""
+    validate_archive(payload, root_name)
+    output = io.BytesIO()
+    with tarfile.open(fileobj=io.BytesIO(payload), mode='r:') as source, tarfile.open(fileobj=output, mode='w') as target:
+        for member in source:
+            parts = PurePosixPath(member.name).parts
+            if len(parts) == 1:
+                continue
+            member.name = str(PurePosixPath(*parts[1:]))
+            target.addfile(member, source.extractfile(member) if member.isfile() else None)
+    return output.getvalue()
+
+
 def container_options(image, name, run_id, role):
     if not image.startswith('sha256:') or len(image) != 71:
         raise ValueError('Task containers require an immutable local image ID.')
@@ -129,7 +143,7 @@ class FileTaskSession:
                 raise ValueError('Initialized public image filesystem changed.')
             data = initial.read_bytes()
             validate_archive(data, 'task_file')
-            if not self.container.put_archive('/app', data):
+            if not self.container.put_archive('/app/task_file', archive_contents(data, 'task_file')):
                 raise RuntimeError('Public task upload failed.')
             self.record('ready', container_id=self.container.id, staged_public_sha256=hashlib.sha256(data).hexdigest())
         except Exception:
@@ -266,7 +280,8 @@ class FileTaskSession:
                     self.task['grader_image_id'], 'ptx-grader-' + self.episode, self.root.name, 'grader'))
                 self.verify_container(self.grader, 'grader')
                 tests = tree_archive(self.source / 'tests', 'tests', {'test.sh': self.harness})
-                if not self.grader.put_archive('/app', payload) or not self.grader.put_archive('/', tests):
+                if (not self.grader.put_archive('/app/task_file', archive_contents(payload, 'task_file'))
+                        or not self.grader.put_archive('/tests', archive_contents(tests, 'tests'))):
                     raise RuntimeError('Grader-only snapshot or tests upload failed.')
                 self.record('grader_assets_staged', grader_container_id=self.grader.id,
                             tests_archive_sha256=hashlib.sha256(tests).hexdigest())
