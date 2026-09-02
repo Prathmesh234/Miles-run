@@ -33,6 +33,7 @@ from materialize_terminal_lego_lfs import copy_verified_sources, lfs_item, track
 from trainer_probe import trainer_command, parameter_hashes, gradient_statistics
 from audit_trainer_probe import validate_rank_evidence
 from report_trainer_probe import analyze_streams
+from prepare_local_task_images import offline_harness, pin_dockerfile
 
 
 class EvidenceTests(unittest.TestCase):
@@ -76,6 +77,24 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_offline_harness_preserves_scoring_and_refuses_unknown_setup(self):
+        setup = ('#!/bin/bash\napt-get update\napt-get install -y curl\n'
+                 'curl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh\n'
+                 'source $HOME/.local/bin/env\n')
+        scoring = ('# Run pytest tests\nuvx -p 3.13 -w pytest==8.4.1 -w pytest-json-ctrf==0.3.5 '
+                   'pytest --ctrf /logs/verifier/ctrf.json /tests/test_outputs.py -rA\n'
+                   'if [ $? -eq 0 ]; then echo 1 > /logs/verifier/reward.txt; fi\n')
+        self.assertTrue(offline_harness(setup + scoring).endswith(scoring))
+        with self.assertRaises(ValueError):
+            offline_harness(setup + 'echo unexpected mutation\n' + scoring)
+        with self.assertRaises(ValueError):
+            offline_harness((setup + scoring).replace('0.9.5/install', 'latest/install'))
+        original = 'FROM ubuntu:22.04\nWORKDIR /app\n'
+        pinned = 'ubuntu@sha256:' + 'a' * 64
+        self.assertEqual(pin_dockerfile(original, {'ubuntu:22.04': pinned}), 'FROM ' + pinned + '\nWORKDIR /app\n')
+        with self.assertRaises(ValueError):
+            pin_dockerfile(original + 'FROM node:20\n', {'ubuntu:22.04': pinned})
+
     def test_trainer_report_preserves_counter_gaps_and_rechecks_source_hashes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
