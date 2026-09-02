@@ -36,12 +36,14 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, required=True)
+    ap.add_argument('--observation-path', help='Run-relative immutable optimizer observation JSON.')
     args = ap.parse_args()
     run = Run(args.run_dir)
     phase = run.phase(f'02-grpo-infrastructure-report-v{args.attempt}')
     audit_path = run.root / f'tests/02-sync-grpo-result-audit-v{args.attempt}/audit.json'
     audit = json.loads(audit_path.read_text())
-    observed = json.loads((run.root / f'tests/02-sync-grpo-v{args.attempt}-optimizer-observation/result.json').read_text())
+    observation_path = args.observation_path or f'tests/02-sync-grpo-v{args.attempt}-optimizer-observation/result.json'
+    observed = json.loads((run.root / observation_path).read_text())
     program = ('import json,math,statistics,sys\nfrom pathlib import Path\nfrom collections import defaultdict\n'
         + '\n'.join(inspect.getsource(fn) for fn in (percentile, summary, counter_rate, analyze_streams))
         + '\nprint(json.dumps(analyze_streams(Path(sys.argv[1]),json.loads(sys.argv[2])),allow_nan=False))')
@@ -53,12 +55,13 @@ def main():
         return 1
     data = json.loads(out)
     data.update(schema_version=1, attempt=args.attempt, slurm_job_id=audit['slurm_job_id'],
-        scope='Exploratory failed qualification, not a controlled role comparison or steady-state performance claim.',
+        scope='Exploratory qualification, not a controlled role comparison or steady-state performance claim.',
         qualification_status=observed['qualification_status'], optimizer_steps_observed=observed['optimizer_steps_observed'],
         audit_path=str(audit_path.relative_to(run.root)), audit_sha256=sha256(audit_path),
-        limitations=[observed['failure'], 'Includes model startup, cold compilation, checkpoints and shutdown.',
+        limitations=observed.get('limitations', [observed.get('failure', 'Qualification incomplete.')]) + [
+            'Includes model startup, cold compilation, checkpoints and shutdown.',
             'Host IB and Lustre counters are not process-exclusive. Node/GPU roles differ; outliers do not diagnose hardware faults.',
-            'One NVLink command timed out during backward; other native collection errors occurred near shutdown. Missing samples remain missing.',
+            'Native collector errors remain in raw evidence and missing samples are not zero-filled. See the per-run error diagnosis for timing.',
             'Complete DCGM/XID/throttle, async queue/staleness and all required RL telemetry are not qualified.',
             'No held-out quality improvement or full checkpoint/resume equivalence demonstrated.'])
     target = run.root / f'reports/grpo-v{args.attempt}-infrastructure.json'
@@ -67,7 +70,7 @@ def main():
     atomic(target, data)
     frozen = json.loads(target.read_text())
     atomic(target.with_suffix('.md'), render(frozen))
-    plot(frozen, target.with_suffix('.png'), title=f"Job{audit['slurm_job_id']}: failed 2T/2R GRPO qualification; two observed updates\nIncludes startup/JIT/checkpoints/shutdown. Host fabric/storage counters are not process-exclusive.")
+    plot(frozen, target.with_suffix('.png'), title=f"Job {audit['slurm_job_id']}: 2T/2R GRPO qualification; {observed['optimizer_steps_observed']} observed updates\nIncludes startup/JIT/checkpoints/shutdown. Host fabric/storage counters are not process-exclusive.")
     phase.finish('fail' if data['findings'] else 'ok',
         failure_summary='; '.join(sorted(set(data['findings']))) or None,
         results=[metric('telemetry_distribution_count', len(data['distributions']), 'count')],

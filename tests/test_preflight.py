@@ -43,6 +43,23 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_optimizer_log_parser_deduplicates_actual_log_shape_and_rejects_conflicts(self):
+        from observe_grpo_log import parse_log
+
+        first = "[2026-09-02 22:57:57.204 actor_cell0_rank0] log_utils.py:544 - step 0: {'train/step': 0, 'train/grad_norm': 0.4}"
+        duplicate = first.replace('log_utils.py:544', 'model.py:861')
+        data = parse_log(first + '\n' + duplicate)
+        self.assertEqual(len(data['steps']), 1)
+        self.assertEqual(data['steps'][0]['time'], '2026-09-02T22:57:57.204Z')
+        rollout = "[2026-09-02 22:55:01.707 rollout_manager] metrics.py:89 - perf 0: {'rollout/episode_raw_reward': 0.5}"
+        trainer = "[2026-09-02 22:57:57.480 actor_cell0_rank0] train_metric_utils.py:56 - perf 0: {'perf/train_time': 175.4}"
+        performance = parse_log('\n'.join([first, rollout, trainer]))['performance']
+        self.assertEqual({row['role'] for row in performance}, {'rollout', 'trainer'})
+        with self.assertRaisesRegex(ValueError, 'Conflicting'):
+            parse_log(first + '\n' + duplicate.replace('0.4', '0.5'))
+        with self.assertRaisesRegex(ValueError, 'No optimizer'):
+            parse_log('A completed job without usable metric records')
+
     def test_openenv_state_identity_is_separate_from_policy_observation(self):
         import asyncio
         from unittest.mock import AsyncMock
