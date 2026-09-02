@@ -18,8 +18,10 @@ until its token, logprob, grouping, renderer, reward, trace, and gradient tests 
 
 All initial cluster inspection is read-only. Cluster configuration, firmware,
 devices, and shared data are not changed. Allocations specify `gpu-nodes` and own
-whole 8-GPU nodes. All campaign writes on the cluster are confined to the unique
-directory under `/shared/posttrainingx/runs/vultr-b200-slurm/<run-id>/`.
+whole 8-GPU nodes. Persistent campaign evidence, task data, and checkpoints belong
+to the unique directory under `/shared/posttrainingx/runs/vultr-b200-slurm/<run-id>/`.
+Run-owned diagnostic containers also use private writable layers; normal image
+caches live in the container runtime's storage. Shared user data is not cleaned up.
 A failed gate is preserved and stops dependent execution. Any fix needs an
 explicit intervention entry and, when the user requires it, operator approval.
 
@@ -55,6 +57,36 @@ failures to infrastructure, Miles, model recipe, environment, or configuration.
 The proposed longer run uses 400 optimizer steps, separate from the 2–5-step
 correctness test. Its evaluation protocol and unresolved resource budget are
 recorded in [docs/quality-protocol.md](docs/quality-protocol.md).
+
+## Implementation and current evidence
+
+The committed Miles implementation and exact base/patched revisions are recorded
+in [patches/manifest.json](patches/manifest.json). The three commits replay onto
+the pinned upstream base with an identical final source tree. The launcher
+supports all three whole-node layouts and requires an external, explicitly mapped
+Ray cluster. CPU tests do not prove placement or training correctness on GPUs.
+
+[The compatibility report](docs/compatibility.md) separates the blocked strict
+online combination from OpenEnv online training and separately locked offline
+evaluation. [The current status](docs/current-status.md) lists the failed and
+unvalidated gates. No model training or Terminal-Bench quality result exists yet.
+
+To resolve the documented dependency combinations without installing them:
+
+```sh
+python3 scripts/check_compatibility.py --run-dir /absolute/path/to/a/fresh/run
+```
+
+To render the retained native telemetry into statistics and a plot:
+
+```sh
+.venv-analysis/bin/python scripts/summarize_native.py --run-dir /absolute/path/to/run
+```
+
+The latter requires the finalized native telemetry to be present locally. It
+refuses to replace an existing report phase; diagnostic reruns must retain their
+own phase identity. Dependency freezes for CPU checks and analysis are separate
+from the unvalidated GPU image and the offline evaluator lock.
 
 ## Native four-node preflight entrypoint
 

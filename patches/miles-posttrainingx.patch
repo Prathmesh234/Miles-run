@@ -1,0 +1,1047 @@
+From ec73981bd361fcd09c48255f922d9f143fe55fe6 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 10:56:12 -0700
+Subject: [PATCH 1/3] Support external Ray submission without broad process
+ cleanup
+
+---
+ miles/utils/external_utils/command_utils.py | 39 ++++++++++++---------
+ tests/fast/utils/test_command_utils.py      | 13 +++++++
+ 2 files changed, 35 insertions(+), 17 deletions(-)
+
+diff --git a/miles/utils/external_utils/command_utils.py b/miles/utils/external_utils/command_utils.py
+index a8d527011..67842aa32 100644
+--- a/miles/utils/external_utils/command_utils.py
++++ b/miles/utils/external_utils/command_utils.py
+@@ -148,6 +148,8 @@ def fp8_cast_bf16(path_src, path_dst):
+ @dataclass
+ class ExecuteTrainConfig:
+     cuda_core_dump: bool = False
++    external_ray: bool = False
++    cleanup_existing_processes: bool = True
+     num_nodes: int = field(default_factory=lambda: int(os.environ.get("SLURM_JOB_NUM_NODES", "1")))
+     extra_env_vars: str = ""
+     output_dir: str = "/root/shared_data"
+@@ -176,28 +178,31 @@ def execute_train(
+         config = ExecuteTrainConfig()
+     if not os.path.isabs(train_script):
+         train_script = f"{repo_base_dir}/{train_script}"
+-    external_ray = get_bool_env_var("MILES_SCRIPT_EXTERNAL_RAY")
++    external_ray = config.external_ray or get_bool_env_var("MILES_SCRIPT_EXTERNAL_RAY")
++    if not config.cleanup_existing_processes and not external_ray:
++        raise ValueError("Disabling process cleanup requires an externally managed Ray cluster.")
+     master_addr = os.environ.get("MASTER_ADDR", "127.0.0.1")
+ 
+     train_backend_fsdp = "--train-backend fsdp" in train_args
+     assert train_backend_fsdp == (megatron_model_type is None)
+ 
+-    exec_command_cpu(
+-        "pkill -9 sglang; "
+-        "sleep 3; "
+-        f"{'' if external_ray else 'ray stop --force; '}"
+-        f"{'' if external_ray else 'pkill -9 ray; '}"
+-        # cannot be run in CI, o/w kill the parent script
+-        # TODO: do we really need this kill? (or can we instead kill miles)
+-        # "pkill -9 python; "
+-        "pkill -9 miles; "
+-        "sleep 3; "
+-        f"{'' if external_ray else 'pkill -9 ray; '}"
+-        # "pkill -9 python; "
+-        "pkill -9 miles; "
+-        "pkill -9 redis; "
+-        "true; "
+-    )
++    if config.cleanup_existing_processes:
++        exec_command_cpu(
++            "pkill -9 sglang; "
++            "sleep 3; "
++            f"{'' if external_ray else 'ray stop --force; '}"
++            f"{'' if external_ray else 'pkill -9 ray; '}"
++            # cannot be run in CI, o/w kill the parent script
++            # TODO: do we really need this kill? (or can we instead kill miles)
++            # "pkill -9 python; "
++            "pkill -9 miles; "
++            "sleep 3; "
++            f"{'' if external_ray else 'pkill -9 ray; '}"
++            # "pkill -9 python; "
++            "pkill -9 miles; "
++            "pkill -9 redis; "
++            "true; "
++        )
+ 
+     if not external_ray:
+         exec_command_cpu(
+diff --git a/tests/fast/utils/test_command_utils.py b/tests/fast/utils/test_command_utils.py
+index 1c7727ae1..91994128e 100644
+--- a/tests/fast/utils/test_command_utils.py
++++ b/tests/fast/utils/test_command_utils.py
+@@ -31,6 +31,19 @@ def _runtime_env(submit_command):
+ 
+ 
+ class TestExecuteTrainConfig:
++    def test_external_allocation_can_submit_without_killing_existing_processes(self, commands):
++        config = command_utils.ExecuteTrainConfig(external_ray=True, cleanup_existing_processes=False)
++        command_utils.execute_train("--train-backend fsdp", 8, None, config=config)
++        assert len(commands) == 1
++        assert "ray job submit" in commands[0]
++        assert all(word not in commands[0] for word in ("pkill", "ray stop", "ray start"))
++
++    def test_no_cleanup_requires_an_external_cluster_before_any_shell_command(self, commands):
++        config = command_utils.ExecuteTrainConfig(cleanup_existing_processes=False)
++        with pytest.raises(ValueError, match="externally managed"):
++            command_utils.execute_train("--train-backend fsdp", 8, None, config=config)
++        assert commands == []
++
+     def test_num_nodes_reads_the_slurm_allocation_when_the_config_is_built(self, monkeypatch):
+         """A plain class-level default would bake in the allocation at import and ignore later changes."""
+         monkeypatch.setenv("SLURM_JOB_NUM_NODES", "8")
+-- 
+2.50.1 (Apple Git-155)
+
+
+From d296c802a829e218cbd07c208a45350d7582341f Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 10:56:12 -0700
+Subject: [PATCH 2/3] Bind whole-node placement to frozen physical GPU
+ identities
+
+---
+ miles/ray/host_placement.py           |  94 ++++++++++++++++++++++
+ miles/ray/placement_group.py          | 111 +++++++++++++++++++++-----
+ miles/utils/arguments.py              |   4 +
+ tests/fast/ray/test_host_placement.py |  95 ++++++++++++++++++++++
+ 4 files changed, 285 insertions(+), 19 deletions(-)
+ create mode 100644 miles/ray/host_placement.py
+ create mode 100644 tests/fast/ray/test_host_placement.py
+
+diff --git a/miles/ray/host_placement.py b/miles/ray/host_placement.py
+new file mode 100644
+index 000000000..206bc4c3f
+--- /dev/null
++++ b/miles/ray/host_placement.py
+@@ -0,0 +1,94 @@
++"""Validate and record an explicit whole-node placement without GPU imports."""
++
++import datetime
++import ipaddress
++import json
++import os
++from pathlib import Path
++import tempfile
++
++
++def load_host_map(path, *, num_gpus, trainer_gpus, gpus_per_node):
++    data = json.loads(Path(path).read_text())
++    if data.get("schema_version") != 1:
++        raise ValueError("The host map requires schema_version=1.")
++    nodes = data["nodes"]
++    if not nodes or len(nodes) * gpus_per_node != num_gpus or trainer_gpus % gpus_per_node:
++        raise ValueError("Host map size does not match the whole-node allocation.")
++    ips, names, uuids = set(), set(), set()
++    for index, node in enumerate(nodes):
++        ip = str(ipaddress.IPv4Address(node["ray_node_ip"]))
++        expected_role = "trainer" if index * gpus_per_node < trainer_gpus else "rollout"
++        if node.get("role") != expected_role:
++            raise ValueError("Host map must list all trainer nodes before rollout nodes.")
++        if ip in ips or node["hostname"] in names:
++            raise ValueError("Host map contains duplicate hosts or addresses.")
++        expected_uuids = node["gpu_uuids"]
++        if len(expected_uuids) != gpus_per_node or len(set(expected_uuids)) != gpus_per_node:
++            raise ValueError("Each host must enumerate its distinct physical GPU UUIDs.")
++        if uuids.intersection(expected_uuids) or any(not u.startswith("GPU-") for u in expected_uuids):
++            raise ValueError("Physical GPU UUIDs are duplicated or invalid.")
++        ips.add(ip)
++        names.add(node["hostname"])
++        uuids.update(expected_uuids)
++    return nodes
++
++
++def placement_bundles(nodes, ray_nodes, *, gpus_per_node):
++    alive = {n["NodeManagerAddress"]: n for n in ray_nodes if n.get("Alive") and n.get("Resources", {}).get("GPU", 0)}
++    if set(alive) != {n["ray_node_ip"] for n in nodes}:
++        raise ValueError("Ray GPU hosts do not exactly match this allocation's host map.")
++    bundles = []
++    for node in nodes:
++        ip = node["ray_node_ip"]
++        resource = "node:" + ip
++        resources = alive[ip]["Resources"]
++        if resources.get("GPU") != gpus_per_node or resources.get(resource, 0) < gpus_per_node * 0.01:
++            raise ValueError("Ray does not advertise the expected GPUs and node-affinity resource.")
++        bundles.extend({"GPU": 1, "CPU": 1, resource: 0.01} for _ in range(gpus_per_node))
++    return bundles
++
++
++def validate_observed_placement(nodes, identities, *, gpus_per_node):
++    if len(identities) != len(nodes) * gpus_per_node:
++        raise ValueError("The placement probe returned the wrong GPU count.")
++    records = []
++    for index, node in enumerate(nodes):
++        block = identities[index * gpus_per_node : (index + 1) * gpus_per_node]
++        if any(row["ray_node_ip"] != node["ray_node_ip"] for row in block):
++            raise ValueError("A GPU bundle escaped its requested physical node.")
++        if {row["gpu_uuid"] for row in block} != set(node["gpu_uuids"]):
++            raise ValueError("Observed physical GPU UUIDs differ from the frozen host map.")
++        for offset, row in enumerate(block):
++            records.append(
++                dict(
++                    row,
++                    bundle_index=index * gpus_per_node + offset,
++                    declared_hostname=node["hostname"],
++                    role=node["role"],
++                )
++            )
++    return records
++
++
++def write_placement_record(path, records, *, placement_group_id):
++    path = Path(path)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    data = {
++        "schema_version": 1,
++        "time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
++        "placement_group_id": placement_group_id,
++        "bundles": records,
++        "scope": "Physical placement probes. Training and engine actor identities must also be collected during execution.",
++    }
++    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".placement-")
++    try:
++        with os.fdopen(fd, "w") as f:
++            json.dump(data, f, indent=2, sort_keys=True)
++            f.write("\n")
++            f.flush()
++            os.fsync(f.fileno())
++        # The hard link publishes a complete file without replacing earlier evidence.
++        os.link(temporary, path)
++    finally:
++        os.unlink(temporary)
+diff --git a/miles/ray/placement_group.py b/miles/ray/placement_group.py
+index e1d9c0959..43f2695df 100644
+--- a/miles/ray/placement_group.py
++++ b/miles/ray/placement_group.py
+@@ -1,12 +1,20 @@
+ import copy
++import csv
+ import logging
+ import socket
++import subprocess
+ 
+ import ray
+-from ray.util.placement_group import placement_group
++from ray.util.placement_group import placement_group, remove_placement_group
+ from ray.util.scheduling_strategies import PlacementGroupSchedulingStrategy
+ 
+ from miles.utils.environ import enable_experimental_ft_trainer
++from miles.ray.host_placement import (
++    load_host_map,
++    placement_bundles,
++    validate_observed_placement,
++    write_placement_record,
++)
+ from ..utils.ray_utils import compute_ray_pin_head_options
+ from .rollout.rollout_manager import RolloutManager
+ 
+@@ -26,6 +34,26 @@ class InfoActor:
+     def get_ip_and_gpu_id(self):
+         return ray.util.get_node_ip_address(), ray.get_gpu_ids()[0]
+ 
++    def get_identity(self):
++        gpu_id = int(ray.get_gpu_ids()[0])
++        result = subprocess.run(
++            ["nvidia-smi", "--query-gpu=index,uuid,pci.bus_id", "--format=csv,noheader,nounits"],
++            text=True,
++            capture_output=True,
++            check=True,
++            timeout=15,
++        )
++        rows = list(csv.reader(result.stdout.splitlines(), skipinitialspace=True))
++        row = next(row for row in rows if int(row[0]) == gpu_id)
++        return {
++            "ray_node_ip": ray.util.get_node_ip_address(),
++            "hostname": socket.gethostname(),
++            "gpu_id": gpu_id,
++            "gpu_uuid": row[1],
++            "pci_bdf": row[2],
++            "probe_actor_id": str(ray.get_runtime_context().get_actor_id()),
++        }
++
+ 
+ def sort_key(x):
+     index, node_identifier, gpu_id = x
+@@ -48,33 +76,60 @@ def sort_key(x):
+     return (node_ip_parts, gpu_id)
+ 
+ 
+-def _create_placement_group(num_gpus, is_rdt: bool = False):
++def _probe_gpu_bundles(pg, num_bundles, *, nodes, record_path, gpus_per_node):
++    info_actors = []
++    try:
++        ray.get(pg.ready(), timeout=120 if nodes else None)
++        for i in range(num_bundles):
++            info_actors.append(
++                InfoActor.options(
++                    scheduling_strategy=PlacementGroupSchedulingStrategy(
++                        placement_group=pg,
++                        placement_group_bundle_index=i,
++                    )
++                ).remote()
++            )
++        gpu_ids = ray.get([actor.get_ip_and_gpu_id.remote() for actor in info_actors])
++        if nodes:
++            identities = ray.get([actor.get_identity.remote() for actor in info_actors])
++            records = validate_observed_placement(nodes, identities, gpus_per_node=gpus_per_node)
++            write_placement_record(record_path, records, placement_group_id=str(pg.id))
++        return gpu_ids
++    finally:
++        for actor in info_actors:
++            ray.kill(actor)
++
++
++def _create_placement_group(
++    num_gpus, is_rdt: bool = False, *, host_map_path=None, record_path=None, trainer_gpus=0, gpus_per_node=8
++):
+     """Create a placement group with the specified number of GPUs."""
+     if num_gpus == 0:
+         return None, [], []
+ 
+     bundles = [{"GPU": 1, "CPU": 1} for _ in range(num_gpus)]
++    nodes = None
++    if host_map_path:
++        if is_rdt or not record_path:
++            raise ValueError("Explicit host placement requires a record path and does not support RDT.")
++        nodes = load_host_map(host_map_path, num_gpus=num_gpus, trainer_gpus=trainer_gpus, gpus_per_node=gpus_per_node)
++        bundles = placement_bundles(nodes, ray.nodes(), gpus_per_node=gpus_per_node)
+     pg = placement_group(bundles, strategy="PACK")
+     num_bundles = len(bundles)
+-
+-    ray.get(pg.ready())
+-    # use info actor to get the GPU id
+-    info_actors = []
+-    for i in range(num_bundles):
+-        info_actors.append(
+-            InfoActor.options(
+-                scheduling_strategy=PlacementGroupSchedulingStrategy(
+-                    placement_group=pg,
+-                    placement_group_bundle_index=i,
+-                )
+-            ).remote()
++    try:
++        gpu_ids = _probe_gpu_bundles(
++            pg, num_bundles, nodes=nodes, record_path=record_path, gpus_per_node=gpus_per_node
+         )
+-    gpu_ids = ray.get([actor.get_ip_and_gpu_id.remote() for actor in info_actors])
+-    for actor in info_actors:
+-        ray.kill(actor)
++    except Exception:
++        # Only the group created by this invocation is released after a failed gate.
++        remove_placement_group(pg)
++        raise
+ 
+     bundle_infos = [(i, gpu_ids[i][0], gpu_ids[i][1]) for i in range(num_bundles)]
+-    if is_rdt:
++    if nodes:
++        host_order = {node["ray_node_ip"]: index for index, node in enumerate(nodes)}
++        sorted_bundle_infos = sorted(bundle_infos, key=lambda info: (host_order[info[1]], info[2]))
++    elif is_rdt:
+         # Give the trainer the node PACK filled, so rollout bundles land where GPUs
+         # are still free: RayEngine STRICT_PACKs its SchedulerActors onto the engine
+         # actor's node and deadlocks if nothing there is unreserved.
+@@ -120,8 +175,26 @@ def create_placement_groups(args):
+     num_gpus, rollout_offset = _get_placement_group_layout(args)
+ 
+     logger.info(f"Creating placement group with {num_gpus} GPUs...")
++    explicit = {}
++    if host_map_path := getattr(args, "placement_host_order_file", None):
++        if (
++            args.colocate
++            or args.rollout_external
++            or args.eval_num_gpus
++            or args.debug_train_only
++            or args.debug_rollout_only
++        ):
++            raise ValueError(
++                "Explicit host maps require disaggregated training and rollout without separate eval GPUs."
++            )
++        explicit = dict(
++            host_map_path=host_map_path,
++            record_path=args.placement_record_path,
++            trainer_gpus=rollout_offset,
++            gpus_per_node=args.actor_num_gpus_per_node,
++        )
+     pg, actor_pg_reordered_bundle_indices, actor_pg_reordered_gpu_ids = _create_placement_group(
+-        num_gpus, is_rdt=args.update_weight_transfer_mode == "rdt"
++        num_gpus, is_rdt=args.update_weight_transfer_mode == "rdt", **explicit
+     )
+ 
+     rollout_pg_reordered_bundle_indices = actor_pg_reordered_bundle_indices[rollout_offset:]
+diff --git a/miles/utils/arguments.py b/miles/utils/arguments.py
+index 24f3f2f79..c26e01fcc 100644
+--- a/miles/utils/arguments.py
++++ b/miles/utils/arguments.py
+@@ -104,6 +104,10 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
+     def add_miles_arguments(parser):
+         # Ray
+         def add_cluster_arguments(parser):
++            parser.add_argument("--placement-host-order-file", type=str, default=None,
++                                help="Frozen whole-node Ray host map with physical GPU UUIDs, trainer nodes first.")
++            parser.add_argument("--placement-record-path", type=str, default=None,
++                                help="New JSON artifact for the observed physical bundle placement; never overwritten.")
+             parser.add_argument("--actor-num-nodes", type=int, default=1, help="Number of nodes for training actor")
+             parser.add_argument(
+                 "--actor-num-gpus-per-node", type=int, default=8, help="Number of gpus per node for training actor"
+diff --git a/tests/fast/ray/test_host_placement.py b/tests/fast/ray/test_host_placement.py
+new file mode 100644
+index 000000000..7f29fe4df
+--- /dev/null
++++ b/tests/fast/ray/test_host_placement.py
+@@ -0,0 +1,95 @@
++import copy
++import json
++
++import pytest
++
++from miles.ray.host_placement import (
++    load_host_map,
++    placement_bundles,
++    validate_observed_placement,
++    write_placement_record,
++)
++
++
++def _nodes(trainers, rotation):
++    order = [(i + rotation) % 4 for i in range(4)]
++    return [
++        dict(
++            ray_node_ip=f"10.0.0.{host + 1}",
++            hostname=f"node-{host}",
++            role="trainer" if i < trainers else "rollout",
++            gpu_uuids=[f"GPU-{host}-{g}" for g in range(8)],
++        )
++        for i, host in enumerate(order)
++    ]
++
++
++@pytest.mark.parametrize("trainers", [1, 2, 3])
++@pytest.mark.parametrize("rotation", [0, 1, 2, 3])
++def test_every_split_and_rotation_binds_whole_nodes_and_matches_gpu_uuids(tmp_path, trainers, rotation):
++    nodes = _nodes(trainers, rotation)
++    path = tmp_path / "hosts.json"
++    path.write_text(json.dumps(dict(schema_version=1, nodes=nodes)))
++    loaded = load_host_map(path, num_gpus=32, trainer_gpus=trainers * 8, gpus_per_node=8)
++    ray_nodes = [
++        dict(Alive=True, NodeManagerAddress=n["ray_node_ip"], Resources={"GPU": 8, "node:" + n["ray_node_ip"]: 1})
++        for n in reversed(nodes)
++    ]
++    bundles = placement_bundles(loaded, ray_nodes, gpus_per_node=8)
++    identities = []
++    for i, node in enumerate(nodes):
++        block = bundles[i * 8 : (i + 1) * 8]
++        assert all(bundle.get("node:" + node["ray_node_ip"]) == 0.01 for bundle in block)
++        identities.extend(
++            dict(
++                ray_node_ip=node["ray_node_ip"],
++                gpu_uuid=uuid,
++                gpu_id=g,
++                hostname=node["hostname"],
++                probe_actor_id=f"probe-{i}-{g}",
++            )
++            for g, uuid in enumerate(reversed(node["gpu_uuids"]))
++        )
++    records = validate_observed_placement(nodes, identities, gpus_per_node=8)
++    assert len([r for r in records if r["role"] == "trainer"]) == trainers * 8
++    assert len({r["gpu_uuid"] for r in records}) == 32
++    out = tmp_path / "placement.json"
++    write_placement_record(out, records, placement_group_id="owned-group")
++    assert json.loads(out.read_text())["bundles"] == records
++    with pytest.raises(FileExistsError):
++        write_placement_record(out, [], placement_group_id="later-group")
++    assert json.loads(out.read_text())["bundles"] == records
++
++
++@pytest.mark.parametrize("mutation", ["role", "uuid", "ip", "size"])
++def test_invalid_host_maps_fail_closed(tmp_path, mutation):
++    nodes = _nodes(2, 0)
++    if mutation == "role":
++        nodes[0]["role"] = "rollout"
++    elif mutation == "uuid":
++        nodes[1]["gpu_uuids"][0] = nodes[0]["gpu_uuids"][0]
++    elif mutation == "ip":
++        nodes[1]["ray_node_ip"] = nodes[0]["ray_node_ip"]
++    else:
++        nodes.pop()
++    path = tmp_path / "hosts.json"
++    path.write_text(json.dumps(dict(schema_version=1, nodes=nodes)))
++    with pytest.raises(ValueError):
++        load_host_map(path, num_gpus=32, trainer_gpus=16, gpus_per_node=8)
++
++
++def test_shared_ray_cluster_or_misplaced_gpu_is_rejected():
++    nodes = _nodes(2, 0)
++    ray_nodes = [
++        dict(Alive=True, NodeManagerAddress=n["ray_node_ip"], Resources={"GPU": 8, "node:" + n["ray_node_ip"]: 1})
++        for n in nodes
++    ]
++    extra = dict(Alive=True, NodeManagerAddress="10.0.0.9", Resources={"GPU": 8, "node:10.0.0.9": 1})
++    with pytest.raises(ValueError, match="exactly match"):
++        placement_bundles(nodes, ray_nodes + [extra], gpus_per_node=8)
++    identities = [dict(ray_node_ip=n["ray_node_ip"], gpu_uuid=g) for n in nodes for g in n["gpu_uuids"]]
++    for field, value in [("ray_node_ip", "10.0.0.9"), ("gpu_uuid", "GPU-unexpected")]:
++        bad = copy.deepcopy(identities)
++        bad[0][field] = value
++        with pytest.raises(ValueError):
++            validate_observed_placement(nodes, bad, gpus_per_node=8)
+-- 
+2.50.1 (Apple Git-155)
+
+
+From b61dbe83ee815412b72c84ed367ffd329d7922d4 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 10:56:12 -0700
+Subject: [PATCH 3/3] Add disaggregated B200 Qwen3.6 OpenEnv GRPO launcher
+
+---
+ docs/models/qwen/qwen3-6-moe.md               |  46 ++++
+ scripts/run_qwen3_6_35b_a3b_posttrainingx.py  | 228 ++++++++++++++++++
+ .../test_qwen36_posttrainingx.py              |  83 +++++++
+ .../launch_scripts/test_py_launch_scripts.py  |   1 +
+ .../execute.txt                               | 135 +++++++++++
+ 5 files changed, 493 insertions(+)
+ create mode 100644 scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+ create mode 100644 tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+ create mode 100644 tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
+
+diff --git a/docs/models/qwen/qwen3-6-moe.md b/docs/models/qwen/qwen3-6-moe.md
+index d8b988d49..784a82f60 100644
+--- a/docs/models/qwen/qwen3-6-moe.md
++++ b/docs/models/qwen/qwen3-6-moe.md
+@@ -2,6 +2,52 @@
+ title: Qwen3.6 MoE
+ description: Launch recipe for Qwen3.6-35B-A3B with MTP training and EAGLE speculative rollout.
+ ---
++
++## Disaggregated B200 agentic-RL benchmark
++
++`scripts/run_qwen3_6_35b_a3b_posttrainingx.py` combines this model recipe with
++the fully asynchronous OpenEnv control flow. It requires four eight-GPU B200
++nodes and an external, run-owned Ray cluster. It never starts or kills shared
++Ray, Miles, SGLang, or Redis processes.
++
++The `--layout` choices are `1t3r`, `2t2r`, and `3t1r`. Each rollout node hosts
++one EP8 engine. The trainer retains TP1/EP8/CP1/PP1/ETP1 and the cookbook MTP,
++optimizer, and recomputation settings. It uses broadcast weight updates at
++interval one, staleness one, and sample-granularity submission. `retract` is
++the initial pause mode. Select `--pause-generation-mode in_place` only after
++the broadcast activation test passes.
++
++This is a benchmark implementation awaiting GPU validation, not a qualified
++performance recipe. Supply pinned checkpoints and clean Terminal-Lego or TMAX
++prompt data. Terminal-Bench 2.1 is reserved for separate offline evaluation.
++The launcher does not install packages, download benchmark tasks, assert
++checkpoint/resume fidelity, or bypass the environment-isolation gate.
++
++```bash
++python scripts/run_qwen3_6_35b_a3b_posttrainingx.py \
++    --hardware B200 --layout 2t2r --execution async \
++    --output-dir /shared/posttrainingx/runs/vultr-b200-slurm \
++    --run-id example --model-dir /shared/posttrainingx/runs/vultr-b200-slurm/example/models \
++    --openenv-env-url http://ENV_CONTROLLER:8003 --num-rollout 400
++```
++
++Use `--execution sync --num-rollout 3` for the optimizer correctness test. The
++site adapter must validate inventory, assets, environment isolation, and
++serving first. `--host-map` points at a JSON object with `schema_version: 1`
++and a `nodes` list. Each node supplies `hostname`, numeric IPv4 `ray_node_ip`,
++`role` (`trainer` or `rollout`), and all eight physical `gpu_uuids`. List trainer
++nodes first, then rollout nodes. Rotate that order to rotate physical roles.
++Ray placement is rejected if a host or physical GPU differs from the map.
++For a resume launch, provide a new `--placement-record-path` so the previous
++placement record remains immutable.
++
++The optimizer budget defaults to 400 steps with saves every 50 steps. This
++does not guarantee a quality improvement. Evaluation budgets and the final
++comparison must be pre-registered independently of Terminal-Bench outcomes.
++Megatron's dense-parameter DP and expert DP are distinct quantities. With TP1,
++dense DP has one rank per trainer GPU, while expert DP equals trainer-node
++count. Global-batch scheduling on the 3T/1R case requires separate runtime and
++gradient validation; this launcher does not silently round or drop samples.
+ ## 1. Model Introduction
+ 
+ [Qwen3.6-35B-A3B](https://github.com/QwenLM/Qwen3) is the sparse MoE branch of
+diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+new file mode 100644
+index 000000000..3cbdef427
+--- /dev/null
++++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+@@ -0,0 +1,228 @@
++"""Qwen3.6-35B-A3B GRPO with local OpenEnv tasks on four B200 nodes.
++
++Requires pinned HF and converted checkpoints, clean training prompt data, a
++validated local OpenEnv endpoint, and a pre-existing run-owned Ray cluster.
++The site adapter owns allocation, image pins, GPU reconciliation, and cleanup.
++Terminal-Bench is evaluation-only and is not downloaded by this launcher.
++
++Args:
++    layout: Whole-node trainer/rollout split: 1t3r, 2t2r, or 3t1r.
++    execution: sync uses train.py for correctness; async uses train_async.py.
++    host_map: JSON placement map, in trainer-first then rollout node order.
++    num_rollout: Optimizer-step budget when the one-step invariant holds.
++
++Example:
++    python scripts/run_qwen3_6_35b_a3b_posttrainingx.py --hardware B200 \
++        --output-dir /shared/posttrainingx/runs/vultr-b200-slurm \
++        --run-id example --layout 2t2r --num-rollout 400
++
++This launcher defines the recipe. It does not assert that environment, resume,
++gradient, placement, or quality gates have passed.
++"""
++
++import shlex
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Literal
++
++import typer
++
++import miles.utils.external_utils.command_utils as U
++
++
++@dataclass
++class ScriptArgs(U.ExecuteTrainConfig):
++    num_nodes: int = 4
++    external_ray: bool = True
++    cleanup_existing_processes: bool = False
++    hardware: Literal["auto", "B200"] = "auto"
++    num_gpus_per_node: int = 8
++    run_id: str = U.create_run_id()
++    layout: Literal["1t3r", "2t2r", "3t1r"] = "2t2r"
++    execution: Literal["sync", "async"] = "async"
++    model_name: str = "Qwen3.6-35B-A3B"
++    megatron_model_type: str = "qwen3.6-35B-A3B"
++    model_dir: str = "/root/models"
++    megatron_path: str = "/root/Megatron-LM"
++    prompt_data: str = ""
++    host_map: str = ""
++    placement_record_path: str = ""
++    load_from: str = ""
++    num_rollout: int = 400
++    save_interval: int = 50
++    rollout_batch_size: int = 8
++    n_samples_per_prompt: int = 8
++    global_batch_size: int = 64
++    seed: int = 1234
++    max_tokens_per_gpu: int = 8192
++    max_seq_len: int = 65536
++    rollout_max_response_len: int = 8192
++    async_max_concurrent_samples: int = 128
++    pause_generation_mode: Literal["retract", "in_place"] = "retract"
++    openenv_env_url: str = "http://127.0.0.1:8003"
++    openenv_max_turns: int = 30
++    openenv_max_rollout_time_seconds: int = 3600
++    openenv_message_timeout_s: int = 1200
++    session_server_port: int = 30000
++    session_server_workers: int = 32
++    sglang_max_running_requests: int = 256
++    enable_mtp: bool = True
++
++    def __post_init__(self):
++        self.hardware = U.resolve_hardware(self)
++        if self.hardware != "B200" or self.num_gpus_per_node != U.NUM_GPUS_OF_HARDWARE[self.hardware]:
++            raise ValueError("This profile requires eight B200 GPUs per node.")
++        if self.num_nodes != 4 or self.layout not in ("1t3r", "2t2r", "3t1r"):
++            raise ValueError("The placement sweep requires exactly four whole nodes.")
++        if self.cleanup_existing_processes or not self.external_ray:
++            raise ValueError("This recipe requires external Ray and disables broad process cleanup.")
++        if self.rollout_batch_size * self.n_samples_per_prompt != self.global_batch_size:
++            raise ValueError("rollout_batch_size * n_samples_per_prompt must equal global_batch_size.")
++        if min(self.num_rollout, self.save_interval, self.global_batch_size, self.n_samples_per_prompt) <= 0:
++            raise ValueError("Step, checkpoint, and batch budgets must be positive.")
++        if self.async_max_concurrent_samples < self.n_samples_per_prompt:
++            raise ValueError("Async concurrency must admit at least one complete GRPO group.")
++        self.prompt_data = self.prompt_data or f"{self.output_dir}/{self.run_id}/data/train.prompts.jsonl"
++        self.host_map = self.host_map or f"{self.output_dir}/{self.run_id}/inventory/role-host-map.json"
++        self.placement_record_path = (
++            self.placement_record_path or f"{self.output_dir}/{self.run_id}/inventory/ray-placement.json"
++        )
++
++    @property
++    def trainer_nodes(self) -> int:
++        return int(self.layout[0])
++
++
++def _checkpoint_args(args: ScriptArgs) -> str:
++    checkpoint = f"{args.output_dir}/{args.run_id}/checkpoints"
++    return (
++        f"--hf-checkpoint {shlex.quote(args.model_dir + '/' + args.model_name)} "
++        f"--ref-load {shlex.quote(args.model_dir + '/' + args.model_name + '_torch_dist')} "
++        f"--load {shlex.quote(args.load_from or checkpoint)} --save {shlex.quote(checkpoint)} "
++        f"--save-interval {args.save_interval} "
++    )
++
++
++def _rollout_args(args: ScriptArgs) -> str:
++    asynchronous = (
++        f"--fully-async --pause-generation-mode {args.pause_generation_mode} "
++        f"--async-max-concurrent-samples {args.async_max_concurrent_samples} --max-weight-staleness 1 "
++        if args.execution == "async"
++        else ""
++    )
++    return (
++        asynchronous + "--rollout-submission-granularity sample "
++        f"--prompt-data {shlex.quote(args.prompt_data)} --input-key prompt --apply-chat-template "
++        f"--num-rollout {args.num_rollout} --rollout-batch-size {args.rollout_batch_size} "
++        f"--n-samples-per-prompt {args.n_samples_per_prompt} --global-batch-size {args.global_batch_size} "
++        f"--num-steps-per-rollout 1 --max-seq-len {args.max_seq_len} "
++        f"--rollout-max-response-len {args.rollout_max_response_len} --rollout-temperature 1 "
++        f"--seed {args.seed} --balance-data "
++    )
++
++
++def _performance_args(args: ScriptArgs) -> str:
++    return (
++        "--tensor-model-parallel-size 1 --sequence-parallel --pipeline-model-parallel-size 1 "
++        "--context-parallel-size 1 --expert-model-parallel-size 8 --expert-tensor-parallel-size 1 "
++        "--recompute-granularity full --recompute-method uniform --recompute-num-layers 1 "
++        f"--use-dynamic-batch-size --max-tokens-per-gpu {args.max_tokens_per_gpu} "
++        "--attention-dropout 0.0 --hidden-dropout 0.0 --accumulate-allreduce-grads-in-fp32 "
++        "--attention-softmax-in-fp32 --attention-backend flash --moe-token-dispatcher-type flex "
++    )
++
++
++def _algorithm_args() -> str:
++    return (
++        "--advantage-estimator grpo --use-kl-loss --kl-loss-coef 0.00 --kl-loss-type low_var_kl "
++        "--entropy-coef 0.00 --eps-clip 0.2 --eps-clip-high 0.28 "
++        "--optimizer adam --lr 1e-6 --lr-decay-style constant --weight-decay 0.1 "
++        "--adam-beta1 0.9 --adam-beta2 0.98 --optimizer-cpu-offload "
++        "--overlap-cpu-optimizer-d2h-h2d --use-precision-aware-optimizer "
++    )
++
++
++def _sglang_args(args: ScriptArgs) -> str:
++    mtp = (
++        "--sglang-speculative-algorithm EAGLE --sglang-speculative-num-steps 2 "
++        "--sglang-speculative-eagle-topk 1 --sglang-speculative-num-draft-tokens 3 "
++        "--sglang-mamba-scheduler-strategy extra_buffer "
++        "--enable-mtp-training --mtp-num-layers 1 --mtp-loss-scaling-factor 0.2 "
++        if args.enable_mtp
++        else ""
++    )
++    return (
++        "--rollout-num-gpus-per-engine 8 --sglang-ep-size 8 --sglang-mem-fraction-static 0.7 "
++        "--sglang-cuda-graph-bs 1 2 4 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128 "
++        f"--sglang-max-running-requests {args.sglang_max_running_requests} " + mtp
++    )
++
++
++def _agent_args(args: ScriptArgs) -> str:
++    return (
++        "--custom-generate-function-path miles.rollout.generate_hub.agentic_tool_call.generate "
++        "--custom-agent-function-path openenv_agent_function.run "
++        "--custom-rm-path openenv_generate.reward_func "
++        "--dynamic-sampling-filter-path miles.rollout.filter_hub.dynamic_sampling_filters.check_no_aborted "
++        "--tito-model qwen36 --use-session-server "
++        f"--session-server-port {args.session_server_port} --session-server-workers {args.session_server_workers} "
++    )
++
++
++def execute(args: ScriptArgs):
++    run_dir = f"{args.output_dir}/{args.run_id}"
++    placement_args = (
++        f"--actor-num-nodes {args.trainer_nodes} --actor-num-gpus-per-node 8 --num-gpus-per-node 8 "
++        f"--rollout-num-gpus {(4 - args.trainer_nodes) * 8} "
++        f"--placement-host-order-file {shlex.quote(args.host_map)} "
++        f"--placement-record-path {shlex.quote(args.placement_record_path)} "
++        "--update-weight-transfer-mode broadcast --update-weights-interval 1 "
++    )
++    evidence_args = (
++        f"--dump-details {shlex.quote(run_dir + '/dump_details')} "
++        "--use-miles-dashboard --dashboard-sglang-scrape-mode direct "
++    )
++    train_args = " ".join(
++        [
++            _checkpoint_args(args),
++            _rollout_args(args),
++            _performance_args(args),
++            _algorithm_args(),
++            _sglang_args(args),
++            _agent_args(args),
++            placement_args,
++            evidence_args,
++            U.get_default_wandb_args(__file__, run_id=args.run_id),
++        ]
++    )
++    openenv_dir = Path(U.repo_base_dir) / "examples/experimental/openenv"
++    extra_env_vars = {
++        "PYTHONPATH": str(openenv_dir),
++        "OPENENV_ENV_URL": args.openenv_env_url,
++        "OPENENV_MAX_TURNS": str(args.openenv_max_turns),
++        "OPENENV_MAX_ROLLOUT_TIME_SECONDS": str(args.openenv_max_rollout_time_seconds),
++        "OPENENV_MESSAGE_TIMEOUT_S": str(args.openenv_message_timeout_s),
++        "AGENT_MODEL_NAME": "model",
++        "SGLANG_ENABLE_SPEC_V2": "1" if args.enable_mtp else "0",
++        "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096",
++        "TORCH_NCCL_DUMP_ON_TIMEOUT": "1",
++        "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": run_dir + "/telemetry/nccl_trace",
++    }
++    U.execute_train(
++        train_args=train_args,
++        config=args,
++        num_gpus_per_node=8,
++        megatron_model_type=args.megatron_model_type,
++        megatron_path=args.megatron_path,
++        extra_env_vars=extra_env_vars,
++        train_script="train_async.py" if args.execution == "async" else "train.py",
++    )
++
++
++@U.dataclass_cli
++def main(args: ScriptArgs):
++    execute(args)
++
++
++if __name__ == "__main__":
++    typer.run(main)
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+new file mode 100644
+index 000000000..cd40a2190
+--- /dev/null
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -0,0 +1,83 @@
++import json
++import shlex
++
++import pytest
++
++from tests.fast.launch_scripts.py_harness import (
++    REPO_ROOT,
++    freeze_environment,
++    import_launch_script,
++    install_command_recorder,
++)
++
++
++def _launch(monkeypatch, **overrides):
++    freeze_environment(monkeypatch, hardware="B200")
++    recording = install_command_recorder(monkeypatch)
++    module = import_launch_script(REPO_ROOT / "scripts/run_qwen3_6_35b_a3b_posttrainingx.py")
++    args = module.ScriptArgs(**overrides)
++    module.execute(args)
++    command = next(c for c in recording.commands if "ray job submit" in c)
++    tokens = shlex.split(command)
++    env = json.loads(next(x.split("=", 1)[1] for x in tokens if x.startswith("--runtime-env-json=")))["env_vars"]
++    return args, recording.commands, tokens, env
++
++
++@pytest.mark.parametrize("layout,trainers,rollout_gpus", [("1t3r", 1, 24), ("2t2r", 2, 16), ("3t1r", 3, 8)])
++def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_services(
++    monkeypatch, layout, trainers, rollout_gpus
++):
++    args, commands, tokens, env = _launch(monkeypatch, layout=layout)
++    value = lambda flag: tokens[tokens.index(flag) + 1]
++    assert value("--actor-num-nodes") == str(trainers)
++    assert value("--rollout-num-gpus") == str(rollout_gpus)
++    assert value("--rollout-num-gpus-per-engine") == value("--sglang-ep-size") == "8"
++    assert value("--tensor-model-parallel-size") == value("--context-parallel-size") == "1"
++    assert value("--pipeline-model-parallel-size") == value("--expert-tensor-parallel-size") == "1"
++    assert value("--expert-model-parallel-size") == "8"
++    assert value("--update-weight-transfer-mode") == "broadcast"
++    assert value("--max-weight-staleness") == value("--update-weights-interval") == "1"
++    assert value("--rollout-submission-granularity") == "sample"
++    assert "--fully-async" in tokens and "--colocate" not in tokens
++    assert any(x.endswith("/train_async.py") for x in tokens)
++    assert value("--tito-model") == "qwen36"
++    assert value("--custom-agent-function-path") == "openenv_agent_function.run"
++    assert value("--sglang-speculative-num-steps") == "2"
++    assert value("--sglang-speculative-num-draft-tokens") == "3"
++    assert value("--mtp-num-layers") == "1" and value("--mtp-loss-scaling-factor") == "0.2"
++    assert int(value("--rollout-batch-size")) * int(value("--n-samples-per-prompt")) == int(
++        value("--global-batch-size")
++    )
++    assert all(term not in "\n".join(commands) for term in ("pkill", "ray stop", "ray start", "DAYTONA"))
++    assert env["SGLANG_ENABLE_SPEC_V2"] == "1"
++    assert env["OPENENV_ENV_URL"] == args.openenv_env_url
++    assert value("--placement-host-order-file") == args.host_map
++
++
++def test_sync_validation_and_mtp_ablation_have_explicit_distinct_commands(monkeypatch):
++    _, _, tokens, env = _launch(monkeypatch, execution="sync", num_rollout=3, enable_mtp=False)
++    assert any(x.endswith("/train.py") for x in tokens)
++    assert "--fully-async" not in tokens and "--async-max-concurrent-samples" not in tokens
++    assert "--enable-mtp-training" not in tokens and "--sglang-speculative-algorithm" not in tokens
++    assert tokens[tokens.index("--num-rollout") + 1] == "3"
++    assert env["SGLANG_ENABLE_SPEC_V2"] == "0"
++
++
++@pytest.mark.parametrize(
++    "overrides",
++    [
++        dict(num_nodes=3),
++        dict(num_gpus_per_node=4),
++        dict(hardware="H200"),
++        dict(global_batch_size=63),
++        dict(cleanup_existing_processes=True),
++        dict(external_ray=False),
++    ],
++)
++def test_invalid_profile_is_rejected_before_any_shell_command(monkeypatch, overrides):
++    freeze_environment(monkeypatch, hardware="B200")
++    recording = install_command_recorder(monkeypatch)
++    module = import_launch_script(REPO_ROOT / "scripts/run_qwen3_6_35b_a3b_posttrainingx.py")
++    with pytest.raises((ValueError, AssertionError)):
++        module.execute(module.ScriptArgs(**overrides))
++    assert recording.commands == []
+diff --git a/tests/manual/launch_scripts/test_py_launch_scripts.py b/tests/manual/launch_scripts/test_py_launch_scripts.py
+index 3d215e2e3..d3565c8fa 100644
+--- a/tests/manual/launch_scripts/test_py_launch_scripts.py
++++ b/tests/manual/launch_scripts/test_py_launch_scripts.py
+@@ -76,6 +76,7 @@ _HARDWARE_A_RECORDING_REPRESENTS = {
+     "scripts/run_mcore_fsdp.py": "H100",
+     "scripts/run_qwen3_30b_a3b.py": "H100",
+     "scripts/run_qwen3_4b.py": "H100",
++    "scripts/run_qwen3_6_35b_a3b_posttrainingx.py": "B200",
+ }
+ 
+ _ENTRYPOINTS_DISABLED_BY_THEIR_OWN_DEFAULTS = {
+diff --git a/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt b/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
+new file mode 100644
+index 000000000..9d1729257
+--- /dev/null
++++ b/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
+@@ -0,0 +1,135 @@
++### 0
++nvidia-smi topo -m 2>/dev/null | grep -o 'NV[0-9][0-9]*' | wc -l
++
++### 1
++export no_proxy=127.0.0.1 && export PYTHONUNBUFFERED=1 && ray job submit
++  --address="http://127.0.0.1:8265"
++  --runtime-env-json='{"env_vars": {"PYTHONUNBUFFERED": "1", "CUDA_DEVICE_MAX_CONNECTIONS": "1", "NCCL_NVLS_ENABLE": "0", "no_proxy": "127.0.0.1,127.0.0.1", "MASTER_ADDR": "127.0.0.1", "PYTHONPATH": "<REPO_ROOT>:/root/Megatron-LM:<REPO_ROOT>/examples/experimental/openenv:/frozen/pythonpath", "OPENENV_ENV_URL": "http://127.0.0.1:8003", "OPENENV_MAX_TURNS": "30", "OPENENV_MAX_ROLLOUT_TIME_SECONDS": "3600", "OPENENV_MESSAGE_TIMEOUT_S": "1200", "AGENT_MODEL_NAME": "model", "SGLANG_ENABLE_SPEC_V2": "1", "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096", "TORCH_NCCL_DUMP_ON_TIMEOUT": "1", "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": "/root/shared_data/260101-000000-000/telemetry/nccl_trace"}}'
++  -- python3 <REPO_ROOT>/train_async.py
++  --spec miles_plugins.models.qwen3_5 get_qwen3_5_spec
++  --disable-bias-linear
++  --qk-layernorm
++  --group-query-attention
++  --num-attention-heads 16
++  --num-query-groups 2
++  --kv-channels 256
++  --num-layers 40
++  --hidden-size 2048
++  --ffn-hidden-size 512
++  --normalization RMSNorm
++  --apply-layernorm-1p
++  --position-embedding-type rope
++  --norm-epsilon 1e-6
++  --rotary-percent 0.25
++  --swiglu
++  --untie-embeddings-and-output-weights
++  --vocab-size 248320
++  --rotary-base 10000000
++  --moe-ffn-hidden-size 512
++  --moe-shared-expert-intermediate-size 512
++  --moe-router-score-function softmax
++  --moe-token-dispatcher-type alltoall
++  --moe-router-topk 8
++  --moe-layer-freq '[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]'
++  --num-experts 256
++  --moe-grouped-gemm
++  --moe-token-drop-policy probs
++  --moe-router-dtype fp32
++  --moe-permute-fusion
++  --moe-aux-loss-coeff 0
++  --attention-output-gate
++  --moe-shared-expert-gate
++  --mtp-num-layers 1
++  --hf-checkpoint /root/models/Qwen3.6-35B-A3B
++  --ref-load /root/models/Qwen3.6-35B-A3B_torch_dist
++  --load /root/shared_data/260101-000000-000/checkpoints
++  --save /root/shared_data/260101-000000-000/checkpoints
++  --save-interval 50 
++  --fully-async
++  --pause-generation-mode retract
++  --async-max-concurrent-samples 128
++  --max-weight-staleness 1
++  --rollout-submission-granularity sample
++  --prompt-data /root/shared_data/260101-000000-000/data/train.prompts.jsonl
++  --input-key prompt
++  --apply-chat-template
++  --num-rollout 400
++  --rollout-batch-size 8
++  --n-samples-per-prompt 8
++  --global-batch-size 64
++  --num-steps-per-rollout 1
++  --max-seq-len 65536
++  --rollout-max-response-len 8192
++  --rollout-temperature 1
++  --seed 1234
++  --balance-data 
++  --tensor-model-parallel-size 1
++  --sequence-parallel
++  --pipeline-model-parallel-size 1
++  --context-parallel-size 1
++  --expert-model-parallel-size 8
++  --expert-tensor-parallel-size 1
++  --recompute-granularity full
++  --recompute-method uniform
++  --recompute-num-layers 1
++  --use-dynamic-batch-size
++  --max-tokens-per-gpu 8192
++  --attention-dropout 0.0
++  --hidden-dropout 0.0
++  --accumulate-allreduce-grads-in-fp32
++  --attention-softmax-in-fp32
++  --attention-backend flash
++  --moe-token-dispatcher-type flex 
++  --advantage-estimator grpo
++  --use-kl-loss
++  --kl-loss-coef 0.00
++  --kl-loss-type low_var_kl
++  --entropy-coef 0.00
++  --eps-clip 0.2
++  --eps-clip-high 0.28
++  --optimizer adam
++  --lr 1e-6
++  --lr-decay-style constant
++  --weight-decay 0.1
++  --adam-beta1 0.9
++  --adam-beta2 0.98
++  --optimizer-cpu-offload
++  --overlap-cpu-optimizer-d2h-h2d
++  --use-precision-aware-optimizer 
++  --rollout-num-gpus-per-engine 8
++  --sglang-ep-size 8
++  --sglang-mem-fraction-static 0.7
++  --sglang-cuda-graph-bs 1 2 4 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128
++  --sglang-max-running-requests 256
++  --sglang-speculative-algorithm EAGLE
++  --sglang-speculative-num-steps 2
++  --sglang-speculative-eagle-topk 1
++  --sglang-speculative-num-draft-tokens 3
++  --sglang-mamba-scheduler-strategy extra_buffer
++  --enable-mtp-training
++  --mtp-num-layers 1
++  --mtp-loss-scaling-factor 0.2 
++  --custom-generate-function-path miles.rollout.generate_hub.agentic_tool_call.generate
++  --custom-agent-function-path openenv_agent_function.run
++  --custom-rm-path openenv_generate.reward_func
++  --dynamic-sampling-filter-path miles.rollout.filter_hub.dynamic_sampling_filters.check_no_aborted
++  --tito-model qwen36
++  --use-session-server
++  --session-server-port 30000
++  --session-server-workers 32 
++  --actor-num-nodes 2
++  --actor-num-gpus-per-node 8
++  --num-gpus-per-node 8
++  --rollout-num-gpus 16
++  --placement-host-order-file /root/shared_data/260101-000000-000/inventory/role-host-map.json
++  --placement-record-path /root/shared_data/260101-000000-000/inventory/ray-placement.json
++  --update-weight-transfer-mode broadcast
++  --update-weights-interval 1 
++  --dump-details /root/shared_data/260101-000000-000/dump_details
++  --use-miles-dashboard
++  --dashboard-sglang-scrape-mode direct 
++  --use-wandb
++  --wandb-project miles-run_qwen3_6_35b_a3b_posttrainingx
++  --wandb-group 260101-000000-000
++  --wandb-key 'frozen-wandb-api-key'
++  --disable-wandb-random-suffix 
+-- 
+2.50.1 (Apple Git-155)
+

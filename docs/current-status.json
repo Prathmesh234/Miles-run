@@ -1,0 +1,59 @@
+{
+  "blocked_or_unvalidated": [
+    {
+      "gate": "Hidden-test isolation",
+      "smallest_next_step": "Versioned local OpenEnv isolation/grading adapter and adversarial tests. No policy execution until it passes.",
+      "state": "failed source review"
+    },
+    {
+      "gate": "Full infrastructure telemetry",
+      "smallest_next_step": "Validate explicit perfquery backend under load, expose a read-only Lustre client statistics source, and obtain complete per-GPU monitoring. Do not repair cluster-wide settings.",
+      "state": "failed"
+    },
+    {
+      "gate": "Broad launcher suite",
+      "smallest_next_step": "Preserve identical failures. Missing envsubst and existing launcher/snapshot errors need separate fixes before claiming a green full suite.",
+      "state": "failed upstream baseline and diagnostic image"
+    },
+    {
+      "gate": "GPU runtime and provenance",
+      "smallest_next_step": "Pull pinned GPU image/model, verify package and model hashes, validate B200 MTP serving.",
+      "state": "not executed"
+    },
+    {
+      "gate": "GRPO, async and resume fidelity",
+      "smallest_next_step": "Prove grouping/logprobs/gradient updates and full restart state. Miles async buffer/policy accounting restore is not implemented yet.",
+      "state": "not executed"
+    },
+    {
+      "gate": "3T/1R batch compatibility",
+      "smallest_next_step": "Check pinned Megatron dense-DP microbatch divisibility. Do not silently round or drop the fixed global batch.",
+      "state": "unvalidated"
+    },
+    {
+      "gate": "Task corpus and offline TB2.1 runtime",
+      "smallest_next_step": "Pin ordered clean training subset and untouched evaluation suite; validate environment and evaluator before examining baseline outcomes.",
+      "state": "not executed"
+    },
+    {
+      "gate": "Placement sweep and quality hill climb",
+      "smallest_next_step": "Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation.",
+      "state": "not executed"
+    }
+  ],
+  "completed": [
+    "Native job 109: four nodes, 32 reconciled B200 GPUs, all-reduce correctness on each node and all four nodes, 256 MiB verified fio per node.",
+    "Committed B200 Miles launcher, whole-node host mapping and safe external-Ray option. Three patches replay to the exact same Git tree.",
+    "Patched Linux CPU tests: 595 passed, 12 failures, 4 errors. Unpatched baseline: 564 passed, same 12 failures and 4 errors; no new failing test IDs.",
+    "Separate hashed offline Verifiers 0.3.1 / Harbor 0.21.0 dependency lock; three strict-online dependency conflicts reproduced without installation.",
+    "Native statistics and plots derived from retained JSONL. Read-only perfquery probes returned counters for all 32 active 400G rails without errors."
+  ],
+  "heldout_quality_measured": false,
+  "proposed_optimizer_steps": 400,
+  "quality_note": "400 steps is a proposal, not a guarantee of improvement. The operator wall-clock/GPU-hour cap has not been specified. No positive quality delta is claimed.",
+  "quality_protocol": "docs/quality-protocol.md",
+  "run_id": "20260902-172037-a3b210",
+  "schema_version": 1,
+  "state": "in_progress",
+  "training_started": false
+}

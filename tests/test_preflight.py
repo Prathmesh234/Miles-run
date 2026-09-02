@@ -13,6 +13,8 @@ from evidence import Run, markdown, sha256
 from infra_controller import parse_nccl, srun
 from telemetry_native import GPU_FIELDS, gpu_records, nvlink_records
 from submit_native_preflight import batches, entry
+from fabric_probe import active_training_ports, perfquery_command, perfquery_records
+from summarize_native import counter_rate, summary
 
 
 class EvidenceTests(unittest.TestCase):
@@ -45,6 +47,47 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_statistics_and_counter_discontinuities_are_not_zero_filled(self):
+        result = summary([1, 2, 3, 4])
+        self.assertEqual(result['median'], 2.5)
+        self.assertAlmostEqual(result['p95'], 3.85)
+        self.assertIsNone(summary([0, 0])['coefficient_of_variation'])
+        before = {'monotonic_s': 1, 'value': 100}
+        self.assertEqual(counter_rate(before, {'monotonic_s': 3, 'value': 140}), 20)
+        self.assertIsNone(counter_rate(before, {'monotonic_s': 3, 'value': 1}))
+        self.assertIsNone(counter_rate(before, {'monotonic_s': 8, 'value': 200}))
+        self.assertIsNone(counter_rate(before, {'monotonic_s': 1, 'value': 200}))
+
+    def test_perfquery_units_missing_data_and_no_reset_arguments(self):
+        text = '\n'.join(f'{k}:....{v}' for k, v in {
+            'PortSelect': 1, 'PortXmitData': 12, 'PortRcvData': 4,
+            'PortXmitPkts': 2, 'PortRcvPkts': 3, 'PortXmitWait': 7,
+        }.items())
+        rows = {x['metric']: x for x in perfquery_records(text, 'mlx5_0', '1')}
+        self.assertEqual(rows['PortXmitData']['value'], 48)
+        self.assertEqual(rows['PortRcvData']['value'], 16)
+        self.assertEqual(rows['PortXmitWait']['unit'], 'pma_ticks')
+        self.assertNotIn('PortSelect', rows)
+        with self.assertRaises(ValueError):
+            perfquery_records(text.replace('PortRcvData', 'Absent'), 'mlx5_0', '1')
+        self.assertEqual(perfquery_command('mlx5_0', 1), ['perfquery', '-x', '-C', 'mlx5_0', '-P', '1'])
+        with self.assertRaises(ValueError):
+            perfquery_command('mlx5_0', '1 -R')
+
+    def test_fabric_discovery_excludes_storage_and_ethernet_ports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for i in range(10):
+                p = root / f'mlx5_{i}/ports/1'
+                p.mkdir(parents=True)
+                (p/'rate').write_text('400 Gb/sec' if i != 8 else '100 Gb/sec')
+                (p/'state').write_text('4: ACTIVE')
+                (p/'link_layer').write_text('InfiniBand' if i != 9 else 'Ethernet')
+            self.assertEqual(len(active_training_ports(root)), 8)
+            (root/'mlx5_0/ports/1/state').write_text('1: DOWN')
+            with self.assertRaises(ValueError):
+                active_training_ports(root)
+
     def test_staging_batches_bound_payload_and_preserve_hashes(self):
         original = {str(i): entry(os.urandom(4000)) for i in range(5)}
         payloads = list(batches({'root': '/example', 'create': False}, original, limit=10000))

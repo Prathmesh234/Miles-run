@@ -1,0 +1,99 @@
+{
+  "evidence_phases": [
+    "00-compatibility-verifiers-range",
+    "00-compatibility-openai-pin",
+    "00-compatibility-agents-range",
+    "00-compatibility-offline-evaluation",
+    "00-dependency-metadata"
+  ],
+  "locked_metadata": {
+    "harbor==0.21.0": {
+      "relevant_requires_dist": [
+        "openai>=2.0; extra == \"computer-1\""
+      ],
+      "requires_python": ">=3.12",
+      "response_sha256": "470cde45a7ccbbad74b000c456d108f032acc73e7722a5490455158c440d357d",
+      "source": "https://pypi.org/pypi/harbor/0.21.0/json"
+    },
+    "openai-agents==0.20.0": {
+      "relevant_requires_dist": [
+        "openai<3,>=2.45.0"
+      ],
+      "requires_python": ">=3.10",
+      "response_sha256": "1b8511aa227da74ecf225355f5a20177d320f1544ea85eede678842a8c88ee10",
+      "source": "https://pypi.org/pypi/openai-agents/0.20.0/json"
+    },
+    "openai-agents==0.8.2": {
+      "relevant_requires_dist": [
+        "openai<3,>=2.9.0"
+      ],
+      "requires_python": ">=3.9",
+      "response_sha256": "6f0ae54d6ea37c2be53f1c10a8809743716723feb47f8723b7f24e05916e222d",
+      "source": "https://pypi.org/pypi/openai-agents/0.8.2/json"
+    },
+    "verifiers==0.3.1": {
+      "relevant_requires_dist": [
+        "openai-agents>=0.8.2",
+        "openai>=2.9.0",
+        "renderers>=0.1.10",
+        "harbor==0.21.0; python_full_version >= \"3.12\" and extra == \"harbor\""
+      ],
+      "requires_python": "<3.14,>=3.11",
+      "response_sha256": "149cd1fc654e7bcf89e9b516fac774676905e06736ecc70f3ac51fb42312e128",
+      "source": "https://pypi.org/pypi/verifiers/0.3.1/json"
+    }
+  },
+  "matrix": [
+    {
+      "dependencies": "verifiers>=0.2.0,<0.2.1; openai-agents<0.5; documented SGLang OpenAI==2.6.1",
+      "evidence": "Three unsatisfiable resolver results; no installation",
+      "path": "Miles documented online Verifiers adapter",
+      "status": "Strict 0.3.1 combination blocked"
+    },
+    {
+      "dependencies": "Pinned Miles and OpenEnv sources; GPU image and task-runtime package locks pending",
+      "evidence": "No policy trajectories or optimizer steps yet",
+      "path": "Miles OpenEnv online, local Docker",
+      "status": "Recommended architecture; environment-isolation gate failed"
+    },
+    {
+      "dependencies": "Python 3.12.11; verifiers==0.3.1; harbor==0.21.0; openai==2.54.0; openai-agents==0.20.0; renderers==0.1.11",
+      "evidence": "Hash-pinned Linux lock; no install or evaluation execution",
+      "path": "Offline Verifiers/Harbor evaluation",
+      "status": "Dependency lock resolved; runtime and TB2.1 environment not validated"
+    },
+    {
+      "dependencies": "Not implemented",
+      "evidence": "No equivalence tests have passed",
+      "path": "Strict Verifiers split-process bridge / upgrade",
+      "status": "Blocked before optimizer steps"
+    }
+  ],
+  "miles_base_revision": "0709889b2848f293b5575d50aa3340fa4de5a20d",
+  "notes": [
+    "The exact Miles adapter requirements come from examples/experimental/verifiers/requirements.txt at the recorded source revision. The 2.6.1 SGLang pin is documented there, not yet verified from the selected GPU image.",
+    "Published Verifiers 0.3.1 metadata directly requires OpenAI>=2.9.0 and Python>=3.11,<3.14. Its Harbor extra activates harbor==0.21.0 only on Python>=3.12; Harbor itself requires Python>=3.12.",
+    "The offline lock resolves OpenAI 2.54.0. That resolved version must not be confused with Verifiers direct minimum requirement. The frozen openai-agents 0.20.0 requires OpenAI>=2.45.0,<3.",
+    "Resolution used uv 0.11.19, Python target 3.12.11, x86_64-unknown-linux-gnu and package cutoff 2026-09-02T00:00:00Z. It is not proof that task loading, tools, rewards, cleanup, or inference work.",
+    "The Prime terminal-bench-2 environment package revision and untouched TB2.1 taskset still need exact pins. This lock covers the evaluator framework, not a fully validated TB2.1 task runtime.",
+    "Offline Verifiers evaluation does not generate the OpenEnv online training trajectories. No forced package upgrades were attempted."
+  ],
+  "offline_lock": {
+    "path": "locks/offline-verifiers-py312-linux.lock",
+    "sha256": "e0581971c6c19df4ac6aed6fa3d8cd34665b824137738e87c1e3e9e17df08be0"
+  },
+  "reproducer": "python3 scripts/check_compatibility.py --run-dir /absolute/path/to/a/fresh/run",
+  "run_id": "20260902-172037-a3b210",
+  "runner": "compatibility-report",
+  "schema_version": 1,
+  "status": "partial",
+  "strict_online_required_tests": [
+    "Exact sampled token IDs",
+    "Per-token sampled logprobs",
+    "Renderer and chat-template identity",
+    "n-sample group identity and boundaries",
+    "Rewards and error categories",
+    "Tool traces and masks",
+    "GRPO advantages, loss and gradients on identical data"
+  ]
+}
