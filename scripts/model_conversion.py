@@ -21,12 +21,17 @@ MILES_SHA = 'b61dbe83ee815412b72c84ed367ffd329d7922d4'
 MEGATRON_SHA = '8c1e05747eb612b382df2632783df5c83a853646'
 
 
+def torchrun_prefix(ranks):
+    return [sys.executable, '-m', 'torch.distributed.run', '--rdzv-backend=static',
+            '--master-addr=127.0.0.1', '--master-port=31873', '--nnodes=1', '--node-rank=0',
+            '--nproc-per-node=' + str(ranks)]
+
+
 def conversion_command(source, model, destination, model_args):
     args = shlex.split(model_args)
     if args.count('--mtp-num-layers') != 1 or args[args.index('--mtp-num-layers') + 1] != '1':
         raise ValueError('The pinned conversion recipe must preserve its one MTP layer.')
-    return [sys.executable, '-m', 'torch.distributed.run', '--standalone', '--nproc-per-node=8',
-            str(source / 'tools/convert_hf_to_torch_dist.py'), *args,
+    return [*torchrun_prefix(8), str(source / 'tools/convert_hf_to_torch_dist.py'), *args,
             '--hf-checkpoint', str(model), '--save', str(destination)]
 
 
@@ -93,6 +98,9 @@ def main():
             raise ValueError('Conversion requires at least 512 GiB free before starting.')
         results['imports'] = validate_imports(run, source, model)
         atomic(phase.path / 'import-probe.json', results['imports'])
+        rc, _, _ = phase.command(torchrun_prefix(2) + [str(Path(__file__).with_name('rendezvous_probe.py'))], timeout=120)
+        if rc:
+            raise RuntimeError('Static loopback rendezvous probe failed before conversion.')
         from miles.utils.external_utils.model_args_utils import load_model_args
         command = conversion_command(source, model, partial, load_model_args('qwen3.6-35B-A3B'))
         results['command'] = command
@@ -113,6 +121,8 @@ def main():
                     raise RuntimeError('Conversion free-space guard reached 128 GiB reserve.')
                 if time.monotonic() - started > 1200:
                     raise TimeoutError('Conversion exceeded its 20-minute execution budget.')
+                if (run.root / f'control/model-conversion-v{args.attempt}.stop').exists():
+                    raise RuntimeError('Operator/controller stop marker received; preserve partial conversion.')
                 time.sleep(2)
         results['conversion_duration_s'] = time.monotonic() - started
         results['conversion_ended_at'] = utcnow()

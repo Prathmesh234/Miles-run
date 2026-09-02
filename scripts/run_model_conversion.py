@@ -38,6 +38,7 @@ def container_command(run, code, attempt, source):
         'SLURM_JOB_ID': os.environ['SLURM_JOB_ID'], 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
         'PYTHONPATH': '/miles-source:/root/Megatron-LM', 'OMP_NUM_THREADS': '1',
         'CUDA_DEVICE_MAX_CONNECTIONS': '1', 'NCCL_DEBUG': 'INFO', 'NCCL_DEBUG_SUBSYS': 'INIT,NET,GRAPH',
+        'GLOO_SOCKET_IFNAME': 'lo', 'NCCL_SOCKET_IFNAME': 'lo',
         'NCCL_DEBUG_FILE': f'/run-artifacts/telemetry/nccl/model-conversion-v{attempt}/nccl.%h.%p.log'}
     model = run.root / 'models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0'
     command = ['enroot', 'start', '--net', '--pid', '--ipc', '--rw']

@@ -73,6 +73,9 @@ class ParserTests(unittest.TestCase):
         command = conversion_command(Path('/source'), Path('/model'), Path('/output.partial'),
                                      '--mtp-num-layers 1 --num-layers 40')
         self.assertIn('--nproc-per-node=8', command)
+        self.assertNotIn('--standalone', command)
+        self.assertIn('--rdzv-backend=static', command)
+        self.assertIn('--master-addr=127.0.0.1', command)
         self.assertEqual(command[-2:], ['--save', '/output.partial'])
         for wrong in ('--num-layers 40', '--mtp-num-layers 0', '--mtp-num-layers 1 --mtp-num-layers 1'):
             with self.assertRaises(ValueError):
