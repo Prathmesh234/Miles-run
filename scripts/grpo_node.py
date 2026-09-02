@@ -17,6 +17,9 @@ from infra_node import allocated_run, read_inventory
 
 
 def main():
+    def terminated(signum, frame):
+        raise RuntimeError('Slurm terminated this run-owned node process; preserving artifacts and cleaning children.')
+    signal.signal(signal.SIGTERM, terminated)
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--attempt', type=int, required=True)
@@ -127,7 +130,9 @@ def main():
         stop(child)
         if controller is not None:
             # Exact container name was created by this process; no global cleanup.
-            phase.command(['docker', 'stop', '--time=20', controller_name], timeout=30)
+            rc, _, _ = phase.command(['docker', 'stop', '--time=20', controller_name], timeout=30)
+            if rc:
+                findings.append('Run-owned OpenEnv controller stop returned an error.')
             stop(controller)
         atomic(run.root / 'control' / (label + '-telemetry.stop'), {'time': utcnow()})
         atomic(run.root / 'control' / (label + '-lustre.stop'), {'time': utcnow()})

@@ -14,6 +14,9 @@ from evidence import atomic, utcnow
 
 
 def main():
+    def terminated(signum, frame):
+        raise RuntimeError('Training container termination requested.')
+    signal.signal(signal.SIGTERM, terminated)
     ap = argparse.ArgumentParser()
     ap.add_argument('--attempt', type=int, required=True)
     a = ap.parse_args()
