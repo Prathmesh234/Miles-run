@@ -76,7 +76,7 @@ def tree_archive(source, root_name, overrides=None):
 def container_options(image, name, run_id, role):
     if not image.startswith('sha256:') or len(image) != 71:
         raise ValueError('Task containers require an immutable local image ID.')
-    return dict(image=image, name=name, entrypoint='/bin/sleep', command=['infinity'], detach=True,
+    return dict(image=image, name=name, entrypoint='/bin/sleep', command=['infinity'], detach=True, runtime='runc',
                 working_dir='/app/task_file', network_mode='none', read_only=True,
                 cap_drop=['ALL'], security_opt=['no-new-privileges:true'],
                 mem_limit='1g', memswap_limit='1g', nano_cpus=1_000_000_000, pids_limit=128,
@@ -124,7 +124,11 @@ class FileTaskSession:
             self.container = self.client.containers.run(**container_options(
                 self.task['policy_image_id'], 'ptx-' + purpose + '-' + self.episode, self.root.name, purpose))
             self.verify_container(self.container, purpose)
-            data = tree_archive(self.root / self.task['public_tree_relpath'], 'task_file')
+            initial = self.root / self.task['initial_tree_archive_relpath']
+            if initial.is_symlink() or sha256(initial) != self.task['initial_tree_archive_sha256']:
+                raise ValueError('Initialized public image filesystem changed.')
+            data = initial.read_bytes()
+            validate_archive(data, 'task_file')
             if not self.container.put_archive('/app', data):
                 raise RuntimeError('Public task upload failed.')
             self.record('ready', container_id=self.container.id, staged_public_sha256=hashlib.sha256(data).hexdigest())

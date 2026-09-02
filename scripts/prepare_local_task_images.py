@@ -107,7 +107,7 @@ def main():
             shutil.copytree(task_source / 'environment', context)
             empty_tree = not (context / 'task_file').exists()
             if empty_tree:
-                if task != 'task_14118':
+                if task not in ('task_14118', 'task_10753'):
                     raise ValueError('Unexpected missing public task tree; require explicit task review.')
                 # Git cannot store an empty directory. This task explicitly has
                 # no input files, but its Dockerfile COPY still requires one.
@@ -122,6 +122,20 @@ def main():
             command(['docker', 'build', '--pull=false', '--network=default', '--label', 'posttrainingx.run=' + run.root.name,
                      '--tag', tag, str(context)], timeout=300)
             policy = json.loads(command(['docker', 'image', 'inspect', tag]))[0]
+            container_id = command(['docker', 'create', '--runtime=runc', '--network=none',
+                                    '--label', 'posttrainingx.run=' + run.root.name,
+                                    '--label', 'posttrainingx.role=public-image-export',
+                                    '--entrypoint', '/bin/true', policy['Id']]).strip()
+            if not re.fullmatch('[0-9a-f]{64}', container_id):
+                raise ValueError('Public image export container identity is ambiguous.')
+            initial_archive = parent / 'initial-trees' / (task + '.tar')
+            initial_archive.parent.mkdir(exist_ok=True)
+            copy_code = ('import subprocess,sys\nwith open(sys.argv[2], "xb") as output:\n'
+                         ' subprocess.run(["docker","cp",sys.argv[1]+":/app/task_file","-"],stdout=output,check=True,timeout=30)\n')
+            command(['python3', '-c', copy_code, container_id, str(initial_archive)], timeout=40)
+            if initial_archive.stat().st_size > 256 * 1024**2:
+                raise ValueError('Initialized public task tree exceeds the archive budget.')
+            command(['docker', 'rm', container_id], timeout=30)
             grader_context = parent / 'grader-builds' / task
             grader_context.mkdir(parents=True)
             # No task test files enter this image. Runtime grading stages them
@@ -146,6 +160,8 @@ def main():
                    'runtime_harness_relpath': str(runtime_harness.relative_to(run.root)),
                    'source_relpath': str(task_source.relative_to(run.root)),
                    'public_tree_relpath': str((context / 'task_file').relative_to(run.root)),
+                   'initial_tree_archive_relpath': str(initial_archive.relative_to(run.root)),
+                   'initial_tree_archive_sha256': sha256(initial_archive),
                    'empty_input_directory_materialized': empty_tree,
                    'profile': 'file-only-v1: read-only root; bounded tmpfs task tree; no network; separate sealed grader',
                    'reference_and_policy_validation': 'not_started'}
