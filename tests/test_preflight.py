@@ -25,6 +25,7 @@ from telemetry_lustre_host import stats_records
 from enroot_run_config import prepare as prepare_enroot_config
 from runtime_inventory import parse_inventory_stdout
 from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows, stop_owned_server
+from model_conversion import conversion_command, checkpoint_files
 
 
 class EvidenceTests(unittest.TestCase):
@@ -68,6 +69,24 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_conversion_preserves_mtp_and_refuses_unhashed_links(self):
+        command = conversion_command(Path('/source'), Path('/model'), Path('/output.partial'),
+                                     '--mtp-num-layers 1 --num-layers 40')
+        self.assertIn('--nproc-per-node=8', command)
+        self.assertEqual(command[-2:], ['--save', '/output.partial'])
+        for wrong in ('--num-layers 40', '--mtp-num-layers 0', '--mtp-num-layers 1 --mtp-num-layers 1'):
+            with self.assertRaises(ValueError):
+                conversion_command(Path('/source'), Path('/model'), Path('/output.partial'), wrong)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            payload = root / 'weights.distcp'
+            payload.write_bytes(b'x' * (1024**2 + 1))
+            entries = checkpoint_files(root)
+            self.assertEqual(entries[0]['sha256'], sha256(payload))
+            (root/'alias').symlink_to(payload)
+            with self.assertRaises(ValueError):
+                checkpoint_files(root)
+
     def test_server_cleanup_signals_parent_and_reports_surviving_workers(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
