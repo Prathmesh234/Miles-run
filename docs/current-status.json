@@ -17,8 +17,8 @@
     },
     {
       "gate": "GPU runtime and provenance",
-      "smallest_next_step": "Run TP1/EP8/PP1 trainer reshard, forward/logit and gradient checks using pinned source346946ae8. Do not treat CPU tensor equality as optimizer or resume validation.",
-      "state": "Job119 qualified text/MTP tensor parity under contractv2; trainer execution still unvalidated"
+      "smallest_next_step": "Independently compare each loaded EP8 parameter shard against the qualified checkpoint, then compare teacher-forced logprobs with serving. Diagnostic cross-entropy is not GRPO correctness or optimizer/resume validation.",
+      "state": "Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs."
     },
     {
       "gate": "GRPO, async and resume fidelity",
@@ -80,7 +80,11 @@
     "Four Miles patches replay to exact tree c48ad99923d5f0815a1424ba15f58e1d3186320b; patch SHA256 b5cd7e36465a3de2fb7d2abcc533ee86b0645df41d12c34af99b0bb0c6b9b435. Whitespace-error replay failed on original snapshot formatting; warn-and-preserve replay succeeded without editing bytes.",
     "New Miles runtime source 346946ae8 materialized at provenance/training-source-v2/miles: 1,830 regular files, manifest SHA256 8155596d8f3f65a5a2f47378d17db5e0af702d334c31d66472916841ade8f356. Prior b61 source used for conversion/parity remains intact.",
     "Terminal-Lego revision 9c197f1c2e87b64cc316b1a5bfcef57b584929f0: all 15,049 catalog IDs pinned before outcomes; deterministic 512 training/128 development tasks plus reserved runtime task_00000. Independently rehashed 641 task sources, 5,097 files and 10,748,004 bytes. Controller directory0700; images/oracles/tasks not executed. Two failed acquisition attempts retained; third resolved three LFS assets against their pinned SHA256.",
-    "CollectiveX source pinned at InferenceX 9ddcc1fe59f4f2cf621667e24e90587288907956, DeepEP V2 pin 01dc3aaac82068020353dce2c302e38153c0bfaa. Archived 31 source files. Static image inspection identifies incompatible legacy DeepEP API; no collective performance claim."
+    "CollectiveX source pinned at InferenceX 9ddcc1fe59f4f2cf621667e24e90587288907956, DeepEP V2 pin 01dc3aaac82068020353dce2c302e38153c0bfaa. Archived 31 source files. Static image inspection identifies incompatible legacy DeepEP API; no collective performance claim.",
+    "Job120 completed exit0 in5m51s on node0: all eight ranks resolved TP1/EP8/PP1/CP1/ETP1, denseDP8/expertDP1, retained native MTP and loaded the converted checkpoint. Each rank recorded3,191 identical before/after parameter hashes; all gradient buffers finite with nonzero main/MTP gradients. No optimizer or scheduler was constructed, zero optimizer steps.",
+    "Independent finalized-record audit passed for job120: eight distinct CUDA UUIDs,128-token packed input per rank,127 finite teacher-forced logprobs consistent with diagnostic CE, raw gradient counts cross-checked. This is not independent shard-value parity, serving-logprob equivalence, GRPO, resume or quality validation.",
+    "Job120 telemetry: six finalized streams with zero collector errors,329 native sampling ticks and348 host-Lustre ticks; maximum native gap2.58s. Generated554 per-entity metric distributions and13,838 plot-source rows. No counter discontinuities. Reports/trainer-probe-v1 JSON/Markdown/PNG retain explicit non-steady-state and non-process-exclusive caveats.",
+    "Root preparation/evidence suite now31passed. Reporting dependency check failed because .venv-launch-tests lacks Matplotlib; original failure retained. Rendering used the pre-existing isolated Python3.12.11/Matplotlib3.10.6 analysis environment with package freeze captured. No training-stack package changes."
   ],
   "failed_slurm_jobs": [
     {
@@ -108,7 +112,8 @@
     112,
     115,
     117,
-    119
+    119,
+    120
   ],
   "proposed_optimizer_steps": 400,
   "quality_note": "Initial plan: 400 optimizer steps, with TB2.1 evaluation at steps 0/50/100/200/400 and approximately one-second infrastructure collectors throughout. Prospective common batch96 implies 38,400 eligible training trajectories; Stage4 reference remains64. Budget cap and remaining correctness/isolation gates still need resolution. This is not a guarantee of improvement; training and held-out quality measurement have not started.",

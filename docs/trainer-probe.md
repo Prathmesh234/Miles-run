@@ -45,3 +45,41 @@ must use new versioned paths, preserving any failure and its artifacts.
 A passing result does not authorize GRPO training by itself: local task/grader
 isolation, true n-sample grouping and policy loss, serving-logprob agreement,
 weight activation, full telemetry and checkpoint/resume remain separate gates.
+
+## Executed result
+
+Job **120** completed with exit zero in **5m51s**. All eight ranks passed the
+native load/forward/backward contract. Each retained 3,191 identical before/after
+parameter hashes and finite main/MTP gradient buffers. Megatron resolved
+sequence parallelism to false at TP1, while preserving TP1/EP8/PP1/CP1/ETP1.
+No optimizer or scheduler was constructed; zero optimizer steps occurred.
+
+An independent finalized-record audit checked parameter/gradient inventories,
+counts, MTP classification, packed token IDs and diagnostic-loss/logprob
+consistency. This does **not** independently establish that each loaded EP8
+shard contains the correct checkpoint values; that numerical comparison remains
+open, along with serving-logprob equivalence.
+
+All six telemetry streams finalized without collector errors. Native sampling
+had a maximum 2.58-second gap. The generated report has 554 metric distributions
+and 13,838 plotted-source records. The first forward/backward includes startup
+and compilation effects; it is not a steady-state throughput measurement.
+
+Reproducible audit and reporting entrypoints (each refuses to reuse its phase):
+
+```sh
+.venv-launch-tests/bin/python scripts/audit_trainer_probe.py \
+  --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \
+  --kubeconfig /Users/prathmeshbhatt/.kube/vke-config --attempt 1 --job-id 120
+.venv-analysis/bin/python scripts/report_trainer_probe.py \
+  --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \
+  --kubeconfig /Users/prathmeshbhatt/.kube/vke-config
+```
+
+The report uses the separately pinned Python 3.12.11 / Matplotlib 3.10.6 analysis
+environment. An earlier plotting import in the launcher-test environment failed
+and remains recorded; no packages were added to the training image.
+
+Outputs: `reports/trainer-probe-v1.json`, `.md` and `.png` inside the run bundle.
+Raw per-rank artifacts and torchrun logs remain in
+`tests/02-trainer-probe-child-v1/` on shared storage.

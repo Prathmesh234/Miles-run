@@ -31,6 +31,8 @@ from prepare_terminal_lego import CATALOG_URL, next_page, select_tasks
 from materialize_terminal_lego import configure_git_environment, inventory_tasks
 from materialize_terminal_lego_lfs import copy_verified_sources, lfs_item, tracked_files
 from trainer_probe import trainer_command, parameter_hashes, gradient_statistics
+from audit_trainer_probe import validate_rank_evidence
+from report_trainer_probe import analyze_streams
 
 
 class EvidenceTests(unittest.TestCase):
@@ -74,6 +76,23 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_trainer_report_preserves_counter_gaps_and_rechecks_source_hashes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / 'infiniband.jsonl'
+            rows = [dict(time=f'2026-09-02T00:00:{t:02d}Z', monotonic_s=t, hostname='node',
+                         source='perfquery', metric='PortXmitData', value=value, unit='B',
+                         hca='mlx5_0', hca_port='1') for t, value in [(1, 10), (2, 12), (9, 19), (10, 22)]]
+            path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            coverage = [{'path': path.name, 'sha256': sha256(path)}]
+            result = analyze_streams(root, coverage)
+            self.assertEqual(result['findings'], [])
+            self.assertEqual([row['value'] for row in result['timeline']], [2.0, 3.0])
+            self.assertEqual(len(result['counter_discontinuities']), 1)
+            self.assertEqual(result['distributions'][0]['statistics']['mean'], 2.5)
+            coverage[0]['sha256'] = '0' * 64
+            self.assertTrue(analyze_streams(root, coverage)['findings'])
+
     def test_trainer_probe_keeps_ep8_mtp_and_prohibits_optimizer_loading(self):
         command = trainer_command('/evidence', '--mtp-num-layers 1 --moe-token-dispatcher-type alltoall')
         for flag, value in {'--tensor-model-parallel-size': '1', '--pipeline-model-parallel-size': '1',
@@ -109,6 +128,42 @@ class ParserTests(unittest.TestCase):
         with torch.no_grad():
             model.base.weight[0, 0] += 1
         self.assertNotEqual(before, parameter_hashes([wrapper]))
+
+    def test_finalized_trainer_audit_cross_checks_counts_mtp_loss_and_parameter_records(self):
+        import copy
+        import torch
+        model = torch.nn.Module()
+        model.base = torch.nn.Linear(2, 2, bias=False)
+        model.mtp = torch.nn.Linear(2, 2, bias=False)
+        wrapper = torch.nn.Module()
+        wrapper.module = model
+        for param in wrapper.parameters():
+            param.grad = torch.ones_like(param)
+        hashes = parameter_hashes([wrapper])
+        records = [hashes, copy.deepcopy(hashes), gradient_statistics([wrapper]),
+                   {'logit_shape': [1, 128, 248320], 'teacher_forced_log_probs': [[-2.0] * 127],
+                    'main_cross_entropy': 2.0}, {'token_ids': [1] * 128, 'cu_seqlens': [0, 128]},
+                   {'gradient_tensors_present': 2, 'gradient_tensors_nonzero': 2,
+                    'mtp_gradient_tensors_nonzero': 1, 'parameters_unchanged': True}]
+        self.assertEqual(validate_rank_evidence(*records)[0], [])
+        mutations = [
+            lambda r: r[1][0].update(sha256='f' * 64),
+            lambda r: r[2].append(copy.deepcopy(r[2][0])),
+            lambda r: r[2][0].update(mtp=True),
+            lambda r: r[2][0].update(present=False),
+            lambda r: r[2][0].update(max_abs=float('nan')),
+            lambda r: r[2][0].update(local_buffer_l2=0),
+            lambda r: r[3].update(main_cross_entropy=3.0),
+            lambda r: r[3].update(teacher_forced_log_probs=[[float('-inf')] * 127]),
+            lambda r: r[4].update(token_ids=[True] * 128),
+            lambda r: r[5].update(gradient_tensors_nonzero=3),
+            lambda r: r[5].update(parameters_unchanged=False),
+        ]
+        for index, mutate in enumerate(mutations):
+            changed = copy.deepcopy(records)
+            mutate(changed)
+            with self.subTest(index=index):
+                self.assertTrue(validate_rank_evidence(*changed)[0])
 
     def test_task_lfs_completion_checks_original_git_blobs_and_preserves_failed_source(self):
         payload = b'version https://git-lfs.github.com/spec/v1\noid sha256:' + b'a' * 64 + b'\nsize 12\n'
