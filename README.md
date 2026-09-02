@@ -37,8 +37,9 @@ in the server process, is not the selected architecture.
 
 `scripts/evidence.py` writes atomic JSON, reports generated from that JSON, raw
 logs, command records, a sweep summary, and a SHA-256 inventory. It does not
-fabricate metrics for stages that have not executed. Raw artifacts remain outside
-Git in `runs/`; the campaign must preserve the complete bundle on shared storage.
+fabricate metrics for stages that have not executed. The complete raw bundle
+remains outside Git in `runs/` and on shared storage. Reviewed, normalized
+infrastructure telemetry is also published under `telemetry/` as described below.
 
 ## Planned stages
 
@@ -79,8 +80,9 @@ Terminal-Bench quality result or full resume equivalence has been established.
 
 This repository contains the project source, tests, documentation, version locks,
 and patches. Private ClusterMAX sources, kubeconfigs and credentials, virtual
-environments, model/checkpoint binaries, raw task data, and run evidence are not
-published. Raw evidence remains in the run directory on shared storage. Older
+environments, model/checkpoint binaries, raw task data, and unrestricted run evidence
+are not published. Normalized telemetry snapshots are the explicit exception.
+Raw evidence remains in the run directory on shared storage. Older
 dummy-run checkpoint payloads were pruned with explicit operator authorization;
 the newest full checkpoint and the older metadata/logs were retained.
 
@@ -115,6 +117,58 @@ The latter requires the finalized native telemetry to be present locally. It
 refuses to replace an existing report phase; diagnostic reruns must retain their
 own phase identity. Dependency freezes for CPU checks and analysis are separate
 from the pinned GPU image and the offline evaluator lock.
+
+## Periodic telemetry publication
+
+`scripts/stage_grpo.py` starts a run-owned local publisher after a successful
+training submission. It snapshots, commits, and pushes new normalized metric
+records approximately every five minutes, plus a final snapshot when Slurm reports
+the job terminal. The watcher is bounded to 100 minutes; extend `--max-seconds`
+explicitly for longer jobs or queue waits. The workstation must stay awake with
+cluster and GitHub access. This is not a cluster-side scheduled service.
+
+Publication includes GPU, NVLink, InfiniBand, CPU/memory/NUMA, and Lustre JSONL
+streams for all four nodes. Missing streams and collector errors remain explicit;
+no measurements are replaced with zero. Other collectors, RL traces, and raw
+process logs are not automatically exported by this allowlisted publisher.
+Credentials, task transcripts, hidden tests, and checkpoints are excluded.
+
+Snapshots live at `telemetry/vultr-b200-slurm/<run-id>/job-<id>/` as four small,
+human-readable files: a generated `README.md`, a ClusterMAX-style
+`telemetry.values.json` (or `.failed.json`, `.partial.json`, `.skipped.json`),
+`timeline.csv`, and `checksums.sha256`. **No raw JSONL, chunk trees, or giant
+compressed archives are committed.**
+
+The summary keeps node-level distributions, concise per-GPU measurements,
+GPU/rail/link extremes, every collector error time, health-counter exceptions,
+and source paths/checksums. Constant inventory values are written once; repeated
+zero ECC/IB counters collapse to observed-series counts. The minute-level CSV
+retains sample counts and min/mean/p95/max envelopes, not millions of repeated
+samples. Means are sample-weighted; invalid counter intervals and missing samples
+are not replaced with zero. IB rates stay per rail instead of summing clocks that
+were sampled at different times. Full-resolution raw data, lifetime Lustre
+statistics, and detailed per-link distributions remain in the run evidence.
+
+The presentation follows ClusterMAX's compact topology-aware tables and explicit
+failure/caveat conventions, without copying private source or internal provider
+reports into this public repository. Each periodic update replaces the same small
+summary files. Download/resume caches remain under the ignored `runs/` directory.
+A successful publication does not imply that the telemetry or training passed.
+
+To backfill a job, or restart its watcher with `--watch`:
+
+```sh
+python3 scripts/publish_telemetry.py \
+  --run-dir /absolute/path/to/run \
+  --kubeconfig /absolute/path/to/vultr-kubeconfig \
+  --stream-label sync-grpo-v9 --job-id 143 --push
+```
+
+Only the job's telemetry directory is staged. Pre-staged unrelated changes,
+changed source boundaries, unreviewed schemas, and credential-like contents cause
+an explicit failure. Watcher logs and its startup receipt remain under
+`runs/.../provenance/telemetry-publisher-job-<id>/`. Inspect those logs after a
+publication failure; do not infer that a spawned watcher has successfully pushed.
 
 ## Native four-node preflight entrypoint
 

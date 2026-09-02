@@ -8,6 +8,7 @@ import subprocess
 
 from evidence import Run, atomic, sha256
 from probe_host_lustre import pod_manifest
+from publish_telemetry import start_watcher
 from submit_native_preflight import BOOTSTRAP, batches, entry
 
 PARENT_MILES = '346946ae870be97e9cb6f4e8b7214c7fcf66c041'
@@ -187,6 +188,16 @@ def main():
     receipt = {'slurm_job_id': job, 'root_sha': revision, 'miles_sha': miles_sha, 'layout': '2t2r',
                'gpus': 32, 'optimizer_steps_requested': 3, 'scope': 'Actual GRPO job submitted; optimizer execution not yet verified.'}
     atomic(phase.path / 'submission.json', receipt)
+    if okay:
+        try:
+            receipt['telemetry_publisher'] = start_watcher(run.root, a.kubeconfig, label, int(job))
+        except Exception as exc:
+            receipt['telemetry_publisher'] = {'status': 'failed_to_start', 'error_type': type(exc).__name__}
+            atomic(phase.path / 'submission.json', receipt)
+            phase.finish('fail', failure_summary='Training was submitted, but its local telemetry publisher did not start. Inspect the job and publisher logs before any retry.', metadata=receipt)
+            print(json.dumps(receipt), flush=True)
+            return 1
+        atomic(phase.path / 'submission.json', receipt)
     phase.finish('ok' if okay else 'fail', failure_summary=None if okay else 'Ambiguous submission; inspect job name before retry.', metadata=receipt)
     print(json.dumps(receipt), flush=True)
     return int(not okay)

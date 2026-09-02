@@ -43,6 +43,124 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_public_telemetry_preserves_errors_and_rejects_unreviewed_data(self):
+        from publish_telemetry import validate_rows
+
+        record = dict(time='2026-09-02T22:00:00Z', monotonic_s=1.0, hostname='gpu-nodes-0',
+                      source='nvidia-smi', metric='utilization.gpu', value=12.5, unit='percent', slurm_job_id='143')
+        error = dict(record, metric='collector_error', value=None, error='Read timed out.')
+        raw = ''.join(json.dumps(row) + '\n' for row in (record, error)).encode()
+        self.assertEqual(validate_rows(raw, 'gpu-nodes-0', 143)['collector_errors'], 1)
+        self.assertEqual(validate_rows(raw, 'gpu-nodes-0', 143)['records'], 2)
+        for bad in (dict(record, transcript='not allowed'), dict(record, value={'nested': 1}),
+                    dict(record, hostname='gpu-nodes-1'), dict(record, slurm_job_id='144'),
+                    dict(record, value=float('nan')), dict(error, value=0),
+                    dict(error, error='gh' + 'p_' + 'a' * 36)):
+            with self.subTest(bad_keys=sorted(bad)), self.assertRaises(ValueError):
+                validate_rows((json.dumps(bad) + '\n').encode(), 'gpu-nodes-0', 143)
+        with self.assertRaisesRegex(ValueError, 'inside a JSONL'):
+            validate_rows(raw[:-1], 'gpu-nodes-0', 143)
+
+    def test_public_telemetry_chunk_resume_finalization_and_mutation_guard(self):
+        from publish_telemetry import export_chunk
+
+        remote = '/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210'
+        relative = 'telemetry/sync-grpo-v9/gpu-nodes-0/nvidia-smi.jsonl'
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            final = root / relative
+            final.parent.mkdir(parents=True)
+            partial = final.with_suffix('.jsonl.partial')
+            partial.write_bytes(b'{"value":1}\n{"value":')
+            with patch('pathlib.Path', return_value=root):
+                first = export_chunk(remote, relative, 0, None, None)
+                self.assertFalse(first['complete'])
+                self.assertEqual(gzip.decompress(base64.b64decode(first['gzip_base64'])), b'{"value":1}\n')
+                with partial.open('ab') as output:
+                    output.write(b'2}\n')
+                second = export_chunk(remote, relative, first['end'], first['inode'], first['anchor'])
+                self.assertEqual(gzip.decompress(base64.b64decode(second['gzip_base64'])), b'{"value":2}\n')
+                partial.rename(final)
+                last = export_chunk(remote, relative, second['end'], second['inode'], second['anchor'])
+                self.assertTrue(last['complete'])
+                self.assertEqual(last['source_sha256'], hashlib.sha256(final.read_bytes()).hexdigest())
+                with self.assertRaisesRegex(ValueError, 'boundary changed'):
+                    export_chunk(remote, relative, second['end'], second['inode'], 'bad-anchor')
+                with self.assertRaisesRegex(ValueError, 'truncated or replaced'):
+                    export_chunk(remote, relative, 0, second['inode'] + 1, None)
+                with self.assertRaisesRegex(ValueError, 'explicitly allowed'):
+                    export_chunk(remote, 'rl/trajectories.jsonl', 0, None, None)
+
+    def test_public_telemetry_watcher_is_bounded_and_run_owned(self):
+        from publish_telemetry import start_watcher
+
+        with tempfile.TemporaryDirectory() as temporary, patch('publish_telemetry.subprocess.Popen') as popen:
+            popen.return_value.pid = 12345
+            receipt = start_watcher(temporary, '/example/config', 'sync-grpo-v9', 143)
+            command = popen.call_args.args[0]
+            self.assertIn('--watch', command)
+            self.assertIn('--push', command)
+            self.assertEqual(command[command.index('--interval-seconds') + 1], '300')
+            self.assertEqual(command[command.index('--max-seconds') + 1], '6000')
+            self.assertTrue(popen.call_args.kwargs['start_new_session'])
+            self.assertEqual(receipt['status'], 'spawned')
+            self.assertTrue((Path(temporary) / receipt['log_directory'] / 'started.json').is_file())
+            with self.assertRaises(FileExistsError):
+                start_watcher(temporary, '/example/config', 'sync-grpo-v9', 143)
+
+    def test_dense_telemetry_keeps_spikes_failures_and_rejects_counter_gaps(self):
+        from summarize_telemetry import summarize_sources, build_summary, render, timeline_csv
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            def row(name, value, second=0, source='nvidia-smi', **extra):
+                return dict(time=f'2026-09-02T00:00:{second:02d}Z', monotonic_s=second,
+                    hostname='gpu-nodes-0', role='trainer', source=source, metric=name,
+                    value=value, unit='count', **extra)
+            gpu = [row('utilization.gpu', value, second, gpu_uuid='GPU-a') for second,value in ((0,0),(1,100))]
+            gpu += [row('ecc.errors.corrected.volatile.total', 0, second, gpu_uuid='GPU-a') for second in (0,1)]
+            gpu += [row('memory.total', 123, second, gpu_uuid='GPU-a') for second in (0,1)]
+            gpu += [row('collector_error', None, 2, error='command timed out')]
+            link = [row('nvlink_data_tx_bytes_total', value, second, source='nvlink', gpu_uuid='GPU-a', link=i)
+                    for second,value in ((0,0),(1,10**10),(10,10**12)) for i in range(18)]
+            fabric = [row('PortXmitData', value, second, source='perfquery', hca='mlx5_0', hca_port='1')
+                      for second,value in ((0,0),(1,2*10**9))]
+            fabric += [row('PortRcvErrors', 0, second, source='perfquery', hca='mlx5_0', hca_port='1') for second in (0,1)]
+            fabric += [row('SymbolErrorCounter', value, second, source='perfquery', hca='mlx5_0', hca_port='1')
+                       for second,value in ((0,2),(1,5))]
+            streams = []
+            for name,rows in (('nvidia-smi',gpu),('nvlink',link),('infiniband',fabric)):
+                raw = ''.join(json.dumps(r)+'\n' for r in rows).encode()
+                payload = gzip.compress(raw,mtime=0)
+                path = name + '.gz'
+                (root/path).write_bytes(payload)
+                streams.append(dict(path=f'telemetry/sync-grpo-v9/gpu-nodes-0/{name}.jsonl',
+                    status='complete', complete=True, end=len(raw), source_sha256=hashlib.sha256(raw).hexdigest(),
+                    chunks=[dict(path=path, offset=0, end=len(raw), records=len(rows),
+                        collector_errors=sum(r['metric']=='collector_error' for r in rows),
+                        raw_sha256=hashlib.sha256(raw).hexdigest(), gzip_sha256=hashlib.sha256(payload).hexdigest())]))
+            data = summarize_sources(root,streams)
+            metrics = {r['metric']:r for r in data['results']}
+            self.assertEqual(metrics['gpu_utilization']['value'],50)
+            self.assertEqual(metrics['gpu_utilization']['statistics']['p95'],95)
+            self.assertEqual(metrics['nvlink_gpu_tx']['value'],180)
+            self.assertEqual(metrics['ib_rail_tx']['value'],2)
+            self.assertEqual(sum(r['count'] for r in data['counter_gaps']),18)
+            self.assertEqual(data['health'][0]['all_zero_series'],2)
+            self.assertEqual(data['health'][0]['exceptions'][0]['last'],5)
+            self.assertEqual(data['collector_errors'][0]['count'],1)
+            self.assertEqual(data['inventory_values'][0]['samples_collapsed'],2)
+            timeline = next(r for r in data['timeline'] if r['metric']=='gpu_utilization')
+            self.assertEqual((timeline['n'],timeline['min'],timeline['mean'],timeline['max']),(2,0,50,100))
+            self.assertNotIn('00:01:00',timeline_csv(data['timeline']))
+            result,_ = build_summary(root,root,streams,143,'COMPLETED','0:0')
+            self.assertEqual(result['status'],'fail')
+            self.assertTrue(result['timeout'])
+            self.assertIn('Telemetry gate: FAIL',render(result))
+            (root/'nvidia-smi.gz').write_bytes(gzip.compress(b'changed\n'))
+            with self.assertRaisesRegex(ValueError,'checksum/offset'):
+                summarize_sources(root,streams)
+
     def test_optimizer_log_parser_deduplicates_actual_log_shape_and_rejects_conflicts(self):
         from observe_grpo_log import parse_log
 
