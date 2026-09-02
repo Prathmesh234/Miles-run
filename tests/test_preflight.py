@@ -26,6 +26,7 @@ from enroot_run_config import prepare as prepare_enroot_config
 from runtime_inventory import parse_inventory_stdout
 from qwen_serving_probe import server_command, prompt_token_ids, prometheus_rows, stop_owned_server
 from model_conversion import conversion_command, checkpoint_files
+from checkpoint_parity import reference_part, check_coverage, required_parts, verify_files
 
 
 class EvidenceTests(unittest.TestCase):
@@ -69,6 +70,47 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ParserTests(unittest.TestCase):
+    def test_parity_requires_complete_nonoverlapping_expert_and_mtp_coverage(self):
+        weights = {'model.language_model.layers.0.mlp.experts.gate_up_proj': 'part.safetensors',
+                   'mtp.layers.0.mlp.experts.down_proj': 'part.safetensors',
+                   'model.language_model.norm.weight': 'part.safetensors',
+                   'model.visual.patch_embed.proj.weight': 'vision.safetensors'}
+        name = 'model.language_model.layers.0.mlp.experts.1.up_proj.weight'
+        self.assertEqual(reference_part(name, weights, 2),
+                         ('model.language_model.layers.0.mlp.experts.gate_up_proj', 1, 'up_proj'))
+        with self.assertRaises(ValueError):
+            reference_part(name.replace('.1.', '.2.'), weights, 2)
+        with self.assertRaises(ValueError):
+            reference_part('unknown.weight', weights, 2)
+        seen = {k: required_parts(k, 2) for k in weights if not k.startswith('model.visual.')}
+        self.assertEqual(check_coverage(weights, seen, 2), [])
+        seen['mtp.layers.0.mlp.experts.down_proj'].remove((1, 'down_proj'))
+        self.assertTrue(check_coverage(weights, seen, 2))
+        seen['mtp.layers.0.mlp.experts.down_proj'] = {(None, None), (0, 'down_proj')}
+        self.assertTrue(check_coverage(weights, seen, 2))
+        seen['mtp.layers.0.mlp.experts.down_proj'] = {(None, None)}
+        self.assertEqual(check_coverage(weights, seen, 2), [])
+        seen['model.visual.patch_embed.proj.weight'] = {(None, None)}
+        self.assertTrue(check_coverage(weights, seen, 2))
+
+    def test_parity_rehashes_inputs_and_rejects_changed_payloads_and_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            payload = root / 'weights'
+            payload.write_bytes(b'base')
+            files = [{'path': 'weights', 'bytes': 4, 'sha256': sha256(payload)}]
+            verify_files(root, files)
+            payload.write_bytes(b'edit')
+            with self.assertRaises(ValueError):
+                verify_files(root, files)
+            files[0]['path'] = '../outside'
+            with self.assertRaises(ValueError):
+                verify_files(root, files)
+            (root / 'link').symlink_to(payload)
+            files[0]['path'] = 'link'
+            with self.assertRaises(ValueError):
+                verify_files(root, files)
+
     def test_conversion_preserves_mtp_and_refuses_unhashed_links(self):
         command = conversion_command(Path('/source'), Path('/model'), Path('/output.partial'),
                                      '--mtp-num-layers 1 --num-layers 40')
