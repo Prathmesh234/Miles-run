@@ -17,7 +17,7 @@ Run: `20260902-172037-a3b210`. Training started: **False**. Held-out quality mea
 - Native job 110: four-node all-reduce correctness and read-only perfquery load validation passed on all 32 active 400G rails; no counter resets or collector errors.
 - Native job 111: verified 2 GiB fio per node and 180 one-second host Lustre samples per node; all four collectors passed load coverage without errors. Host statistics are read-only mounts in run-owned pods; cluster settings unchanged.
 - Native job 112: all eight B200 GPUs in the node-0 Enroot container reconcile to the frozen UUIDs; deterministic BF16 matmul passed on every GPU. Run-scoped NVIDIA_VISIBLE_DEVICES=all; no model or optimizer step.
-- Root preparation/evidence suite: 16 tests passed. The full Miles suite remains at its previously documented baseline failures.
+- Root preparation/evidence suite: 17 tests passed. The full Miles suite remains at its previously documented baseline failures.
 
 ## Remaining gates
 

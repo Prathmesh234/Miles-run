@@ -55,9 +55,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
+    ap.add_argument('--tag', default='v1')
+    ap.add_argument('--prefixes', nargs='+', default=list(PREFIXES))
     args = ap.parse_args()
     run = Run(args.run_dir)
-    phase = run.phase('00-diagnostic-evidence-sync')
+    phase = run.phase('00-diagnostic-evidence-sync' + ('-' + args.tag if args.tag != 'v1' else ''))
     repo = Path(__file__).resolve().parents[1]
     revision = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
     if subprocess.check_output(['git', '-C', str(repo), 'status', '--porcelain'], text=True).strip():
@@ -71,7 +73,8 @@ def main():
         f.flush()
         os.fsync(f.fileno())
     selected = [p for p in (run.root/'tests').rglob('*') if p.is_file()
-                and p.relative_to(run.root/'tests').parts[0].startswith(PREFIXES)]
+                and p.relative_to(run.root/'tests').parts[0].startswith(tuple(args.prefixes))
+                and phase.path not in p.parents]
     selected += [p for p in (run.root/'reports').rglob('*') if p.is_file()]
     selected += [source_path, run.root/'provenance/miles-patch-verification.tar.gz']
     files = {str(p.relative_to(run.root)): p for p in selected}
@@ -102,8 +105,8 @@ def main():
         f.flush()
         os.fsync(f.fileno())
     os.replace(str(archive_path) + '.partial', archive_path)
-    chunks = [payload[i:i+128*1024] for i in range(0, len(payload), 128*1024)]
-    prefix = 'provenance/diagnostic-evidence-sync-v1/'
+    chunks = [payload[i:i+64*1024] for i in range(0, len(payload), 64*1024)]
+    prefix = 'provenance/diagnostic-evidence-sync-' + args.tag + '/'
     manifest = {'schema_version': 1, 'source_revision': revision,
                 'archive_sha256': hashlib.sha256(payload).hexdigest(), 'parts': len(chunks),
                 'files': {name: sha256(p) for name, p in new.items()},
@@ -112,7 +115,7 @@ def main():
     staged = {prefix+f'parts/{i:04d}': entry(chunk) for i, chunk in enumerate(chunks)}
     staged[prefix+'manifest.json'] = entry(json.dumps(manifest, sort_keys=True).encode())
     common = {'root': remote, 'create': False, 'manifest_sha256': sha256(run.root/'run.json')}
-    plan = list(batches(common, staged))
+    plan = list(batches(common, staged, limit=128*1024))
     for index, encoded in enumerate(plan):
         code, _, _ = phase.command(worker+['python3', '-c', BOOTSTRAP], stdin=encoded, timeout=45)
         if code:
