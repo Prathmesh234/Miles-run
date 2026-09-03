@@ -8,7 +8,7 @@ Latest training allocation: Slurm **154**, 32 GPUs, 2t2r, 3 requested steps. Fou
 
 **Allocation status: FAILED, Slurm exit 1:0; three optimizer updates and three saves verified**
 
-Status snapshot: `2026-09-03T02:04:10.380078Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T02:09:51.425213Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -76,13 +76,16 @@ Status snapshot: `2026-09-03T02:04:10.380078Z`; inspect Slurm for live state.
 - Job154: all 48 trainer-input samples passed exact native token/logprob/mask/reward/GRPO tensor audit; three optimizer and checkpoint receipts verified. Allocation remains failed.
 - Job154 controller audit: 80 graded episodes, 55 pass/25 fail, balanced isolated sandbox cleanup; 48 explicitly joined to trained samples, 32 unresolved. No held-out quality claim.
 - Job155: seven native cursor/recycled-buffer checkpoint tests passed in pinned Python3.12 Miles image with zero GPUs. Opt-in candidate1411d18 remains disabled in training; full model/optimizer/async/policy resume remains unqualified.
+- Job156 passed on32GPUs:64GiB/GPU memory-context teardown, zero collector errors, max gap2.142s.14,256 timed NVML calls; slowest0.761s. Not training-runtime qualification.
+- Job157 passed on32GPUs:node-local EP8 NCCL correctness plus64GiB/GPU context teardown, max gap2.004s. Neither small control reproduced job154; its telemetry gate remains failed.
+- Corrected periodic publication gate now rejects failed allocations and >12s gaps even with zero collector-error rows. Job154 dense report is four files/156,009bytes; raw3,657,250records preserved privately. Root regression64passed.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven. | Instrument read-only NVML call durations; qualify actual context teardown on all four nodes. Keep 12s health deadline. Public summary previously ignored gaps; fix and republish from raw hashes. |
+| Full infrastructure telemetry | Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven. | Instrument the actual trainer/Ray allocation lifecycle; simple memory-context and EP8 NCCL-context controls156/157 both passed and did not reproduce154. Preserve12s deadline and failed coverage state. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
 | GRPO, async and resume fidelity | Job15448 tensor samples passed;32 of80 controller episodes have no durable native sample join. Job1557 opt-in cursor/buffer tests passed; full restart and async state remain unqualified. | Add durable lifecycle receipts for every sampled group, including discarded/cancelled work; test model/optimizer/scheduler/RNG/queue/policy resume on frozen samples. |

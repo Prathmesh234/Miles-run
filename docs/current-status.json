@@ -8,7 +8,7 @@
     },
     {
       "gate": "Full infrastructure telemetry",
-      "smallest_next_step": "Instrument read-only NVML call durations; qualify actual context teardown on all four nodes. Keep 12s health deadline. Public summary previously ignored gaps; fix and republish from raw hashes.",
+      "smallest_next_step": "Instrument the actual trainer/Ray allocation lifecycle; simple memory-context and EP8 NCCL-context controls156/157 both passed and did not reproduce154. Preserve12s deadline and failed coverage state.",
       "state": "Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven."
     },
     {
@@ -121,7 +121,10 @@
     "Current root regression suite:60passed. Exact pinned NVML binding imports successfully; actual training/checkpoint-load telemetry remains under test in job154.",
     "Job154: all 48 trainer-input samples passed exact native token/logprob/mask/reward/GRPO tensor audit; three optimizer and checkpoint receipts verified. Allocation remains failed.",
     "Job154 controller audit: 80 graded episodes, 55 pass/25 fail, balanced isolated sandbox cleanup; 48 explicitly joined to trained samples, 32 unresolved. No held-out quality claim.",
-    "Job155: seven native cursor/recycled-buffer checkpoint tests passed in pinned Python3.12 Miles image with zero GPUs. Opt-in candidate1411d18 remains disabled in training; full model/optimizer/async/policy resume remains unqualified."
+    "Job155: seven native cursor/recycled-buffer checkpoint tests passed in pinned Python3.12 Miles image with zero GPUs. Opt-in candidate1411d18 remains disabled in training; full model/optimizer/async/policy resume remains unqualified.",
+    "Job156 passed on32GPUs:64GiB/GPU memory-context teardown, zero collector errors, max gap2.142s.14,256 timed NVML calls; slowest0.761s. Not training-runtime qualification.",
+    "Job157 passed on32GPUs:node-local EP8 NCCL correctness plus64GiB/GPU context teardown, max gap2.004s. Neither small control reproduced job154; its telemetry gate remains failed.",
+    "Corrected periodic publication gate now rejects failed allocations and >12s gaps even with zero collector-error rows. Job154 dense report is four files/156,009bytes; raw3,657,250records preserved privately. Root regression64passed."
   ],
   "failed_slurm_jobs": [
     {
@@ -204,7 +207,9 @@
     134,
     147,
     148,
-    155
+    155,
+    156,
+    157
   ],
   "last_training_submission": {
     "gpus": 32,
@@ -227,5 +232,5 @@
   "state": "validation_failed_telemetry_and_accounting",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-03T02:04:10.380078Z"
+  "updated_at": "2026-09-03T02:09:51.425213Z"
 }
