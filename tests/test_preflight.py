@@ -43,6 +43,20 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_resume_state_comparison_is_bitwise_and_rejects_missing_or_nonfinite_state(self):
+        import torch
+        from resume_checkpoint_probe import compare_values, move_tensors
+        value = {'model': torch.arange(12, dtype=torch.bfloat16).reshape(3, 4),
+                 'scheduler': {'num_steps': 16}, 'rng': (b'bytes', [1, 2, 3])}
+        self.assertTrue(all(row['equal'] for row in compare_values(value, value)))
+        changed = dict(value, scheduler={'num_steps': 32})
+        self.assertFalse(all(row['equal'] for row in compare_values(value, changed)))
+        self.assertFalse(compare_values(torch.tensor([0.]), torch.tensor([-0.]))[0]['equal'])
+        self.assertFalse(compare_values(torch.tensor([float('nan')]), torch.tensor([float('nan')]))[0]['equal'])
+        self.assertFalse(compare_values({'optimizer': [1]}, {'optimizer': [1, 2]})[0]['equal'])
+        self.assertFalse(compare_values({'state': 1}, {})[0]['equal'])
+        self.assertEqual(move_tensors({'metadata': ['unchanged', 3]}), {'metadata': ['unchanged', 3]})
+
     def test_sync_digest_reports_current_findings_without_historical_failure_claims(self):
         from report_journal_validation import render
         root = Path(__file__).resolve().parents[1]
