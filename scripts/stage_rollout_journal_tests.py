@@ -116,7 +116,12 @@ def stage(args):
                '--run-dir', remote, '--attempt', str(args.attempt)]
     files[prefix + 'submit.sbatch'] = entry(('#!/bin/bash\nset -euo pipefail\nexec ' + shlex.join(command) + '\n').encode())
     worker_cmd = ['kubectl', '--kubeconfig', args.kubeconfig, '-n', 'slurm', 'exec', '-i', 'slurm-worker-gpu-nodes-0', '--']
-    for payload in batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=64*1024):
+    try:
+        payloads = list(batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=128*1024))
+    except ValueError as exc:
+        phase.finish('fail', failure_summary='Source payload validation failed before upload: ' + str(exc), refresh=False)
+        return 1
+    for payload in payloads:
         rc, _, _ = phase.command(worker_cmd + ['python3', '-c', BOOTSTRAP], stdin=payload, timeout=45)
         if rc:
             phase.finish('fail', failure_summary='Test staging failed; no job submitted.', refresh=False)
