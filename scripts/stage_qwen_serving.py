@@ -17,6 +17,8 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
+    ap.add_argument('--mxfp8-candidate', help='Run-relative model directory; never alters the BF16 source.')
+    ap.add_argument('--candidate-checksums-sha256', help='SHA256 of the audited candidate checksums.sha256.')
     args = ap.parse_args()
     run = Run(args.run_dir)
     repo = Path(__file__).resolve().parents[1]
@@ -42,6 +44,18 @@ def main():
     names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py',
              'telemetry_lustre_host.py', 'qwen_serving_probe.py', 'run_qwen_serving_validation.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
+    if bool(args.mxfp8_candidate) != bool(args.candidate_checksums_sha256):
+        phase.finish('fail', failure_summary='Candidate model and checksum pin are required together.')
+        return 1
+    if args.mxfp8_candidate:
+        relative = Path(args.mxfp8_candidate)
+        checksum = args.candidate_checksums_sha256
+        if relative.is_absolute() or '..' in relative.parts or not relative.parts or relative.parts[0] != 'models' or len(checksum) != 64 or any(c not in '0123456789abcdef' for c in checksum):
+            phase.finish('fail', failure_summary='Unsafe candidate path or invalid checksum pin.')
+            return 1
+        spec = {'model_relpath': str(relative), 'checksums_sha256': checksum}
+        atomic(phase.path / 'candidate.json', spec)
+        files[prefix + 'candidate.json'] = entry(json.dumps(spec, sort_keys=True).encode())
     files[prefix + 'source-revision.txt'] = entry((revision + '\n').encode())
     command = ['python3', remote + '/' + prefix + 'run_qwen_serving_validation.py', '--run-dir', remote,
                '--attempt', str(args.attempt)]

@@ -25,11 +25,12 @@ This failure applies to the stock conversion recipe, not to B200 low-precision c
 ## Qualification
 
 - Miles documents MXFP8 on B200 as beta, including BF16-trainer/MXFP8-rollout and matching MXFP8 forward recipes. Its tested models do not list Qwen3.6.
-- Qwen-aware candidate selects 249 tensors / 66,892,857,344 input bytes, including all 82 packed expert tensors. GDN, vision, routers, norms, embeddings and MTP glue remain BF16. No full conversion or optimizer change yet.
+- Qwen-aware candidate selects 249 tensors / 66,892,857,344 input bytes, including all 82 packed expert tensors. GDN, vision, routers, norms, embeddings and MTP glue remain BF16. Full conversion and serialized audit passed in job148; no optimizer change.
 - Installed SGLang source captured directly from the pinned SquashFS: Qwen loader supports individual expert projections and FP8 scales. Live loader/activation remains untested.
 - Bounded B200 probe pre-registers maximum relative L2 reconstruction error 0.06 and byte-exact agreement between packed conversion and Miles per-expert live export. Tests real main/MTP slices and zero control; not a gradient, speed or quality claim.
 - Prior source inspection failures retained: v1 timed out pulling an uncached Docker image; v2 assumed a nonexistent standalone mxfp8.py module. v3 discovered and captured installed sources without running Docker.
 - Training quantization stays disabled until full load, MTP, broadcast activation, fixed-token logprob/gradient and end-to-end telemetry gates pass. NVFP4 is not enabled.
+- The older Miles Qwen3 MXFP8 launcher comment disallows EP for its cutlass path. The newer pinned SGLang flashinfer_trtllm_routed implementation accepts local expert offset/count for MXFP8. Preserve EP8 and qualify that backend rather than silently changing topology.
 
 ## Reproduce the bounded GPU probe
 
@@ -61,3 +62,15 @@ Telemetry: 6 finalized streams, 0 collector errors; maximum sample gap 2.163s.
 Representative real expert slices plus zero control on GPU0 of an 8-GPU allocation. Not full model conversion, SGLang activation, gradient equivalence, throughput or quality validation.
 
 Raw evidence: `tests/02-qwen-mxfp8-probe-result-audit-v1/result.json`.
+
+## Full converted candidate
+
+Slurm 148: COMPLETED, exit 0; serialized audit passed, runtime unqualified. Conversion took 105.07s.
+
+Tensor payload: **39.50 GB**, from 71.90 GB. All 64,106 serialized tensors passed names/shapes/dtypes/coverage checks. 796 higher-precision tensors and tokenizer metadata are byte-exact.
+
+37 file checksums verified; maximum quantization relative L2 2.6771%. 6 finalized infrastructure streams, 0 collector errors.
+
+This reduces inference-weight storage, not the full optimizer checkpoint. No training speed or held-out quality claim.
+
+Checkpoint: `/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210/models/qwen3.6-35b-a3b-mxfp8-v1`. Audit: `tests/02-mxfp8-serialized-checkpoint-audit-v1/result.json`.

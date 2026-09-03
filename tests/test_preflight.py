@@ -43,6 +43,28 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_mxfp8_serving_keeps_ep8_mtp_and_requires_checksum_pin(self):
+        from run_qwen_serving_validation import model_path
+
+        command = server_command('/model', True, 'mxfp8')
+        self.assertEqual(command[command.index('--ep-size') + 1], '8')
+        self.assertEqual(command[command.index('--tp-size') + 1], '8')
+        self.assertIn('--speculative-algorithm', command)
+        self.assertEqual(command[command.index('--moe-runner-backend') + 1], 'flashinfer_trtllm_routed')
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Run.create(Path(temporary) / 'run', {})
+            code = Path(temporary) / 'code'; code.mkdir()
+            model = run.root / 'models/candidate'; model.mkdir(parents=True)
+            (model / 'config.json').write_text('{"quantization_config":{"quant_method":"mxfp8"}}')
+            (model / 'checksums.sha256').write_text(sha256(model / 'config.json') + '  config.json\n')
+            digest = sha256(model / 'checksums.sha256')
+            (model / 'CONVERSION_COMPLETE.json').write_text(json.dumps({'checksums_sha256': digest}))
+            (code / 'candidate.json').write_text(json.dumps({'model_relpath': 'models/candidate', 'checksums_sha256': digest}))
+            self.assertEqual(model_path(run, code), model)
+            (model / 'config.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'file checksum differs'):
+                model_path(run, code)
+
     def test_serialized_mxfp8_audit_checks_scale_shape_and_payload_boundaries(self):
         import struct
         from audit_mxfp8_checkpoint import expected_tensors, headers, tensor_hash

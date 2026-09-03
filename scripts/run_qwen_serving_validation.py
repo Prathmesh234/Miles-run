@@ -9,7 +9,7 @@ import sys
 import time
 
 from enroot_run_config import prepare
-from evidence import atomic, metric, utcnow
+from evidence import atomic, metric, sha256, utcnow
 from infra_node import allocated_run, read_inventory
 from qwen_serving_probe import attempt_suffix
 
@@ -21,6 +21,29 @@ def native_collector(run, code, attempt):
         '--role', 'rollout-serving-validation', '--lustre-backend', 'host-debugfs-pod'], timeout=2070)
     phase.finish('fail' if rc else 'ok', failure_summary='Serving native collector failed.' if rc else None, refresh=False)
     return rc
+
+
+def model_path(run, code):
+    spec_path = code / 'candidate.json'
+    if not spec_path.exists():
+        return run.root / 'models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0'
+    spec = json.loads(spec_path.read_text())
+    relative = Path(spec['model_relpath'])
+    if relative.is_absolute() or '..' in relative.parts or relative.parts[0] != 'models':
+        raise ValueError('Candidate must be inside the run models directory.')
+    model = run.root / relative
+    if model.is_symlink() or not model.resolve().is_relative_to(run.root.resolve()):
+        raise ValueError('Candidate path escapes the run.')
+    marker = json.loads((model / 'CONVERSION_COMPLETE.json').read_text())
+    if marker['checksums_sha256'] != spec['checksums_sha256'] or sha256(model / 'checksums.sha256') != spec['checksums_sha256']:
+        raise ValueError('Candidate completion/checksum pin differs.')
+    for line in (model / 'checksums.sha256').read_text().splitlines():
+        digest, filename = line.split('  ', 1)
+        if Path(filename).name != filename or (model / filename).is_symlink() or sha256(model / filename) != digest:
+            raise ValueError('Candidate file checksum differs: ' + filename)
+    if json.loads((model / 'config.json').read_text())['quantization_config']['quant_method'] != 'mxfp8':
+        raise ValueError('Only the qualified MXFP8 candidate is accepted.')
+    return model
 
 
 def container_command(run, code, attempt):
@@ -35,7 +58,7 @@ def container_command(run, code, attempt):
             'SLURM_JOB_ID': os.environ['SLURM_JOB_ID'], 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
             'NCCL_DEBUG': 'INFO', 'NCCL_DEBUG_SUBSYS': 'INIT,NET,GRAPH',
             'NCCL_DEBUG_FILE': f'/run-artifacts/telemetry/nccl/qwen-serving-v{attempt}/nccl.%h.%p.log'}
-    model = run.root / 'models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0'
+    model = model_path(run, code)
     command = ['enroot', 'start', '--net', '--pid', '--ipc', '--rw']
     for key, value in envs.items():
         command += ['--env', key + '=' + value]

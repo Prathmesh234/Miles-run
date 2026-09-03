@@ -1,5 +1,21 @@
 {
   "candidate": "Qwen-aware expert unpacking, nested text configuration, explicit BF16 GDN/vision exceptions, and matching export/loader precision; not enabled until conversion, hot reload, logprob and gradient checks pass.",
+  "conversion": {
+    "checkpoint": "/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210/models/qwen3.6-35b-a3b-mxfp8-v1",
+    "checksummed_files": 37,
+    "checksums_sha256": "d83c5f2152bbcf3a497681419d077049da026440c1a53b490c36dd79e16f460a",
+    "collector_errors": 0,
+    "duration_s": 105.0738276289776,
+    "evidence": "tests/02-mxfp8-serialized-checkpoint-audit-v1/result.json",
+    "max_relative_l2": 0.02677106112241745,
+    "payload_bytes": 39502417632,
+    "slurm_job_id": 148,
+    "source_payload_bytes": 71903645408,
+    "status": "COMPLETED, exit 0; serialized audit passed, runtime unqualified",
+    "telemetry_streams": 6,
+    "tensor_count": 64106,
+    "unchanged_tensors_byte_exact": 796
+  },
   "converters": [
     {
       "gdn_tensors_selected": 180,
@@ -70,11 +86,12 @@
   },
   "qualification": [
     "Miles documents MXFP8 on B200 as beta, including BF16-trainer/MXFP8-rollout and matching MXFP8 forward recipes. Its tested models do not list Qwen3.6.",
-    "Qwen-aware candidate selects 249 tensors / 66,892,857,344 input bytes, including all 82 packed expert tensors. GDN, vision, routers, norms, embeddings and MTP glue remain BF16. No full conversion or optimizer change yet.",
+    "Qwen-aware candidate selects 249 tensors / 66,892,857,344 input bytes, including all 82 packed expert tensors. GDN, vision, routers, norms, embeddings and MTP glue remain BF16. Full conversion and serialized audit passed in job148; no optimizer change.",
     "Installed SGLang source captured directly from the pinned SquashFS: Qwen loader supports individual expert projections and FP8 scales. Live loader/activation remains untested.",
     "Bounded B200 probe pre-registers maximum relative L2 reconstruction error 0.06 and byte-exact agreement between packed conversion and Miles per-expert live export. Tests real main/MTP slices and zero control; not a gradient, speed or quality claim.",
     "Prior source inspection failures retained: v1 timed out pulling an uncached Docker image; v2 assumed a nonexistent standalone mxfp8.py module. v3 discovered and captured installed sources without running Docker.",
-    "Training quantization stays disabled until full load, MTP, broadcast activation, fixed-token logprob/gradient and end-to-end telemetry gates pass. NVFP4 is not enabled."
+    "Training quantization stays disabled until full load, MTP, broadcast activation, fixed-token logprob/gradient and end-to-end telemetry gates pass. NVFP4 is not enabled.",
+    "The older Miles Qwen3 MXFP8 launcher comment disallows EP for its cutlass path. The newer pinned SGLang flashinfer_trtllm_routed implementation accepts local expert offset/count for MXFP8. Preserve EP8 and qualify that backend rather than silently changing topology."
   ],
   "reproducer": ".venv-launch-tests/bin/python scripts/stage_model_conversion.py \\\n  --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \\\n  --kubeconfig /path/to/kubeconfig --format mxfp8-probe --attempt 1",
   "schema_version": 1,

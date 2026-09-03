@@ -105,6 +105,17 @@ def render(data):
                   f"Telemetry: {probe['telemetry_streams']} finalized streams, "
                   f"{probe['collector_errors']} collector errors; maximum sample gap {probe['max_gap_s']:.3f}s.", '',
                   probe['scope'], '', f"Raw evidence: `{probe['evidence']}`.", '']
+    if 'conversion' in data:
+        row = data['conversion']
+        lines += ['## Full converted candidate', '',
+                  f"Slurm {row['slurm_job_id']}: {row['status']}. Conversion took {row['duration_s']:.2f}s.", '',
+                  f"Tensor payload: **{row['payload_bytes'] / 1e9:.2f} GB**, from {row['source_payload_bytes'] / 1e9:.2f} GB. "
+                  f"All {row['tensor_count']:,} serialized tensors passed names/shapes/dtypes/coverage checks. "
+                  f"{row['unchanged_tensors_byte_exact']} higher-precision tensors and tokenizer metadata are byte-exact.", '',
+                  f"{row['checksummed_files']} file checksums verified; maximum quantization relative L2 {row['max_relative_l2']:.4%}. "
+                  f"{row['telemetry_streams']} finalized infrastructure streams, {row['collector_errors']} collector errors.", '',
+                  'This reduces inference-weight storage, not the full optimizer checkpoint. No training speed or held-out quality claim.', '',
+                  f"Checkpoint: `{row['checkpoint']}`. Audit: `{row['evidence']}`.", '']
     return '\n'.join(lines)
 
 

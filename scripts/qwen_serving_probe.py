@@ -25,7 +25,9 @@ def case_name(mtp, attempt):
     return ('02-qwen-serving-mtp-on' if mtp else '02-qwen-serving-mtp-off') + attempt_suffix(attempt)
 
 
-def server_command(model, mtp):
+def server_command(model, mtp, precision='bf16'):
+    if precision not in ('bf16', 'mxfp8'):
+        raise ValueError('Unqualified serving precision.')
     command = [sys.executable, '-m', 'sglang.launch_server', '--model-path', str(model),
         '--host', '127.0.0.1', '--port', '31872', '--tp-size', '8', '--ep-size', '8',
         '--nnodes', '1', '--node-rank', '0', '--context-length', '2048', '--max-total-tokens', '4096',
@@ -33,6 +35,9 @@ def server_command(model, mtp):
         '--dtype', 'bfloat16', '--random-seed', '1234',
         '--skip-server-warmup', '--enable-draft-weights-cpu-backup', '--enable-metrics',
         '--decode-log-interval', '1']
+    if precision == 'mxfp8':
+        command += ['--moe-runner-backend', 'flashinfer_trtllm_routed',
+                    '--fp8-gemm-backend', 'flashinfer_trtllm']
     if mtp:
         command += ['--speculative-algorithm', 'EAGLE', '--speculative-num-steps', '2',
                     '--speculative-eagle-topk', '1', '--speculative-num-draft-tokens', '3',
@@ -207,12 +212,14 @@ def stop_owned_server(server, grace_s=30):
 def child(run, mtp, attempt):
     root = run.root / 'tests' / case_name(mtp, attempt)
     model = Path('/model')
-    command = server_command(model, mtp)
+    quantization = json.loads((model / 'config.json').read_text()).get('quantization_config', {})
+    precision = quantization.get('quant_method', 'bf16')
+    command = server_command(model, mtp, precision)
     env = dict(os.environ, HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
                SGLANG_ENABLE_METRICS_DEVICE_TIMER='1')
     stopped, metric_errors = threading.Event(), []
     collector, server = None, None
-    result = {'started_at': utcnow(), 'mtp_enabled': mtp, 'command': command, 'errors': []}
+    result = {'started_at': utcnow(), 'mtp_enabled': mtp, 'precision': precision, 'command': command, 'errors': []}
     atomic(root / 'server-command.json', result)
     with (root / 'logs/server.out').open('x') as out, (root / 'logs/server.err').open('x') as err:
         try:
