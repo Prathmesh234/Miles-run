@@ -88,6 +88,26 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Retry inputs differ'):
                 require_same_inputs(changed, initial)
 
+    def test_resume_comparison_keeps_padding_evidence_but_rejects_real_state_changes(self):
+        import torch
+        from resume_checkpoint_probe import compare_values
+        def state(padding, tensor):
+            return {'optimizer': {0: {'param_state': {0: {'padding': padding, 'exp_avg': tensor}}}}}
+        a, b = torch.zeros(4), torch.ones(4)
+        rows = compare_values(state(True, a), state(True, b))
+        differences = [r for r in rows if not r['equal']]
+        self.assertEqual(len(differences), 1)
+        self.assertFalse(differences[0]['required_for_resume'])
+        self.assertIn('actual_sha256', differences[0])
+        for left, right in [(state(False, a), state(False, b)), (state(True, a), state(False, a)),
+                            (state(True, a), state(True, torch.zeros(5))),
+                            (state(True, a), state(True, a.to(torch.bfloat16))),
+                            ({'model': {'padding': True, 'weight': a}}, {'model': {'padding': True, 'weight': b}})]:
+            self.assertTrue(any(not row['equal'] and row.get('required_for_resume', True)
+                                for row in compare_values(left, right)))
+        self.assertTrue(compare_values(torch.optim.Adam, torch.optim.Adam)[0]['equal'])
+        self.assertFalse(compare_values(torch.optim.Adam, torch.optim.SGD)[0]['equal'])
+
     def test_sync_digest_reports_current_findings_without_historical_failure_claims(self):
         from report_journal_validation import render
         root = Path(__file__).resolve().parents[1]

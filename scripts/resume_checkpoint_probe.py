@@ -30,7 +30,18 @@ def compare_values(actual, expected, path='state'):
         if actual.keys() != expected.keys():
             rows.append(dict(path=path, equal=False, reason='dictionary_keys_differ'))
         for key in sorted(actual.keys() & expected.keys(), key=str):
-            rows.extend(compare_values(actual[key], expected[key], path + '/' + str(key)))
+            child = compare_values(actual[key], expected[key], path + '/' + str(key))
+            # MCore dp_reshardable creates fresh torch.empty padding during
+            # serialization and explicitly drops entries marked padding on
+            # load. Retain the raw comparison, but do not gate logical state
+            # on those undefined bytes. Never exclude actual parameter state.
+            if (path.startswith('state/optimizer/') and '/param_state/' in path
+                    and actual.get('padding') is True and expected.get('padding') is True
+                    and isinstance(actual[key], torch.Tensor) and isinstance(expected[key], torch.Tensor)
+                    and actual[key].shape == expected[key].shape and actual[key].dtype == expected[key].dtype):
+                for row in child:
+                    row.update(required_for_resume=False, exclusion_reason='native_optimizer_padding_not_restored')
+            rows.extend(child)
         return rows
     if isinstance(actual, (list, tuple)) and type(actual) is type(expected):
         if len(actual) != len(expected):
@@ -56,6 +67,9 @@ def compare_values(actual, expected, path='state'):
         row['equal'] = actual.dtype == expected.dtype and actual.shape == expected.shape and row['actual_sha256'] == row['expected_sha256']
     elif isinstance(actual, io.BytesIO) and isinstance(expected, io.BytesIO):
         row['equal'] = actual.getvalue() == expected.getvalue()
+    elif isinstance(actual, type) and isinstance(expected, type):
+        row.update(equal=actual is expected, actual_class=actual.__module__ + '.' + actual.__qualname__,
+                   expected_class=expected.__module__ + '.' + expected.__qualname__)
     elif type(actual) is type(expected) and isinstance(actual, (str, int, float, bool, bytes, type(None))):
         row['equal'] = actual == expected
         # Only scalar state is retained, never arbitrary repr/args/environment.
@@ -133,11 +147,14 @@ def verify_state(args, model, optimizer, scheduler, checkpoint, iteration, outpu
     components = ('model', 'optimizer', 'opt_param_scheduler', 'rng_state', 'iteration')
     actual = unwrap_shards(state)
     rows = compare_values({k: actual[k] for k in components}, {k: expected[k] for k in components})
-    failures = [row for row in rows if not row['equal']]
+    failures = [row for row in rows if not row['equal'] and row.get('required_for_resume', True)]
     result = dict(label=label, checkpoint=str(checkpoint), iteration=iteration,
         duration_s=time.monotonic()-started, leaves=len(rows), failed_leaves=len(failures),
         missing_keys=sorted(missing), unexpected_keys=sorted(unexpected),
         tensor_bytes=sum(row.get('bytes', 0) for row in rows),
+        comparison_contract='logical_state_v2_exact_nonpadding_tensors_and_class_identity',
+        excluded_padding_leaves=sum(not row.get('required_for_resume', True) for row in rows),
+        excluded_padding_bytes=sum(row.get('bytes', 0) for row in rows if not row.get('required_for_resume', True)),
         findings=[] if not failures and not missing and not unexpected else ['Strict checkpoint state comparison failed.'])
     atomic(output / (label + '.jsonl'), ''.join(json.dumps(row, allow_nan=False) + '\n' for row in rows))
     atomic(output / (label + '.json'), result)
@@ -296,6 +313,8 @@ def cpu_self_test(output):
         MCoreSavePlanner, TorchDistSaveShardedStrategy,
         _replace_state_dict_keys_with_sharded_keys, mcore_to_pyt_state_dict,
     )
+    from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
+    from types import SimpleNamespace
 
     class CPUFixtureWriter(TorchDistSaveShardedStrategy):
         """Use the native format/planner with Torch's CPU-safe sync writer.
@@ -317,6 +336,7 @@ def cpu_self_test(output):
     try:
         live = dict(model={'weight': ShardedTensor.from_rank_offsets('weight', torch.arange(12.).reshape(3, 4))},
                     rng=ShardedObject('rng', [dict(state=torch.arange(8, dtype=torch.uint8))], (1,), (0,)),
+                    optimizer={'cpu_optimizer_cls': torch.optim.Adam},
                     opt_param_scheduler={'num_steps': 16}, iteration=0)
         frozen = expand_shards(live)
         target = cpu_reference(frozen)
@@ -338,7 +358,20 @@ def cpu_self_test(output):
         assert not compare_values({'a': 1}, {})[0]['equal']
         common = load_common_state_dict(str(checkpoint))
         assert common['opt_param_scheduler']['num_steps'] == 16
-        result = dict(status='ok', checks=9, cuda_device_count=0, torch=torch.__version__,
+        assert loaded['optimizer']['cpu_optimizer_cls'] is torch.optim.Adam
+        # Exercise the actual native loader's padding filter without creating
+        # a GPU optimizer. The callback must receive only real parameter data.
+        dtype = (torch.float32, torch.float32)
+        calls = []
+        real = dict(padding=False, param=torch.ones(4), exp_avg=torch.zeros(4), exp_avg_sq=torch.zeros(4))
+        padding = dict(padding=True, param=torch.full((4,), float('nan')),
+                       exp_avg=torch.full((4,), float('nan')), exp_avg_sq=torch.full((4,), float('nan')))
+        receiver = SimpleNamespace(gbuf_ranges=[{dtype: [{'param_map': {'real_parameter': {}}}]}],
+            _set_main_param_and_optimizer_states=lambda key, data: calls.append((key, data)))
+        DistributedOptimizer.load_parameter_state_from_dp_reshardable(receiver, {0: {dtype: [[padding, real]]}})
+        assert len(calls) == 1 and calls[0][0] == 'real_parameter' and calls[0][1] is real
+        result = dict(status='ok', checks=11, cuda_device_count=0, torch=torch.__version__,
+                      native_padding_filter_verified=True, native_class_roundtrip_verified=True,
                       fixture_writer='Native MCore conversion/planner with Torch synchronous CPU writer',
                       scope='Native DCP loader and strict comparison with corruption controls; fixture-only writer adapter, no model or optimizer execution.')
         atomic(output / 'result.json', result)

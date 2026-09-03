@@ -58,7 +58,8 @@ def worker(run, attempt):
             os.environ.update(previous)
         result_file = phase.path / 'fixture/result.json'
         fixture = json.loads(result_file.read_text()) if result_file.exists() else None
-        okay = rc == 0 and fixture is not None and fixture['status'] == 'ok' and fixture['checks'] == 9
+        okay = (rc == 0 and fixture is not None and fixture['status'] == 'ok' and fixture['checks'] == 11
+                and fixture['native_padding_filter_verified'] and fixture['native_class_roundtrip_verified'])
         result = dict(manifest, slurm_job_id=os.environ['SLURM_JOB_ID'], exit_code=rc,
                       fixture=fixture, findings=[] if okay else ['Native CPU checkpoint fixture failed.'])
         atomic(phase.path / 'result.json', result)
