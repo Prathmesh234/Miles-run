@@ -2,13 +2,13 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job154: 3; job143: 3 historical validation updates. Neither qualifies the measured benchmark.**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job161: 2; job154: 3; job143: 3 historical validation updates. None qualifies the measured benchmark.**. Held-out quality measured: **False**.
 
 Latest training allocation: Slurm **161**, 32 GPUs, 2T/2R, 2 requested steps. Two-step 32-GPU synchronous validation. Native tensor and all48-episode accounting audits passed. NVML field calls blocked during teardown; no async, full resume, or held-out quality claim.
 
 **Allocation status: FAILED 1:0 after two optimizer updates and two save receipts; NVML teardown telemetry gate failed**
 
-Status snapshot: `2026-09-03T02:55:55.188710Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T02:56:29.881817Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
