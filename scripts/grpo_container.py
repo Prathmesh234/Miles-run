@@ -91,11 +91,12 @@ def main():
                 os.environ['RAY_ADDRESS'] = 'http://127.0.0.1:' + str(config['dashboard_port'])
                 launch = ['python3', '/miles-source/scripts/run_qwen3_6_35b_a3b_posttrainingx.py',
                     '--hardware', 'B200', '--output-dir', '/run-artifacts/training', '--run-id', label,
-                    '--execution', 'sync', '--layout', '2t2r', '--num-rollout', '3', '--save-interval', '1',
+                    '--execution', 'sync', '--layout', '2t2r', '--num-rollout', str(config['optimizer_steps_requested']), '--save-interval', '1',
                     '--rollout-batch-size', '2', '--n-samples-per-prompt', '8', '--global-batch-size', '16',
                     '--hf-checkpoint', '/model', '--ref-load', '/checkpoint',
                     '--prompt-data', '/ptx/train.prompts.jsonl', '--host-map', '/ptx/host-map.json',
                     '--placement-record-path', str(output / 'ray-placement.json'),
+                    '--rollout-journal-dir', str(output / 'trajectory-journal'),
                     '--max-seq-len', '8192', '--rollout-max-response-len', '2048', '--max-tokens-per-gpu', '8192',
                     '--openenv-env-url', 'http://' + head + ':' + str(config['env_port']),
                     '--openenv-max-turns', '8', '--openenv-max-rollout-time-seconds', '900',
@@ -103,7 +104,7 @@ def main():
                     '--session-server-workers', '4']
                 launch += ['--verify-initial-weight-broadcast']
                 atomic(output / 'training-command.json', {'argv': launch, 'time': utcnow(),
-                    'scope': 'Three real synchronous GRPO optimizer steps, initial validation only; not a quality result.'})
+                    'scope': f"{config['optimizer_steps_requested']} real synchronous GRPO optimizer steps, initial validation only; not a quality result."})
                 with (logs / 'miles.out').open('x') as out2, (logs / 'miles.err').open('x') as err2:
                     code = subprocess.call(launch, stdout=out2, stderr=err2)
                 atomic(output / 'driver.finished.json', {'exit_code': code, 'time': utcnow()})

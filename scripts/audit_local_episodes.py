@@ -4,6 +4,7 @@ import inspect
 import json
 
 from evidence import Run, atomic, metric
+from audit_trajectory_journal import audit_journal, read_journal
 
 
 def join_episode_ids(episodes, samples, trained_indices):
@@ -85,7 +86,7 @@ def summarize_episode(rows):
             'events': counts, 'findings': findings}
 
 
-def collect(root, attempt, trained_indices=None):
+def collect(root, attempt, trained_indices=None, journal=False):
     import hashlib
     import json
     from pathlib import Path
@@ -124,7 +125,18 @@ def collect(root, attempt, trained_indices=None):
             raw = path.read_bytes()
             source_hashes[str(path.relative_to(root))] = hashlib.sha256(raw).hexdigest()
             samples.extend(json.loads(raw)['samples'])
-        result['identity_join'] = join_episode_ids(episodes, samples, trained_indices)
+        if journal:
+            events, hashes = read_journal(root, train)
+            source_hashes.update(hashes)
+            result['journal_accounting'] = audit_journal(events, episodes, samples, trained_indices)
+            result['findings'].extend(result['journal_accounting']['findings'])
+            # The older native qualification files only include selected groups.
+            # Journal owners account for every other controller episode.
+            selected_ids = {env['episode_id'] for s in samples for env in s['metadata'].get('posttrainingx_environment_attempts', [])}
+            selected_episodes = [episode for episode in episodes if episode['episode_id'] in selected_ids]
+        else:
+            selected_episodes = episodes
+        result['identity_join'] = join_episode_ids(selected_episodes, samples, trained_indices)
         result['findings'].extend(result['identity_join']['findings'])
         result['scope'] = 'Controller isolation/lifecycle audit plus explicit native sample-ID join; full asynchronous trajectory accounting is not implied.'
     return result
@@ -137,7 +149,10 @@ def main():
     parser.add_argument('--attempt', type=int, required=True)
     parser.add_argument('--tensor-audit', help='Run-relative successful tensor audit result for exact trainer input membership.')
     parser.add_argument('--join-attempt', type=int, default=1)
+    parser.add_argument('--journal', action='store_true', help='Require complete immutable synchronous trajectory accounting.')
     args = parser.parse_args()
+    if args.journal and not args.tensor_audit:
+        parser.error('--journal requires --tensor-audit')
     run = Run(args.run_dir)
     suffix = f'-join-v{args.join_attempt}' if args.tensor_audit else ''
     phase = run.phase(f'02-sync-grpo-environment-audit-v{args.attempt}' + suffix)
@@ -152,11 +167,11 @@ def main():
             raise ValueError('A failed tensor audit cannot establish trainer membership.')
         trained_indices = [sample['sample_index'] for batch in proof['batches'] for sample in batch['samples']]
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
-    program = inspect.getsource(summarize_episode) + '\n' + inspect.getsource(join_episode_ids) + '\n' + inspect.getsource(collect)
-    program += '\nimport json,sys\nprint(json.dumps(collect(sys.argv[1],int(sys.argv[2]),json.loads(sys.argv[3]))))\n'
+    program = '\n'.join(inspect.getsource(fn) for fn in (summarize_episode, join_episode_ids, read_journal, audit_journal, collect))
+    program += '\nimport json,sys\nprint(json.dumps(collect(sys.argv[1],int(sys.argv[2]),json.loads(sys.argv[3]),json.loads(sys.argv[4]))))\n'
     atomic(phase.path / 'audit-remote.py', program)
     rc, out, _ = phase.command(['kubectl', '--kubeconfig', args.kubeconfig, '-n', 'slurm', 'exec',
-        'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', program, remote, str(args.attempt), json.dumps(trained_indices)], timeout=45)
+        'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', program, remote, str(args.attempt), json.dumps(trained_indices), json.dumps(args.journal)], timeout=45)
     data = json.loads(out) if not rc else {'findings': ['Controller event audit failed; see raw evidence.']}
     atomic(phase.path / 'episodes.json', data)
     values = [metric('environment_' + key, value, 'count') for key, value in data.get('counts', {}).items()]

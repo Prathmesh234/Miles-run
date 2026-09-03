@@ -126,8 +126,13 @@ def main():
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, default=1)
     ap.add_argument('--candidate', action='store_true')
+    ap.add_argument('--miles-source', default='provenance/sync-grpo-source-v6/miles',
+                    help='Run-relative immutable materialized Miles source for the replay runtime.')
     args = ap.parse_args()
     run = Run(args.run_dir)
+    from pathlib import Path
+    if Path(args.miles_source).is_absolute() or '..' in Path(args.miles_source).parts:
+        raise ValueError('Replay source must be relative to the current run.')
     label = ('tito-candidate-validation' if args.candidate else 'truncated-tito-replay') + f'-v{args.attempt}'
     phase = run.phase('02-' + label)
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
@@ -137,18 +142,22 @@ def main():
         source = (Path(__file__).resolve().parents[1] / 'vendor/miles/examples/experimental/openenv/posttrainingx_local_agent.py').read_text()
         atomic(phase.path / 'candidate.py', source)
         inner = inspect.getsource(validate_candidate) + '\nimport json\nprint(json.dumps(validate_candidate("/samples", ' + repr(source) + ')))\n'
-    outer = '''import pathlib,subprocess,sys
+    outer = '''import hashlib,json,pathlib,subprocess,sys
 root=pathlib.Path(sys.argv[1]);code=root/'provenance/sync-grpo-code-v6'
 sys.path.insert(0,str(code));from enroot_run_config import prepare
+source=root/sys.argv[4];manifest=json.loads((source.parent/'manifest.json').read_text())
+for row in manifest['files']:
+ path=source.parent/row['path']
+ if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest()!=row['sha256']:raise ValueError('Replay source hash mismatch')
 runtime=root/('images/'+sys.argv[3]);runtime.mkdir(exist_ok=False)
 env=prepare(runtime);env['NVIDIA_VISIBLE_DEVICES']='void'
 cmd=['enroot','start','--pid','--ipc','--rw','--env','NVIDIA_VISIBLE_DEVICES=void','--env','PYTHONDONTWRITEBYTECODE=1','--env','PYTHONPATH=/miles-source','--env','HF_HUB_OFFLINE=1','--env','TRANSFORMERS_OFFLINE=1']
-for source,target in [(root/'provenance/sync-grpo-source-v6/miles','/miles-source'),(root/'models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0','/model'),(root/'training/sync-grpo-v6/dump_details/qualification-groups','/samples')]:cmd+=['--mount',str(source)+':'+target+':none:bind,ro,x-create=dir']
+for source,target in [(source,'/miles-source'),(root/'models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0','/model'),(root/'training/sync-grpo-v6/dump_details/qualification-groups','/samples')]:cmd+=['--mount',str(source)+':'+target+':none:bind,ro,x-create=dir']
 cmd += [str(root/'images/enroot-import-v2/miles-amd64.sqsh'),'python3','-c',sys.argv[2]]
 raise SystemExit(subprocess.call(cmd,env=env))
 '''
     rc, out, _ = phase.command(['kubectl', '--kubeconfig', args.kubeconfig, '-n', 'slurm', 'exec',
-        'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', outer, remote, inner, label], timeout=120)
+        'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', outer, remote, inner, label, args.miles_source], timeout=120)
     data = json.loads(out.splitlines()[-1]) if not rc else {'findings': ['Pinned CPU replay failed.']}
     atomic(phase.path / 'result.json', data)
     phase.finish('fail' if data['findings'] else 'ok', metadata=data,

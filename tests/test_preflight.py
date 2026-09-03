@@ -43,6 +43,61 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_journal_joins_discarded_and_cancelled_work_without_reward_inference(self):
+        from audit_trajectory_journal import audit_journal
+        from copy import deepcopy
+        selected = dict(attempt_id='a', sample_index=7, group_index=1, task_id='task',
+            tokens=[1, 2], rollout_log_probs=[-0.1], loss_mask=[1], response_length=1,
+            reward=1.0, weight_versions=[2], environment_attempts=[dict(episode_id='e1', task_id='task')])
+        discarded = dict(selected, sample_index=8, environment_attempts=[dict(episode_id='e2', task_id='task')])
+        cancelled = dict(selected, attempt_id='b', sample_index=9, environment_attempts=[])
+        def group(kind, *samples):
+            return dict(event=kind, samples=list(samples))
+        events = [group('group_submitted', selected, discarded), group('group_submitted', cancelled),
+            group('group_returned', selected, discarded), group('selected_for_training', selected),
+            group('sync_excess_discarded', discarded), group('group_cancelled', cancelled)]
+        for sample, eid in [(selected, 'e1'), (discarded, 'e2'), (cancelled, 'e3')]:
+            events.append(dict(event='environment_attempt', episode_id=eid,
+                **{key: sample[key] for key in ('attempt_id', 'sample_index', 'group_index', 'task_id')}))
+        episodes = [dict(episode_id=eid, task_id='task') for eid in ('e1', 'e2', 'e3')]
+        native = [dict(index=7, **{k: selected[k] for k in ('tokens', 'rollout_log_probs', 'loss_mask', 'response_length', 'reward')},
+            metadata={'_miles_journal_attempt_id': 'a'})]
+        result = audit_journal(events, episodes, native, [7])
+        self.assertEqual(result['findings'], [])
+        self.assertEqual(result['counts']['environment_attempts'], 3)
+        self.assertEqual(result['counts']['dispositions']['group_cancelled'], 1)
+        self.assertEqual(result['counts']['unjoined_episodes'], 0)
+        changed = deepcopy(events)
+        changed[2]['samples'][0]['tokens'] = [1, 3]
+        self.assertTrue(any('native tokens changed' in f for f in audit_journal(changed, episodes, native, [7])['findings']))
+        missing = [event for event in events if event['event'] != 'sync_excess_discarded']
+        self.assertTrue(any('ambiguous submission/disposition' in f for f in audit_journal(missing, episodes, native, [7])['findings']))
+        unjoined = audit_journal(events[:-1], episodes, native, [7])
+        self.assertEqual(unjoined['unjoined_episode_ids'], ['e3'])
+        self.assertTrue(any('trainer inputs' in f for f in audit_journal(events, episodes, native, [])['findings']))
+        with self.assertRaisesRegex(ValueError, 'Repeated durable environment'):
+            audit_journal(events + [events[-1]], episodes, native, [7])
+
+    def test_journal_reader_rejects_mutation_and_unfinished_writes(self):
+        from audit_trajectory_journal import read_journal
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / 'training/trajectory-journal'
+            directory.mkdir(parents=True)
+            raw = json.dumps(dict(schema_version=1, event='group_submitted')).encode()
+            path = directory / ('group_submitted-id-' + hashlib.sha256(raw).hexdigest() + '.json')
+            path.write_bytes(raw)
+            events, hashes = read_journal(root, directory.parent)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(hashes[str(path.relative_to(root))], sha256(path))
+            path.write_bytes(raw + b' ')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                read_journal(root, directory.parent)
+            path.unlink()
+            (directory / '.event-incomplete').write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'unfinished'):
+                read_journal(root, directory.parent)
+
     def test_episode_join_requires_native_ids_rewards_and_unique_trainer_membership(self):
         from audit_local_episodes import join_episode_ids
         episodes = [dict(episode_id='e1', task_id='task', category='graded', reward=1.0, event_span_s=3)]

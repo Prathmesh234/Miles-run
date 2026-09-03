@@ -50,6 +50,9 @@ def main():
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, default=1)
     ap.add_argument('--environment-attempt', type=int, required=True)
+    ap.add_argument('--steps', type=int, choices=range(2, 6), default=3)
+    ap.add_argument('--nvml-attempt', type=int, default=5)
+    ap.add_argument('--tito-attempt', type=int, default=4)
     a = ap.parse_args()
     repo = Path(__file__).resolve().parents[1]
     miles = repo / 'vendor/miles'
@@ -60,9 +63,9 @@ def main():
     miles_sha = subprocess.check_output(['git', '-C', str(miles), 'rev-parse', 'HEAD'], text=True).strip()
     run = Run(a.run_dir)
     phase = run.phase(f'02-sync-grpo-submission-v{a.attempt}')
-    nvml_gate = run.root / 'tests/01-nvml-result-audit-v2/result.json'
+    nvml_gate = run.root / f'tests/01-nvml-result-audit-v{a.nvml_attempt}/result.json'
     nvml_proof = json.loads(nvml_gate.read_text())
-    nvml_receipt = json.loads((run.root / 'tests/01-nvml-qualification-v2-submission/submission.json').read_text())
+    nvml_receipt = json.loads((run.root / f'tests/01-nvml-qualification-v{a.nvml_attempt}-submission/submission.json').read_text())
     if (nvml_proof['findings'] or len(nvml_proof['nodes']) != 4
             or nvml_proof['slurm_job_id'] != nvml_receipt['slurm_job_id']):
         phase.finish('fail', failure_summary='Four-node persistent NVML qualification has not passed.', refresh=False)
@@ -72,7 +75,17 @@ def main():
         if hashlib.sha256(qualified).hexdigest() != sha256(repo / 'scripts' / name):
             phase.finish('fail', failure_summary='Collector differs from the load-qualified revision: ' + name, refresh=False)
             return 1
-    tito_gate = run.root / 'tests/02-tito-candidate-validation-v3/result.json'
+    journal_gate = run.root / 'tests/02-rollout-journal-native-audit-v3-a2/result.json'
+    journal_proof = json.loads(journal_gate.read_text())['result']
+    changed_since_tests = subprocess.check_output(['git', '-C', str(miles), 'diff', '--name-only', journal_proof['miles_revision'], miles_sha], text=True).splitlines()
+    allowed = {'scripts/run_qwen3_6_35b_a3b_posttrainingx.py', 'tests/fast/launch_scripts/test_qwen36_posttrainingx.py',
+               'docs/models/qwen/qwen3-6-moe.md',
+               'tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt'}
+    if (journal_proof['exit_code'] != 0 or journal_proof['counts'] != dict(tests=54, failures=0, errors=0, skipped=0)
+            or not set(changed_since_tests) <= allowed):
+        phase.finish('fail', failure_summary='Native journal candidate differs from the tested core or CPU tests failed.', refresh=False)
+        return 1
+    tito_gate = run.root / f'tests/02-tito-candidate-validation-v{a.tito_attempt}/result.json'
     tito_proof = json.loads(tito_gate.read_text())
     rdma_gate = run.root / 'tests/02-rdma-container-visibility-v2/result.json'
     rdma_proof = json.loads(rdma_gate.read_text())
@@ -90,6 +103,14 @@ def main():
     label = f'sync-grpo-v{a.attempt}'
     k = ['kubectl', '--kubeconfig', a.kubeconfig, '-n', 'slurm']
     worker = k + ['exec', '-i', 'slurm-worker-gpu-nodes-0', '--']
+    # Bound checkpoint growth before staging, in addition to the live 256 GiB
+    # guard. Two retained new checkpoints suffice for this diagnostic attempt.
+    space_program = 'import json,shutil,sys;print(json.dumps(dict(free_bytes=shutil.disk_usage(sys.argv[1]).free)))'
+    rc, out, _ = phase.command(worker + ['python3', '-c', space_program, remote], timeout=30)
+    required_bytes = a.steps * 520_000_000_000 + 256 * 1024**3
+    if rc or json.loads(out)['free_bytes'] < required_bytes:
+        phase.finish('fail', failure_summary='Insufficient space for requested checkpoints plus the 256 GiB reserve; no cleanup performed.', refresh=False)
+        return 1
     gate = f'tests/02-local-file-runtime-validation-v{a.environment_attempt}/result.json'
     rc, out, _ = phase.command(worker + ['cat', remote + '/' + gate], timeout=30)
     if rc or json.loads(out)['findings'] or len(json.loads(out)['cases']) < 10:
@@ -124,7 +145,11 @@ def main():
         'converted_model': 'models/qwen3.6-35b-a3b-torch-dist-v2', 'network_interface': 'eth0',
         'ray_port': 19379, 'dashboard_port': 18265, 'env_port': 18243,
         'task_ids': ['task_06652', 'task_14118', 'task_10753', 'task_09467'],
-        'layout': '2t2r', 'optimizer_steps_requested': 3, 'group_size': 8, 'global_batch_size': 16,
+        'layout': '2t2r', 'optimizer_steps_requested': a.steps, 'group_size': 8, 'global_batch_size': 16,
+        'rollout_journal': 'enabled; immutable native sample and controller receipts',
+        'journal_native_test_sha256': sha256(journal_gate),
+        'checkpoint_space_required_bytes': required_bytes,
+        'diagnostic_reason': 'Per-API NVML timing and durable rollout accounting after failed job154; its 12s telemetry gate remains unchanged.',
         'sglang_moe_runner_backend': 'triton', 'verify_initial_weight_broadcast': True,
         'tito_comparison_contract': 'qwen36_length_limited_final_message_v1',
         'tito_candidate_validation_sha256': sha256(tito_gate),
@@ -207,7 +232,7 @@ def main():
     job = out.strip().split(';')[0]
     okay = not rc and job.isdigit()
     receipt = {'slurm_job_id': job, 'root_sha': revision, 'miles_sha': miles_sha, 'layout': '2t2r',
-               'gpus': 32, 'optimizer_steps_requested': 3, 'scope': 'Actual GRPO job submitted; optimizer execution not yet verified.'}
+               'gpus': 32, 'optimizer_steps_requested': a.steps, 'scope': 'Actual GRPO job submitted; optimizer execution not yet verified.'}
     atomic(phase.path / 'submission.json', receipt)
     if okay:
         try:
