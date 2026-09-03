@@ -1,7 +1,7 @@
 From ec73981bd361fcd09c48255f922d9f143fe55fe6 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 10:56:12 -0700
-Subject: [PATCH 01/19] Support external Ray submission without broad process
+Subject: [PATCH 01/21] Support external Ray submission without broad process
  cleanup
 
 ---
@@ -102,7 +102,7 @@ index 1c7727ae1..91994128e 100644
 From d296c802a829e218cbd07c208a45350d7582341f Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 10:56:12 -0700
-Subject: [PATCH 02/19] Bind whole-node placement to frozen physical GPU
+Subject: [PATCH 02/21] Bind whole-node placement to frozen physical GPU
  identities
 
 ---
@@ -496,7 +496,7 @@ index 000000000..7f29fe4df
 From b61dbe83ee815412b72c84ed367ffd329d7922d4 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 10:56:12 -0700
-Subject: [PATCH 03/19] Add disaggregated B200 Qwen3.6 OpenEnv GRPO launcher
+Subject: [PATCH 03/21] Add disaggregated B200 Qwen3.6 OpenEnv GRPO launcher
 
 ---
  docs/models/qwen/qwen3-6-moe.md               |  46 ++++
@@ -1049,7 +1049,7 @@ index 000000000..9d1729257
 From 346946ae870be97e9cb6f4e8b7214c7fcf66c041 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 13:31:10 -0700
-Subject: [PATCH 04/19] fix: pin benchmark checkpoint paths and reject
+Subject: [PATCH 04/21] fix: pin benchmark checkpoint paths and reject
  incompatible sweep batches
 
 ---
@@ -1223,7 +1223,7 @@ index 9d1729257..bd9f7724d 100644
 From 5a2cce03269c729282b634e8ff7e602f96dcf37e Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 14:28:56 -0700
-Subject: [PATCH 05/19] Wire sealed local OpenEnv transport into native Qwen
+Subject: [PATCH 05/21] Wire sealed local OpenEnv transport into native Qwen
  GRPO with fail-closed qualification checks
 
 ---
@@ -1373,7 +1373,7 @@ index d1ed5250f..2c245ec66 100644
 From 599d5920a3ea4dcf5ef9f6fd83c14bd2c09615a5 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 14:39:23 -0700
-Subject: [PATCH 06/19] Connect to existing Ray before validating explicit
+Subject: [PATCH 06/21] Connect to existing Ray before validating explicit
  physical host placement
 
 ---
@@ -1402,7 +1402,7 @@ index 43f2695df..3f0e7b083 100644
 From 794b00765d06dbaf1d3fe8710cceff436779a66b Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 14:40:58 -0700
-Subject: [PATCH 07/19] Cover local environment adapter and fail-closed reward
+Subject: [PATCH 07/21] Cover local environment adapter and fail-closed reward
  wiring in launcher tests
 
 ---
@@ -1431,7 +1431,7 @@ index 3a7190aa3..4dfc05bb1 100644
 From 7d4935ad7c13bb359e31cf84a54036b8d5c919f4 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 14:51:40 -0700
-Subject: [PATCH 08/19] Pin canonical Triton MoE for B200 hot reload and gate
+Subject: [PATCH 08/21] Pin canonical Triton MoE for B200 hot reload and gate
  initial broadcast on full weight equality
 
 ---
@@ -1517,7 +1517,7 @@ index 4dfc05bb1..f5a58d45a 100644
 From 1181014c3c78ed290d4e53fbc33ef8d4cdb1949a Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 15:03:51 -0700
-Subject: [PATCH 09/19] Accept Qwen null media placeholders and retain native
+Subject: [PATCH 09/21] Accept Qwen null media placeholders and retain native
  GRPO group gate evidence
 
 ---
@@ -1711,7 +1711,7 @@ index f5a58d45a..f14baf196 100644
 From 2ad5651a899a39ead41df0ee4e649907e7c534aa Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 15:21:59 -0700
-Subject: [PATCH 10/19] Fail qualification before optimization on strict or
+Subject: [PATCH 10/21] Fail qualification before optimization on strict or
  missing TITO verification
 
 ---
@@ -1779,7 +1779,7 @@ index f14baf196..47e49d082 100644
 From 1e4d5af3f57cf4215e6793b60c4c59aebe1c9881 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 15:25:40 -0700
-Subject: [PATCH 11/19] Verify Qwen length-limited final messages without
+Subject: [PATCH 11/21] Verify Qwen length-limited final messages without
  changing sampled tokens
 
 ---
@@ -1939,7 +1939,7 @@ index 47e49d082..6714ca983 100644
 From c966361e76a67bdbcd42b69f8a20d4f0b72f9c66 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 15:45:06 -0700
-Subject: [PATCH 12/19] Preserve MTP speculative statistics across native
+Subject: [PATCH 12/21] Preserve MTP speculative statistics across native
  sample wire codec
 
 ---
@@ -2014,7 +2014,7 @@ index 13117d836..31bd736af 100644
 From df8cde5bedc0b19603b3f53433b5a00b76e1d687 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 15:45:06 -0700
-Subject: [PATCH 13/19] Use parsed Miles renderer kwargs in truncated Qwen
+Subject: [PATCH 13/21] Use parsed Miles renderer kwargs in truncated Qwen
  token validation
 
 ---
@@ -2064,7 +2064,7 @@ index 6714ca983..50c257fa7 100644
 From fd9039be69554336d77eeca67a2dd8d409e0c3d8 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 16:15:14 -0700
-Subject: [PATCH 14/19] Track controller episode identities through local
+Subject: [PATCH 14/21] Track controller episode identities through local
  OpenEnv outcomes
 
 ---
@@ -2270,7 +2270,7 @@ index c12e58751..83e3c9ea9 100644
 From c3bc234a0a9c198525974e8977fe3344b1c6aa68 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 16:17:30 -0700
-Subject: [PATCH 15/19] Match OpenEnv state requests without forbidden data
+Subject: [PATCH 15/21] Match OpenEnv state requests without forbidden data
  field
 
 ---
@@ -2309,7 +2309,7 @@ index 69a687d3c..a2be80cd2 100644
 From 977bdee2fa4486349728b3768d504129bfa56848 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 16:21:29 -0700
-Subject: [PATCH 16/19] Read canonical SGLang speculative draft counters in
+Subject: [PATCH 16/21] Read canonical SGLang speculative draft counters in
  sample metrics
 
 ---
@@ -2374,7 +2374,7 @@ index 31bd736af..e81f6dbd4 100644
 From 1411d18f57e445b64e6349bc1061850282f5439b Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 18:46:15 -0700
-Subject: [PATCH 17/19] Add opt-in checksummed persistence for dataset cursor
+Subject: [PATCH 17/21] Add opt-in checksummed persistence for dataset cursor
  and recycled prompts
 
 ---
@@ -2605,7 +2605,7 @@ index 000000000..fd2174310
 From a033cc802741dfb387b212bc95afde9ac6d9cf79 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 19:24:42 -0700
-Subject: [PATCH 18/19] Add opt-in durable rollout identities and settle failed
+Subject: [PATCH 18/21] Add opt-in durable rollout identities and settle failed
  producer tasks
 
 ---
@@ -3320,7 +3320,7 @@ index cbe2f0637..298c4c648 100644
 From 1a6303b6204d853c5d812bb92be1319a28028d39 Mon Sep 17 00:00:00 2001
 From: Prathmesh234 <ppbhatt500@gmail.com>
 Date: Wed, 2 Sep 2026 19:35:05 -0700
-Subject: [PATCH 19/19] Expose private rollout journal and refresh the
+Subject: [PATCH 19/21] Expose private rollout journal and refresh the
  exercised launcher snapshot
 
 ---
@@ -3428,6 +3428,586 @@ index bd9f7724d..e10897cf0 100644
    --tito-model qwen36
    --use-session-server
    --session-server-port 30000
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 656d2d42d07deecf116dc6962771682293512b1e Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 20:20:43 -0700
+Subject: [PATCH 20/21] Release pinned weight backups explicitly on opt-in
+ normal shutdown
+
+---
+ miles/backends/megatron_utils/actor.py        | 14 ++++
+ miles/ray/actor_group.py                      |  3 +
+ miles/ray/train/group.py                      |  7 ++
+ miles/rollout/trajectory_journal.py           |  7 ++
+ miles/utils/arguments.py                      | 11 ++++
+ miles/utils/pinned_host_cleanup.py            | 56 ++++++++++++++++
+ miles/utils/tensor_backper.py                 | 40 ++++++++++++
+ .../test_shared_ppo_lifecycle.py              | 17 +++++
+ tests/fast/ray/test_actor_group_shared_ppo.py | 37 +++++++++++
+ tests/fast/utils/test_tensor_backper.py       | 64 +++++++++++++++++++
+ train.py                                      |  2 +
+ train_async.py                                |  2 +
+ 12 files changed, 260 insertions(+)
+ create mode 100644 miles/utils/pinned_host_cleanup.py
+
+diff --git a/miles/backends/megatron_utils/actor.py b/miles/backends/megatron_utils/actor.py
+index a5ccada0c..692858bcc 100644
+--- a/miles/backends/megatron_utils/actor.py
++++ b/miles/backends/megatron_utils/actor.py
+@@ -365,6 +365,20 @@ class MegatronTrainRayActor(TrainRayActor):
+         """Weight backup is only needed for CPU-side model switching or colocated tensor weight sync."""
+         return self.with_ref or self.with_opd_teacher or self.args.keep_old_actor or self.args.colocate
+ 
++    def release_pinned_weight_backups(self) -> dict:
++        # Terminal-only, opt-in resource cleanup. It must never be used as a
++        # per-step offload operation, and errors propagate to the driver.
++        from miles.utils.pinned_host_cleanup import release_and_record
++
++        if not self.args.release_pinned_backups_on_exit:
++            raise RuntimeError("Pinned backup shutdown cleanup was not enabled")
++        return release_and_record(
++            self.args,
++            self.weights_backuper,
++            rank=dist.get_rank(),
++            policy_version=self.weight_updater.weight_version,
++        )
++
+     def _switch_model(self, target_tag: str) -> None:
+         if not self._enable_weight_backup:
+             return
+diff --git a/miles/ray/actor_group.py b/miles/ray/actor_group.py
+index fb40d1250..b439236fe 100644
+--- a/miles/ray/actor_group.py
++++ b/miles/ray/actor_group.py
+@@ -143,6 +143,9 @@ class RayTrainGroup:
+     async def clear_memory(self):
+         await self._broadcast("clear_memory")
+ 
++    async def release_pinned_weight_backups(self):
++        return await self._broadcast("release_pinned_weight_backups")
++
+     async def set_rollout_manager(self):
+         self.rollout_manager = self._rollout_manager
+         await self._broadcast("set_rollout_manager", self._rollout_manager)
+diff --git a/miles/ray/train/group.py b/miles/ray/train/group.py
+index 3cb62d962..c86e45c3e 100644
+--- a/miles/ray/train/group.py
++++ b/miles/ray/train/group.py
+@@ -297,6 +297,13 @@ class RayTrainGroup:
+         # Catch *without* retry: cells w/ exceptions are auto marked errored, and will not be used
+         await self._execute_all_alive_and_catch("clear_memory")
+ 
++    async def release_pinned_weight_backups(self):
++        # Shutdown failures must propagate, not be swallowed by FT retry logic.
++        cells = [cell for cell in self._cells if cell.is_alive]
++        if not cells or len(cells) != len(self._cells):
++            raise RuntimeError("Cannot qualify host cleanup with missing trainer cells")
++        return await asyncio.gather(*[cell.execute("release_pinned_weight_backups") for cell in cells])
++
+     async def set_rollout_manager(self):
+         await asyncio.gather(*[cell.set_rollout_manager() for cell in self._cells])
+ 
+diff --git a/miles/rollout/trajectory_journal.py b/miles/rollout/trajectory_journal.py
+index 14fed5558..0e67b18f4 100644
+--- a/miles/rollout/trajectory_journal.py
++++ b/miles/rollout/trajectory_journal.py
+@@ -67,6 +67,13 @@ def record_group(args, event, group, *, native=False, **context):
+     _write(directory, event, dict(samples=rows, **context))
+ 
+ 
++def record_lifecycle(args, event, **payload):
++    """Record training resource lifecycle without inventing trajectory samples."""
++    if not args.rollout_journal_dir:
++        raise ValueError("A private lifecycle journal is required")
++    return _write(args.rollout_journal_dir, event, payload)
++
++
+ def begin_group(args, group):
+     if not getattr(args, "rollout_journal_dir", None):
+         return
+diff --git a/miles/utils/arguments.py b/miles/utils/arguments.py
+index dccb0732c..7dde6909d 100644
+--- a/miles/utils/arguments.py
++++ b/miles/utils/arguments.py
+@@ -2447,6 +2447,11 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
+                 help="Private run-owned directory for immutable trajectory identity/decision receipts. "
+                      "Enables fail-closed synchronous group errors; never expose this directory to policies.",
+             )
++            parser.add_argument(
++                "--release-pinned-backups-on-exit",
++                action="store_true",
++                help="Terminal-only Megatron pinned weight-backup release with durable journal receipts.",
++            )
+             parser.add_argument(
+                 "--disable-rollout-trim-samples",
+                 action="store_true",
+@@ -2985,6 +2990,12 @@ def miles_validate_args(args):
+         args.no_load_optim = True
+         args.no_save_optim = True
+ 
++    if getattr(args, "release_pinned_backups_on_exit", False):
++        if args.train_backend != "megatron" or args.use_critic:
++            raise ValueError("Pinned backup shutdown cleanup currently requires Megatron without a critic")
++        if not args.rollout_journal_dir:
++            raise ValueError("Pinned backup shutdown cleanup requires --rollout-journal-dir")
++
+     # Normalize the deprecated ``--chat-template-path=autofix`` alias to None
+     # up-front so the rest of this block treats it as "no path given".
+     if args.chat_template_path == "autofix":
+diff --git a/miles/utils/pinned_host_cleanup.py b/miles/utils/pinned_host_cleanup.py
+new file mode 100644
+index 000000000..db4090355
+--- /dev/null
++++ b/miles/utils/pinned_host_cleanup.py
+@@ -0,0 +1,56 @@
++"""Opt-in terminal release of pinned weight backups, with durable receipts.
++
++Do not use this between optimizer steps. It does not offload or modify live
++model, optimizer or scheduler tensors, nor destroy CUDA/NCCL contexts.
++"""
++
++import time
++
++import torch
++
++from miles.rollout.trajectory_journal import record_lifecycle
++
++
++def release_pinned_backups(backuper) -> dict:
++    torch.cuda.synchronize()
++    keys = ("active_bytes.current", "allocated_bytes.current")
++    before = torch.cuda.memory.host_memory_stats()
++    started = time.monotonic()
++    tensor_bytes = backuper.close()
++    # Pinned caches are distinct from torch.cuda.empty_cache(). This explicit
++    # native API was qualified in the pinned image; missing support must fail.
++    torch._C._host_emptyCache()
++    after = torch.cuda.memory.host_memory_stats()
++    if tensor_bytes:
++        for key in keys:
++            if after[key] < 0 or before[key] - after[key] < tensor_bytes:
++                raise RuntimeError(f"Pinned backup release accounting failed for {key}")
++    return dict(
++        tensor_bytes=tensor_bytes,
++        duration_s=time.monotonic() - started,
++        before={key: before[key] for key in keys if key in before},
++        after={key: after[key] for key in keys if key in after},
++    )
++
++
++def release_and_record(args, backuper, *, rank: int, policy_version: int | None) -> dict:
++    if not args.rollout_journal_dir:
++        raise ValueError("Terminal host cleanup requires a private lifecycle journal")
++    identity = dict(rank=rank, policy_version=policy_version)
++    record_lifecycle(args, "training_host_cleanup_started", **identity)
++    try:
++        result = release_pinned_backups(backuper)
++    except Exception as exc:
++        record_lifecycle(args, "training_host_cleanup_failed", error=str(exc), **identity)
++        raise
++    record_lifecycle(args, "training_host_cleanup_completed", **identity, **result)
++    return result
++
++
++async def finish_training_resources(args, actor_model, critic_model) -> None:
++    """Called only after the driver's normal save/update/evaluation/dispose path."""
++    if not getattr(args, "release_pinned_backups_on_exit", False):
++        return
++    await actor_model.release_pinned_weight_backups()
++    if critic_model is not None:
++        await critic_model.release_pinned_weight_backups()
+diff --git a/miles/utils/tensor_backper.py b/miles/utils/tensor_backper.py
+index 2a0600a5c..197698555 100644
+--- a/miles/utils/tensor_backper.py
++++ b/miles/utils/tensor_backper.py
+@@ -28,6 +28,20 @@ class TensorBackuper(ABC):
+ 
+     def __init__(self, source_getter: _SourceGetter):
+         self._source_getter = source_getter
++        self._closed = False
++
++    def _assert_open(self) -> None:
++        if self._closed:
++            raise RuntimeError("Weight backups have been released for shutdown")
++
++    @abstractmethod
++    def close(self) -> int:
++        """Drop owned CPU backups after CUDA work is synchronized; return tensor bytes.
++
++        This is terminal, not an offload operation. Live model/master weights
++        must remain untouched and future backup/restore operations must fail.
++        """
++        raise NotImplementedError
+ 
+     @property
+     @abstractmethod
+@@ -60,10 +74,12 @@ class _TensorBackuperNormal(TensorBackuper):
+         return list(self._backups)
+ 
+     def get(self, tag: str):
++        self._assert_open()
+         return self._backups[tag]
+ 
+     @torch.no_grad()
+     def backup(self, tag: str) -> None:
++        self._assert_open()
+         backup_dict = self._backups[tag]
+         for name, param in self._source_getter():
+             if name not in backup_dict:
+@@ -73,17 +89,28 @@ class _TensorBackuperNormal(TensorBackuper):
+ 
+     @torch.no_grad()
+     def copy(self, *, src_tag: str, dst_tag: str):
++        self._assert_open()
+         for name in self._backups[dst_tag]:
+             self._backups[dst_tag][name].copy_(self._backups[src_tag][name])
+ 
+     @torch.no_grad()
+     def restore(self, tag: str) -> None:
++        self._assert_open()
+         backup_dict = self._backups[tag]
+         for name, param in self._source_getter():
+             assert name in backup_dict
+             param.copy_(backup_dict[name], non_blocking=True)
+         torch.cuda.synchronize()
+ 
++    def close(self) -> int:
++        self._assert_open()
++        tensor_bytes = sum(t.numel() * t.element_size() for backup in self._backups.values() for t in backup.values())
++        for backup in self._backups.values():
++            backup.clear()
++        self._backups.clear()
++        self._closed = True
++        return tensor_bytes
++
+ 
+ class _TensorBackuperMainCast(TensorBackuper):
+     """Rebuilds the actor weights instead of keeping a pinned CPU copy of them.
+@@ -111,6 +138,7 @@ class _TensorBackuperMainCast(TensorBackuper):
+ 
+     @torch.no_grad()
+     def backup(self, tag: str) -> None:
++        self._assert_open()
+         if tag != "actor":
+             return self._others.backup(tag)
+         for name, tensor in self._ctx.extras_getter():
+@@ -127,6 +155,7 @@ class _TensorBackuperMainCast(TensorBackuper):
+ 
+     @torch.no_grad()
+     def restore(self, tag: str) -> None:
++        self._assert_open()
+         if tag != "actor":
+             return self._others.restore(tag)
+         self._ctx.cast_main_to_params()
+@@ -139,6 +168,7 @@ class _TensorBackuperMainCast(TensorBackuper):
+             self._verify_hashes()
+ 
+     def get(self, tag: str):
++        self._assert_open()
+         if tag != "actor":
+             return self._others.get(tag)
+         # Extras are paused during update_weights. Read them from the pinned backup.
+@@ -153,6 +183,16 @@ class _TensorBackuperMainCast(TensorBackuper):
+             out[name] = backup
+         return out
+ 
++    def close(self) -> int:
++        self._assert_open()
++        tensor_bytes = self._others.close()
++        tensor_bytes += sum(t.numel() * t.element_size() for t in self._extras_backup.values())
++        self._extras_backup.clear()
++        self._extras_backup_by_id.clear()
++        self._expected_hashes = None
++        self._closed = True
++        return tensor_bytes
++
+     def _compute_hashes(self) -> dict[str, str]:
+         return {name: _hash_tensor_sha256(tensor) for name, tensor in self._source_getter()}
+ 
+diff --git a/tests/fast/backends/megatron_utils/test_shared_ppo_lifecycle.py b/tests/fast/backends/megatron_utils/test_shared_ppo_lifecycle.py
+index f7182387c..58487caf1 100644
+--- a/tests/fast/backends/megatron_utils/test_shared_ppo_lifecycle.py
++++ b/tests/fast/backends/megatron_utils/test_shared_ppo_lifecycle.py
+@@ -73,6 +73,23 @@ def _worker(actor_module, role, *, asleep=True):
+     return worker
+ 
+ 
++def test_terminal_host_cleanup_passes_exact_backuper_rank_and_policy_version(actor_module, monkeypatch):
++    from miles.utils import pinned_host_cleanup
++
++    worker = object.__new__(actor_module.MegatronTrainRayActor)
++    worker.args = Namespace(release_pinned_backups_on_exit=True)
++    worker.weights_backuper = object()
++    worker.weight_updater = Namespace(weight_version=3)
++    release = Mock(return_value={"tensor_bytes": 123})
++    monkeypatch.setattr(pinned_host_cleanup, "release_and_record", release)
++    monkeypatch.setattr(actor_module.dist, "get_rank", lambda: 7)
++    assert worker.release_pinned_weight_backups() == {"tensor_bytes": 123}
++    release.assert_called_once_with(worker.args, worker.weights_backuper, rank=7, policy_version=3)
++    worker.args.release_pinned_backups_on_exit = False
++    with pytest.raises(RuntimeError, match="not enabled"):
++        worker.release_pinned_weight_backups()
++
++
+ def test_critic_train_wakes_and_leaves_offload_to_driver(actor_module, monkeypatch):
+     worker = _worker(actor_module, "critic")
+     worker.train_critic = Mock(return_value={"values": ["cpu-value"]})
+diff --git a/tests/fast/ray/test_actor_group_shared_ppo.py b/tests/fast/ray/test_actor_group_shared_ppo.py
+index f8ee09c62..bbd395bcf 100644
+--- a/tests/fast/ray/test_actor_group_shared_ppo.py
++++ b/tests/fast/ray/test_actor_group_shared_ppo.py
+@@ -101,3 +101,40 @@ async def test_train_only_ft_does_not_recover_rollout_engines():
+ 
+     assert [name for name, _, _ in calls] == ["get_engines", "pause"]
+     group._broadcast.assert_awaited_once_with("update_weights", info="info")
++
++
++async def test_terminal_host_release_reaches_each_rank_and_propagates_failure():
++    from types import SimpleNamespace
++    from unittest.mock import AsyncMock
++    import pytest
++    from miles.ray.actor_group import RayTrainGroup
++
++    calls = []
++    group = object.__new__(RayTrainGroup)
++    group._actor_handles = [SimpleNamespace(release_pinned_weight_backups=_RemoteCall(str(rank), calls, rank))
++                            for rank in range(2)]
++    assert await group.release_pinned_weight_backups() == [0, 1]
++    assert [name for name, _, _ in calls] == ["0", "1"]
++    group._broadcast = AsyncMock(side_effect=RuntimeError("rank release failed"))
++    with pytest.raises(RuntimeError, match="rank release failed"):
++        await group.release_pinned_weight_backups()
++
++
++async def test_v2_terminal_host_release_refuses_missing_cells_and_propagates_errors():
++    from types import SimpleNamespace
++    from unittest.mock import AsyncMock
++    import pytest
++    from miles.ray.train.group import RayTrainGroup
++
++    group = object.__new__(RayTrainGroup)
++    cell = SimpleNamespace(is_alive=True, execute=AsyncMock(return_value=[{"rank": 0}]))
++    group._cells = [cell]
++    assert await group.release_pinned_weight_backups() == [[{"rank": 0}]]
++    cell.execute.assert_awaited_once_with("release_pinned_weight_backups")
++    cell.is_alive = False
++    with pytest.raises(RuntimeError, match="missing trainer cells"):
++        await group.release_pinned_weight_backups()
++    cell.is_alive = True
++    cell.execute.side_effect = RuntimeError("cleanup failed")
++    with pytest.raises(RuntimeError, match="cleanup failed"):
++        await group.release_pinned_weight_backups()
+diff --git a/tests/fast/utils/test_tensor_backper.py b/tests/fast/utils/test_tensor_backper.py
+index 9fe4b2158..32036c6f8 100644
+--- a/tests/fast/utils/test_tensor_backper.py
++++ b/tests/fast/utils/test_tensor_backper.py
+@@ -207,3 +207,67 @@ def test_actor_restore_wins_after_ref_switch():
+     setup.backuper.restore("actor")
+     for name, tensor in {**setup.params, **setup.extras}.items():
+         assert torch.equal(tensor, actor_values[name]), name
++
++
++@pytest.mark.parametrize("main_cast", [False, True])
++def test_terminal_close_releases_backups_without_changing_live_weights(main_cast):
++    import weakref
++
++    setup = _Setup()
++    live = {**setup.params, **setup.extras}
++    backuper = setup.backuper if main_cast else TensorBackuper.create(lambda: iter(live.items()))
++    backuper.backup("actor")
++    backuper.backup("ref")
++    expected = {name: tensor.clone() for name, tensor in live.items()}
++    ref_view = backuper.get("ref")
++    references = [weakref.ref(tensor) for tensor in ref_view.values()]
++    tensor_bytes = sum(t.numel() * t.element_size() for t in live.values())
++    actor_bytes = sum(t.numel() * t.element_size() for t in setup.extras.values()) if main_cast else tensor_bytes
++
++    assert backuper.close() == actor_bytes + tensor_bytes
++    assert ref_view == {}
++    assert all(ref() is None for ref in references)
++    for name, tensor in live.items():
++        assert torch.equal(tensor, expected[name])
++    for operation in [lambda: backuper.backup("actor"), lambda: backuper.get("actor"),
++                      lambda: backuper.restore("ref"), backuper.close]:
++        with pytest.raises(RuntimeError, match="released for shutdown"):
++            operation()
++
++
++def test_terminal_release_requires_host_accounting_and_records_failure(monkeypatch, tmp_path):
++    import json
++    from miles.utils import pinned_host_cleanup as cleanup
++
++    calls = []
++    snapshots = iter([{"active_bytes.current": 64, "allocated_bytes.current": 128},
++                      {"active_bytes.current": 0, "allocated_bytes.current": 0}])
++    monkeypatch.setattr(torch.cuda.memory, "host_memory_stats", lambda: next(snapshots))
++    monkeypatch.setattr(torch._C, "_host_emptyCache", lambda: calls.append("host_cache"), raising=False)
++    backuper = SimpleNamespace(close=lambda: calls.append("close") or 64)
++    args = SimpleNamespace(rollout_journal_dir=str(tmp_path / "journal"))
++    result = cleanup.release_and_record(args, backuper, rank=3, policy_version=2)
++    assert result["tensor_bytes"] == 64 and calls == ["close", "host_cache"]
++    events = [json.loads(p.read_text()) for p in (tmp_path / "journal").glob("*.json")]
++    assert {e["event"] for e in events} == {"training_host_cleanup_started", "training_host_cleanup_completed"}
++    assert all(e["rank"] == 3 and e["policy_version"] == 2 for e in events)
++
++    snapshots = iter([{"active_bytes.current": 64, "allocated_bytes.current": 64}] * 2)
++    args.rollout_journal_dir = str(tmp_path / "failed-journal")
++    with pytest.raises(RuntimeError, match="accounting failed"):
++        cleanup.release_and_record(args, backuper, rank=3, policy_version=2)
++    kinds = {json.loads(p.read_text())["event"] for p in (tmp_path / "failed-journal").glob("*.json")}
++    assert kinds == {"training_host_cleanup_started", "training_host_cleanup_failed"}
++
++
++@pytest.mark.asyncio
++async def test_driver_host_release_is_opt_in_and_failure_propagates():
++    from unittest.mock import AsyncMock
++    from miles.utils.pinned_host_cleanup import finish_training_resources
++
++    actor = SimpleNamespace(release_pinned_weight_backups=AsyncMock())
++    await finish_training_resources(SimpleNamespace(release_pinned_backups_on_exit=False), actor, None)
++    actor.release_pinned_weight_backups.assert_not_awaited()
++    actor.release_pinned_weight_backups.side_effect = RuntimeError("release failed")
++    with pytest.raises(RuntimeError, match="release failed"):
++        await finish_training_resources(SimpleNamespace(release_pinned_backups_on_exit=True), actor, None)
+diff --git a/train.py b/train.py
+index c35458d9b..f853a5ef3 100644
+--- a/train.py
++++ b/train.py
+@@ -15,6 +15,7 @@ from miles.utils.ft_utils.mini_ft_controller import maybe_start_mini_ft_controll
+ from miles.utils.logging_utils import configure_logger
+ from miles.utils.lora import is_lora_enabled
+ from miles.utils.misc import should_run_periodic_action
++from miles.utils.pinned_host_cleanup import finish_training_resources
+ from miles.utils.tracking_utils.tracking import finish_tracking, init_tracking
+ 
+ logger = logging.getLogger(__name__)
+@@ -167,6 +168,7 @@ async def train(args):
+             break
+ 
+     await rollout_manager.dispose.remote()
++    await finish_training_resources(args, actor_model, critic_model)
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/train_async.py b/train_async.py
+index fd6b9614d..a73e0aae8 100644
+--- a/train_async.py
++++ b/train_async.py
+@@ -13,6 +13,7 @@ from miles.utils.ft_utils.control_server.server import start_control_server
+ from miles.utils.ft_utils.mini_ft_controller import maybe_start_mini_ft_controller
+ from miles.utils.logging_utils import configure_logger
+ from miles.utils.misc import should_run_periodic_action
++from miles.utils.pinned_host_cleanup import finish_training_resources
+ from miles.utils.tracking_utils.tracking import finish_tracking, init_tracking
+ 
+ logger = logging.getLogger(__name__)
+@@ -126,6 +127,7 @@ async def train(args):
+ 
+     await eval_dispatcher.drain()
+     await rollout_manager.dispose.remote()
++    await finish_training_resources(args, actor_model, critic_model)
+ 
+ 
+ if __name__ == "__main__":
+-- 
+2.50.1 (Apple Git-155)
+
+
+From d28caf994086e003510d120138896ffc9fe6ffff Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 20:20:43 -0700
+Subject: [PATCH 21/21] Expose evidence-backed terminal host cleanup in the
+ B200 launcher
+
+---
+ docs/models/qwen/qwen3-6-moe.md                 | 17 ++++++++++++++++-
+ scripts/run_qwen3_6_35b_a3b_posttrainingx.py    |  5 +++++
+ .../launch_scripts/test_qwen36_posttrainingx.py | 10 ++++++++++
+ 3 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/docs/models/qwen/qwen3-6-moe.md b/docs/models/qwen/qwen3-6-moe.md
+index 97aeb01be..3bff04def 100644
+--- a/docs/models/qwen/qwen3-6-moe.md
++++ b/docs/models/qwen/qwen3-6-moe.md
+@@ -209,7 +209,22 @@ From `scripts/models/qwen3.6-35B-A3B.py` and `scripts/run_qwen3_6_35b_a3b_mtp.py
+ 
+ See [Backends Beyond Megatron](/advanced/architecture-support) for FP32 parameter handling and how miles wires the spec.
+ 
+-## 6. Pairs Well With
++## 6. PostTrainingX B200 shutdown qualification
++
++The separate `run_qwen3_6_35b_a3b_posttrainingx.py` launcher offers
++`--release-pinned-backups-on-exit` (default off). It requires
++`--rollout-journal-dir` and Megatron without a critic. After the normal
++save/update/evaluation/dispose path, each trainer rank releases its actor/reference
++CPU weight backups and flushes the pinned host allocator cache. Model, optimizer,
++scheduler and CUDA/NCCL contexts are not modified by this cleanup. Backup access
++after release is an error, so this must not be used between training steps.
++
++Started/completed/failed receipts include rank, policy version, timing and allocator
++bytes in the private journal. Missing allocator support or incomplete release fails
++the run. The four-node memory control passed with explicit release, but this option
++still requires full-trainer validation; it does not relax any telemetry deadline.
++
++## 7. Pairs Well With
+ 
+ - [Speculative Decoding](/advanced/speculative-decoding)
+ - [Backends Beyond Megatron](/advanced/architecture-support)
+diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+index 84beeeaea..fd8e08fd7 100644
+--- a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
++++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+@@ -74,6 +74,7 @@ class ScriptArgs(U.ExecuteTrainConfig):
+     sglang_max_running_requests: int = 256
+     enable_mtp: bool = True
+     verify_initial_weight_broadcast: bool = False
++    release_pinned_backups_on_exit: bool = False
+ 
+     def __post_init__(self):
+         self.hardware = U.resolve_hardware(self)
+@@ -97,6 +98,8 @@ class ScriptArgs(U.ExecuteTrainConfig):
+             raise ValueError("Step, checkpoint, and batch budgets must be positive.")
+         if self.async_max_concurrent_samples < self.n_samples_per_prompt:
+             raise ValueError("Async concurrency must admit at least one complete GRPO group.")
++        if self.release_pinned_backups_on_exit and not self.rollout_journal_dir:
++            raise ValueError("Pinned backup cleanup requires a private rollout_journal_dir.")
+         self.prompt_data = self.prompt_data or f"{self.output_dir}/{self.run_id}/data/train.prompts.jsonl"
+         self.hf_checkpoint = self.hf_checkpoint or f"{self.model_dir}/{self.model_name}"
+         self.ref_load = self.ref_load or f"{self.model_dir}/{self.model_name}_torch_dist"
+@@ -205,6 +208,8 @@ def execute(args: ScriptArgs):
+     )
+     if args.rollout_journal_dir:
+         evidence_args += f"--rollout-journal-dir {shlex.quote(args.rollout_journal_dir)} "
++    if args.release_pinned_backups_on_exit:
++        evidence_args += "--release-pinned-backups-on-exit "
+     if args.verify_initial_weight_broadcast:
+         evidence_args += (
+             "--check-weight-update-equal --check-weight-update-selector all "
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index 5371008a3..7fd11607b 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -202,6 +202,16 @@ def test_durable_journal_is_explicit_and_preserves_private_path(monkeypatch):
+     assert tokens[tokens.index("--rollout-journal-dir") + 1] == "/shared/run evidence/trajectory-journal"
+ 
+ 
++def test_terminal_host_cleanup_is_opt_in_with_private_evidence(monkeypatch):
++    _, _, default, _ = _launch(monkeypatch)
++    assert "--release-pinned-backups-on-exit" not in default
++    _, _, enabled, _ = _launch(monkeypatch, release_pinned_backups_on_exit=True,
++                               rollout_journal_dir="/shared/private/journal")
++    assert enabled.count("--release-pinned-backups-on-exit") == 1
++    with pytest.raises(ValueError, match="private rollout_journal_dir"):
++        _launch(monkeypatch, release_pinned_backups_on_exit=True)
++
++
+ @pytest.mark.parametrize(
+     "overrides",
+     [
 -- 
 2.50.1 (Apple Git-155)
 

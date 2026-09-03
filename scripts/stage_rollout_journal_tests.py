@@ -17,7 +17,10 @@ from submit_native_preflight import BOOTSTRAP, batches, entry
 TESTS = ['tests/fast/rollout/inference_rollout/test_lifecycle_attempt.py',
          'tests/fast/rollout/inference_rollout/test_sample_completion_backfill.py',
          'tests/fast/rollout/test_fully_async_rollout.py',
-         'tests/fast/rollout/test_checkpointed_data_source.py']
+         'tests/fast/rollout/test_checkpointed_data_source.py',
+         'tests/fast/utils/test_tensor_backper.py',
+         'tests/fast/ray/test_actor_group_shared_ppo.py',
+         'tests/fast/backends/megatron_utils/test_shared_ppo_lifecycle.py']
 PROBE = '''import importlib.metadata,json,os,sys,torch
 sys.path.insert(0,'/miles-source');os.chdir('/miles-source')
 assert torch.cuda.device_count()==0
@@ -81,9 +84,9 @@ def run_tests(run, phase, attempt):
     counts = {key: sum(int(suite.attrib[key]) for suite in suites) for key in ('tests', 'failures', 'errors', 'skipped')}
     okay = rc == 0 and counts['tests'] > 0 and not any(counts[key] for key in ('failures', 'errors', 'skipped'))
     result = dict(miles_revision=manifest['miles_sha'], slurm_job_id=os.environ['SLURM_JOB_ID'],
-        exit_code=rc, counts=counts,
+        exit_code=rc, counts=counts, test_paths=TESTS,
         source_manifest_sha256=sha256((run.root / manifest['miles_source']).parent / 'manifest.json'),
-        scope='Native CPU scheduler, journal, cancellation, stale-buffer and cursor checkpoint tests; no model, optimizer or online trajectory qualification.')
+        scope='Native CPU scheduler, journal, cancellation, stale-buffer, cursor checkpoint and terminal pinned-backup lifecycle tests; no model, optimizer or full training telemetry qualification.')
     atomic(phase.path / 'result.json', result)
     phase.finish('ok' if okay else 'fail', metadata=result,
         failure_summary=None if okay else 'Native rollout tests failed or skipped; do not enable the candidate.', refresh=False)
