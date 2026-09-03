@@ -60,6 +60,11 @@ class EvidenceTests(unittest.TestCase):
                 baseline = container_command(run, Path('/code'), 1, Path('/pinned/miles'))
             self.assertIn('/ptx/model_conversion.py', baseline)
             self.assertTrue((run.root / 'images/model-conversion-runtime-v1').is_dir())
+            with patch('run_model_conversion.prepare', return_value={}), patch.dict(os.environ, SLURM_JOB_ID='999'):
+                full = container_command(run, Path('/code'), 1, Path('/pinned/miles'), 'mxfp8')
+            self.assertIn('--convert', full)
+            self.assertNotIn('--convert', command)
+            self.assertTrue((run.root / 'images/qwen-mxfp8-conversion-runtime-v1').is_dir())
 
     def test_qwen_mxfp8_expert_unpacking_preserves_expert_gate_up_and_scale_order(self):
         import torch

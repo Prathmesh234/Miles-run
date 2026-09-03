@@ -22,7 +22,8 @@ MEGATRON_SHA = '8c1e05747eb612b382df2632783df5c83a853646'
 
 
 def conversion_stem(format_name):
-    return {'bf16': 'model-conversion', 'mxfp8-probe': 'qwen-mxfp8-probe'}[format_name]
+    return {'bf16': 'model-conversion', 'mxfp8-probe': 'qwen-mxfp8-probe',
+            'mxfp8': 'qwen-mxfp8-conversion'}[format_name]
 
 
 def torchrun_prefix(ranks):

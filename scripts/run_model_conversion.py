@@ -50,15 +50,17 @@ def container_command(run, code, attempt, source, format_name='bf16'):
         (source, '/miles-source', 'bind,ro,x-create=dir')]:
         command += ['--mount', str(path) + ':' + target + ':none:' + options]
     command += [str(run.root / 'images/enroot-import-v2/miles-amd64.sqsh'),
-        'python3', '/ptx/qwen_mxfp8_probe.py' if format_name == 'mxfp8-probe' else '/ptx/model_conversion.py',
+        'python3', '/ptx/qwen_mxfp8_probe.py' if format_name != 'bf16' else '/ptx/model_conversion.py',
         '--run-dir', '/run-artifacts', '--attempt', str(attempt)]
+    if format_name == 'mxfp8':
+        command += ['--convert']
     return command
 
 
 def native_collector(run, code, attempt, format_name='bf16'):
     stem = conversion_stem(format_name)
     phase = run.phase(f'02-{stem}-native-collector-v{attempt}')
-    limit = 2600 if format_name == 'bf16' else 560
+    limit = 560 if format_name == 'mxfp8-probe' else 2600
     rc, _, _ = phase.command(['python3', str(code / 'telemetry_native.py'), '--run-dir', str(run.root),
         '--limit-s', str(limit), '--ib-backend', 'perfquery', '--stream-label', f'native-{stem}-v{attempt}',
         '--role', 'checkpoint-conversion', '--lustre-backend', 'host-debugfs-pod'], timeout=limit + 20)
@@ -70,7 +72,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
-    ap.add_argument('--format', choices=('bf16', 'mxfp8-probe'), default='bf16')
+    ap.add_argument('--format', choices=('bf16', 'mxfp8-probe', 'mxfp8'), default='bf16')
     args = ap.parse_args()
     stem = conversion_stem(args.format)
     run = allocated_run(args.run_dir)
@@ -96,7 +98,7 @@ def main():
                     raise RuntimeError('Native collector is not ready; no conversion started.')
                 time.sleep(.25)
             rc, _, _ = phase.command(container_command(run, code, args.attempt, source, args.format),
-                                     timeout=2500 if args.format == 'bf16' else 500)
+                                     timeout=500 if args.format == 'mxfp8-probe' else 2500)
             if rc:
                 errors.append('Conversion container exited with ' + str(rc))
         except Exception as exc:

@@ -51,3 +51,13 @@ This failure applies to the stock conversion recipe, not to B200 low-precision c
 - stock_audit: `tests/02-quantization-recipe-audit-v1/result.json`
 
 [Pinned Miles low-precision documentation](https://github.com/radixark/miles/blob/0709889b2848f293b5575d50aa3340fa4de5a20d/docs/advanced/low-precision.md)
+
+## Executed B200 kernel probe
+
+Slurm 147: COMPLETED, exit 0; kernel/export and allocation audit passed. 24 exported weight/scale tensors matched byte-for-byte; maximum relative L2 error 2.6639% (limit 6%).
+
+Telemetry: 6 finalized streams, 0 collector errors; maximum sample gap 2.163s.
+
+Representative real expert slices plus zero control on GPU0 of an 8-GPU allocation. Not full model conversion, SGLang activation, gradient equivalence, throughput or quality validation.
+
+Raw evidence: `tests/02-qwen-mxfp8-probe-result-audit-v1/result.json`.

@@ -133,7 +133,10 @@ def convert_shard(model, destination, filename, rows, device):
                 raise ValueError('Nonfinite dequantized MXFP8 tensor: ' + name)
             delta = restored - gpu_weight.float()
             denominator = gpu_weight.float().norm().clamp_min(1e-30)
-            metrics.append(dict(name=name, relative_l2=float(delta.norm() / denominator),
+            relative_l2 = float(delta.norm() / denominator)
+            if relative_l2 > 0.06:
+                raise ValueError('MXFP8 relative L2 exceeds the pre-registered 0.06 bound: ' + name)
+            metrics.append(dict(name=name, relative_l2=relative_l2,
                                 max_abs_error=float(delta.abs().max())))
             for key, value in unpack(name, qweight.cpu()):
                 output[key] = value.contiguous()

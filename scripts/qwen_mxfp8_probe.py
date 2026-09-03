@@ -7,7 +7,7 @@ import time
 from types import SimpleNamespace
 import traceback
 
-from convert_qwen_mxfp8 import inspect_source, unpack
+from convert_qwen_mxfp8 import execute, inspect_source, unpack
 from evidence import Run, atomic, metric, sha256
 from model_conversion import validate_imports
 
@@ -58,9 +58,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run-dir', required=True)
     parser.add_argument('--attempt', required=True, type=int)
+    parser.add_argument('--convert', action='store_true')
     args = parser.parse_args()
     run = Run(args.run_dir)
-    phase = run.phase(f'02-qwen-mxfp8-probe-child-v{args.attempt}')
+    stem = 'qwen-mxfp8-conversion' if args.convert else 'qwen-mxfp8-probe'
+    phase = run.phase(f'02-{stem}-child-v{args.attempt}')
     result, findings = {}, []
     try:
         import safetensors
@@ -100,11 +102,26 @@ def main():
                       kernel_sha256=sha256('/miles-source/miles/utils/mxfp8.py'),
                       acceptance={'maximum_relative_l2': 0.06, 'expert_export': 'byte-exact'},
                       gpu_memory_peak_bytes=torch.cuda.max_memory_allocated())
+        if args.convert:
+            destination = run.root / f'models/qwen3.6-35b-a3b-mxfp8-v{args.attempt}'
+            destination.mkdir(exist_ok=False)
+            atomic(destination / 'plan.json', plan)
+            start = time.monotonic()
+            try:
+                execute(Path('/model'), destination, plan, config, 'cuda:0')
+            except Exception as exc:
+                atomic(destination / 'CONVERSION_FAILED.json', {'status': 'fail', 'reason': str(exc)})
+                raise
+            result.update(conversion_duration_s=time.monotonic() - start,
+                          converted_checkpoint=str(destination.relative_to(run.root)),
+                          conversion_sha256=sha256(destination / 'conversion.json'),
+                          checksums_sha256=sha256(destination / 'checksums.sha256'))
     except Exception as exc:
         findings.append(str(exc))
         atomic(phase.path / 'exception.txt', traceback.format_exc())
     result.update(findings=findings, optimizer_steps_enabled=False,
-        scope='Representative real expert slices plus zero control on GPU0 of an 8-GPU allocation. Not full model conversion, SGLang activation, gradient equivalence, throughput or quality validation.')
+        scope=('Full candidate conversion after repeated kernel/export checks. Not SGLang activation, gradient equivalence, throughput or quality validation.' if args.convert else
+               'Representative real expert slices plus zero control on GPU0 of an 8-GPU allocation. Not full model conversion, SGLang activation, gradient equivalence, throughput or quality validation.'))
     atomic(phase.path / 'result.json', result)
     phase.finish('fail' if findings else 'ok', metadata=result, failure_summary='; '.join(findings) or None,
                  results=[metric('exact_export_tensors', sum(row['exact_export_tensors'] for row in result.get('cases', [])), 'count')], refresh=False)

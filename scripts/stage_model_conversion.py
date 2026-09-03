@@ -16,7 +16,7 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, choices=range(1, 10), default=1)
-    ap.add_argument('--format', choices=('bf16', 'mxfp8-probe'), default='bf16')
+    ap.add_argument('--format', choices=('bf16', 'mxfp8-probe', 'mxfp8'), default='bf16')
     args = ap.parse_args()
     stem = conversion_stem(args.format)
     run = Run(args.run_dir)
@@ -52,13 +52,13 @@ def main():
         if rc:
             phase.finish('fail', failure_summary='Immutable code staging failed. Inspect partial artifacts before retrying.')
             return 1
-    name = ('ptx-convert-lustre-' if args.format == 'bf16' else 'ptx-mxfp8-lustre-') + run.root.name + '-v' + str(args.attempt)
+    name = ('ptx-convert-lustre-' if args.format == 'bf16' else 'ptx-' + stem + '-lustre-') + run.root.name + '-v' + str(args.attempt)
     pod = pod_manifest(name, 'b200-nodepool-ac23753e6cfa', run.root.name)
     pod['metadata']['labels']['component'] = stem + '-lustre'
-    pod['spec']['activeDeadlineSeconds'] = 2800 if args.format == 'bf16' else 680
+    pod['spec']['activeDeadlineSeconds'] = 680 if args.format == 'mxfp8-probe' else 2800
     container = pod['spec']['containers'][0]
     container['command'] = ['python3', '/run-artifacts/' + prefix + 'telemetry_lustre_host.py', '--run-dir', '/run-artifacts',
-        '--hostname', 'gpu-nodes-0', '--duration-s', '2750' if args.format == 'bf16' else '650', '--stream-label', f'lustre-{stem}-v{args.attempt}',
+        '--hostname', 'gpu-nodes-0', '--duration-s', '650' if args.format == 'mxfp8-probe' else '2750', '--stream-label', f'lustre-{stem}-v{args.attempt}',
         '--job-marker', f'control/{stem}-job-v{args.attempt}.json',
         '--stop-marker', f'control/{stem}-lustre-v{args.attempt}.stop', '--role', 'checkpoint-conversion']
     container['volumeMounts'] = [{'name': 'host-lustre', 'mountPath': '/host-lustre', 'readOnly': True},
@@ -74,8 +74,8 @@ def main():
         return 1
     rc, out, _ = phase.command(worker + ['sbatch', '--parsable', '--partition=gpu-nodes', '--nodes=1',
         '--nodelist=gpu-nodes-0', '--ntasks-per-node=1', '--cpus-per-task=32', '--gres=gpu:8', '--exclusive',
-        '--time=00:45:00' if args.format == 'bf16' else '--time=00:10:00', '--no-requeue',
-        ('--job-name=ptx-model-convert-' if args.format == 'bf16' else '--job-name=ptx-mxfp8-probe-') + run.root.name + '-v' + str(args.attempt),
+        '--time=00:10:00' if args.format == 'mxfp8-probe' else '--time=00:45:00', '--no-requeue',
+        ('--job-name=ptx-model-convert-' if args.format == 'bf16' else '--job-name=ptx-' + stem + '-') + run.root.name + '-v' + str(args.attempt),
         '--chdir=' + remote, '--output=' + remote + f'/provenance/{stem}-v{args.attempt}-slurm-%j.out',
         '--error=' + remote + f'/provenance/{stem}-v{args.attempt}-slurm-%j.err', remote + '/' + prefix + 'submit.sbatch'])
     job = out.strip().split(';')[0]

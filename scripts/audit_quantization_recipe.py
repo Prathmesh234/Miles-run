@@ -96,6 +96,15 @@ def render(data):
         lines += ['', '## Reproduce the bounded GPU probe', '', '```sh', data['reproducer'], '```', '']
         lines += ['## Provenance', ''] + [f'- {key}: `{value}`' for key, value in data['provenance'].items()]
         lines += ['', f"[Pinned Miles low-precision documentation]({data['documentation_url']})", '']
+    if 'gpu_probe' in data:
+        probe = data['gpu_probe']
+        lines += ['## Executed B200 kernel probe', '',
+                  f"Slurm {probe['slurm_job_id']}: {probe['status']}. "
+                  f"{probe['exact_export_tensors']} exported weight/scale tensors matched byte-for-byte; "
+                  f"maximum relative L2 error {probe['max_relative_l2']:.4%} (limit 6%).", '',
+                  f"Telemetry: {probe['telemetry_streams']} finalized streams, "
+                  f"{probe['collector_errors']} collector errors; maximum sample gap {probe['max_gap_s']:.3f}s.", '',
+                  probe['scope'], '', f"Raw evidence: `{probe['evidence']}`.", '']
     return '\n'.join(lines)
 
 
