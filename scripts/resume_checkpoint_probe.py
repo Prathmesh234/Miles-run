@@ -240,6 +240,23 @@ def cpu_self_test(output):
     from megatron.core import dist_checkpointing
     from megatron.core.dist_checkpointing.mapping import ShardedObject, ShardedTensor
     from megatron.core.dist_checkpointing.serialization import load_common_state_dict
+    from megatron.core.dist_checkpointing.strategies.torch import (
+        MCoreSavePlanner, TorchDistSaveShardedStrategy,
+        _replace_state_dict_keys_with_sharded_keys, mcore_to_pyt_state_dict,
+    )
+
+    class CPUFixtureWriter(TorchDistSaveShardedStrategy):
+        """Use the native format/planner with Torch's CPU-safe sync writer.
+
+        The default MCore writer calls CUDA synchronize even for CPU tensors.
+        This adapter is fixture-only; it never replaces the training writer.
+        """
+        def save(self, state, checkpoint_dir):
+            from torch.distributed import checkpoint
+            grouped, _, _ = _replace_state_dict_keys_with_sharded_keys(state, True)
+            checkpoint.save(mcore_to_pyt_state_dict(grouped, False),
+                storage_writer=checkpoint.FileSystemWriter(checkpoint_dir),
+                planner=MCoreSavePlanner(flatten_state_dict=False, flatten_sharded_tensors=False))
 
     if torch.cuda.device_count() != 0:
         raise ValueError('CPU validation unexpectedly exposes GPUs.')
@@ -256,7 +273,7 @@ def cpu_self_test(output):
         assert target['rng'].data is not live['rng'].data
         checkpoint = output / 'checkpoint'
         checkpoint.mkdir()
-        dist_checkpointing.save(live, str(checkpoint))
+        dist_checkpointing.save(live, str(checkpoint), sharded_strategy=CPUFixtureWriter())
         loaded, missing, unexpected = dist_checkpointing.load(target, str(checkpoint), strict='return_all')
         assert not missing and not unexpected
         actual = unwrap_shards(frozen)
@@ -270,7 +287,8 @@ def cpu_self_test(output):
         common = load_common_state_dict(str(checkpoint))
         assert common['opt_param_scheduler']['num_steps'] == 16
         result = dict(status='ok', checks=9, cuda_device_count=0, torch=torch.__version__,
-                      scope='Actual native DCP save/load and strict comparison with corruption controls; no model or optimizer execution.')
+                      fixture_writer='Native MCore conversion/planner with Torch synchronous CPU writer',
+                      scope='Native DCP loader and strict comparison with corruption controls; fixture-only writer adapter, no model or optimizer execution.')
         atomic(output / 'result.json', result)
         print(json.dumps(result), flush=True)
     finally:
