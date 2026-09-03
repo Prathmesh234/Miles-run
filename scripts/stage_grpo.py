@@ -60,6 +60,18 @@ def main():
     miles_sha = subprocess.check_output(['git', '-C', str(miles), 'rev-parse', 'HEAD'], text=True).strip()
     run = Run(a.run_dir)
     phase = run.phase(f'02-sync-grpo-submission-v{a.attempt}')
+    nvml_gate = run.root / 'tests/01-nvml-result-audit-v2/result.json'
+    nvml_proof = json.loads(nvml_gate.read_text())
+    nvml_receipt = json.loads((run.root / 'tests/01-nvml-qualification-v2-submission/submission.json').read_text())
+    if (nvml_proof['findings'] or len(nvml_proof['nodes']) != 4
+            or nvml_proof['slurm_job_id'] != nvml_receipt['slurm_job_id']):
+        phase.finish('fail', failure_summary='Four-node persistent NVML qualification has not passed.', refresh=False)
+        return 1
+    for name in ('telemetry_native.py', 'telemetry_nvml.py', 'telemetry_health.py', 'fabric_probe.py'):
+        qualified = subprocess.check_output(['git', '-C', str(repo), 'show', nvml_receipt['source_sha'] + ':scripts/' + name])
+        if hashlib.sha256(qualified).hexdigest() != sha256(repo / 'scripts' / name):
+            phase.finish('fail', failure_summary='Collector differs from the load-qualified revision: ' + name, refresh=False)
+            return 1
     tito_gate = run.root / 'tests/02-tito-candidate-validation-v3/result.json'
     tito_proof = json.loads(tito_gate.read_text())
     rdma_gate = run.root / 'tests/02-rdma-container-visibility-v2/result.json'
@@ -120,6 +132,7 @@ def main():
         'rdma_visibility_validation_sha256': sha256(rdma_gate),
         'container_fabric_gate': '32-GPU all-reduce and node-local EP8 all-to-all before Ray/model initialization',
         'gpu_telemetry_backend': 'persistent-nvml', 'nvml_binding_sha256': BINDING_SHA256,
+        'nvml_qualification_sha256': sha256(nvml_gate),
         'telemetry_health_contract': 'fail on collector_error, identity mismatch, or host-local heartbeat older than 12 seconds',
         'backend_change_reason': 'Job 137 rejected BF16 broadcast into auto-selected FlashInfer packed expert weights; pinned-loader CPU reproduction retained.',
         'scope': 'Initial synchronous GRPO validation, not the final 400-step hill climb or placement benchmark.'}
