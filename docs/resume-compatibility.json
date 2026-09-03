@@ -4,12 +4,12 @@
       {
         "component": "Model, optimizer and LR scheduler",
         "source": "miles/backends/megatron_utils/model.py:save",
-        "state": "Native save_checkpoint receives all three objects; no-save-optim defaults false. Runtime fidelity unvalidated."
+        "state": "Job154 iteration1 contains common optimizer metadata and scheduler position32. Native replay proves default Miles initialization advances32 to48 without an update; explicit checkpoint-scheduler flag preserves32. Model/optimizer tensor restoration and next-update equality remain untested."
       },
       {
         "component": "RNG",
         "source": "miles/backends/megatron_utils/model.py",
-        "state": "Megatron owns saving/loading. Must verify the actual training checkpoint and next-step equivalence; conversion-checkpoint topology warnings are not a successful resume test."
+        "state": "Job154 iteration1 contains a deserialized record with Python, NumPy, Torch CPU, CUDA and tracker state. Byte range and metadata hashed. No actual RNG restoration or next-update parity proof."
       },
       {
         "component": "Consumed data position and sample identities",
@@ -19,7 +19,7 @@
       {
         "component": "Recycled prompt buffer",
         "source": "miles/rollout/data_source.py:RolloutDataSourceWithBuffer",
-        "state": "Not persisted: CPU fixture had one buffered group before save and zero after load."
+        "state": "Stock inherited save/load drops the buffer. Opt-in CheckpointedRolloutDataSource passed7 native CPU roundtrip/negative tests (job155), also covered in job160; not enabled in training."
       },
       {
         "component": "Fully asynchronous completed-group queue and accounting",
@@ -80,7 +80,56 @@
       "Atomically publish a complete state manifest only after all checkpoint components are durable and hashed.",
       "Demonstrate exact submitted/completed/trained/retried/stale/failed accounting across a restart; never silently reset policy version or the data cursor."
     ],
-    "scope": "Source inspection and a CPU data-source save/load test. No end-to-end model/optimizer resume is claimed."
+    "saved_checkpoint_inspection": {
+      "checkpoint": "training/sync-grpo-v10/checkpoints/iter_0000001",
+      "common_payload_sha256": "35e1a22abadd70673a6014ebd7bf1ff31b4fd689be571d7e9bfe207a403bb0ef",
+      "evidence": [
+        {
+          "path": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-checkpoint-resume-metadata-v10-step1-a2/result.json",
+          "sha256": "a3ad4e32339542e60b032c68bfc1c2815079d587576f88193313413e36206ac0"
+        },
+        {
+          "path": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-checkpoint-resume-metadata-v10-step1-a4/result.json",
+          "sha256": "9645c0020b0f77c499b3f6548f236c3a7668e618811d91281199d2ec4e3bbca2"
+        }
+      ],
+      "iteration": 1,
+      "safe_args": {
+        "consumed_train_samples": 0,
+        "consumed_valid_samples": 0,
+        "data_parallel_random_init": false,
+        "iteration": null,
+        "no_save_optim": false,
+        "no_save_rng": null,
+        "seed": 1234,
+        "use_checkpoint_opt_param_scheduler": false
+      },
+      "scheduler_num_steps": 32,
+      "scope": "Small metadata objects only; no tensor restore or restart parity claim.",
+      "source_job_id": 154
+    },
+    "scheduler_resume_reproducer": {
+      "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-checkpoint-scheduler-replay-v10-step1-a2/result.json",
+      "rows": [
+        {
+          "after_miles_initialization_num_steps": 48,
+          "loaded_num_steps": 32,
+          "lr": 1e-06,
+          "use_checkpoint_opt_param_scheduler": false
+        },
+        {
+          "after_miles_initialization_num_steps": 32,
+          "loaded_num_steps": 32,
+          "lr": 1e-06,
+          "use_checkpoint_opt_param_scheduler": true
+        }
+      ],
+      "scheduler_source_sha256": "c885136166b1f59a4a642fd11cbf3e6510dc63c70a4624efc020b763b95f4ff3",
+      "scope": "Actual pinned scheduler on saved checkpoint state plus exact Miles post-load branch. No model/optimizer-tensor restore or GPU update. Default resume advances scheduler twice; explicit checkpoint-scheduler flag preserves position.",
+      "sha256": "96d1c901c4979130a15ff330b68b4d8f824fa81d4defc85f79d1786db2d57066",
+      "smallest_fix": "Pass --use-checkpoint-opt-param-scheduler for the controlled resume test, preserve the saved scheduler horizon and all other settings, then verify actual post-load state and the next update. Constant LR did not change in this fixture, but the scheduler counter did."
+    },
+    "scope": "Source inspection, native CPU cursor/buffer tests, saved-state metadata and native scheduler replay. Full model/optimizer/async resume remains unqualified."
   },
   "runner": "resume-compatibility",
   "schema_version": 1,
