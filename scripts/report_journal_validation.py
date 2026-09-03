@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from evidence import atomic, sha256
+from summarize_native import summary
 
 
 def build(run, attempt, job):
@@ -28,6 +29,14 @@ def build(run, attempt, job):
     if journal['counts']['selected_inputs'] != tensors['trained_input_samples']:
         raise ValueError('Native journal and trainer counts disagree.')
     findings = allocation['findings'] + tensors['findings'] + episodes['findings'] + nvml['findings']
+    cleanup = allocation.get('host_cleanup')
+    cleanup_summary = None
+    if cleanup:
+        completed = cleanup['completed']
+        cleanup_summary = dict(findings=cleanup['findings'], completed_ranks=len(completed),
+            released_tensor_bytes=sum(row['tensor_bytes'] for row in completed),
+            duration_s=summary([row['duration_s'] for row in completed]),
+            policy_versions=sorted({row['policy_version'] for row in completed}))
     return dict(schema_version=1, job_id=job, training_attempt=attempt,
         qualification='fail' if findings else 'component_validation_only',
         slurm_state=allocation['slurm_state'], slurm_exit_code=allocation['slurm_exit_code'],
@@ -37,6 +46,7 @@ def build(run, attempt, job):
         environment_outcomes=episodes['counts'], zero_variance_groups=sum(row['zero_variance_groups'] for row in tensors['batches']),
         native_tensor_audit_findings=tensors['findings'], episode_audit_findings=episodes['findings'],
         performance=optimizer['performance'], finalized_telemetry_streams=len(allocation['coverage']),
+        host_cleanup=cleanup_summary,
         slow_nvml_calls=[row for node in nvml['nodes'] for row in node['slowest_calls'][:3]],
         raw_evidence_root='/shared/posttrainingx/runs/vultr-b200-slurm/' + run.name,
         sources={key: dict(path=name, sha256=sha256(run / name)) for key, name in names.items()},
@@ -51,20 +61,26 @@ def render(data):
     lines = [f"# Job {data['job_id']}: four-node GRPO validation", '',
         f"**{data['qualification'].upper()}** — Slurm {data['slurm_state']} ({data['slurm_exit_code']}). "
         f"{len(data['optimizer_steps'])} optimizer updates and {len(data['checkpoint_saves'])} save receipts verified.", '',
-        '## What passed', '',
-        f"- {data['accounting']['selected_inputs']} native samples reconciled through trainer tokens, logprobs, masks and GRPO advantages.",
-        f"- All {data['accounting']['controller_episodes']} controller episodes have durable native identities; "
+        '## Accounting', '',
+        f"- {data['accounting']['selected_inputs']} selected native samples; tensor audit findings: {len(data['native_tensor_audit_findings'])}.",
+        f"- {data['accounting']['controller_episodes']} controller episodes; "
         f"{data['accounting']['unjoined_episodes']} unjoined episodes and {data['accounting']['dispositions']['unresolved']} unresolved dispositions.",
-        '- Environment audit found no grading-isolation or lifecycle imbalance.', '',
+        f"- Environment audit findings: {len(data['episode_audit_findings'])}.", '',
         '| Population | Samples | Passed episodes | Environment-seconds |', '|---|---:|---:|---:|']
     for name, row in data['populations'].items():
         lines.append(f"| {name} | {row['samples']} | {row['passed']} | {row['environment_seconds']:.2f} |")
     lines += ['', f"Zero-variance GRPO groups: {data['zero_variance_groups']}. These are clean training-task outcomes, not TB2.1 evaluation.", '',
-        '## Failure evidence', '', '| Node | API | Duration (s) | UTC start |', '|---|---|---:|---|']
+        '## Audit findings', '']
+    lines += ['- ' + finding for finding in data['findings']] or ['No findings in these component audits. Full benchmark gates remain open.']
+    if data.get('host_cleanup'):
+        cleanup = data['host_cleanup']
+        lines += ['', f"Pinned-backup cleanup: {cleanup['completed_ranks']} completed rank receipts, "
+            f"{cleanup['released_tensor_bytes']:,} tensor bytes released; {len(cleanup['findings'])} findings.", '']
+    lines += ['', '### Slow NVML calls', '', '| Node | API | Duration (s) | UTC start |', '|---|---|---:|---|']
     for row in data['slow_nvml_calls']:
         if row['value'] >= 1:
             lines.append(f"| {row['hostname']} | {row['api']} | {row['value']:.3f} | {row['time']} |")
-    lines += ['', 'The overlong collector ticks occurred during teardown. Do not treat the completed training driver as a passing infrastructure gate.', '',
+    lines += ['', 'Slow API calls are observations, not a diagnosis. Allocation exit, sampling continuity and required metric coverage must be checked separately.', '',
         '## Timing observations', '', '| Rollout | Environment rollout (s) | Trainer call (s) | Trainer wait (s) |', '|---:|---:|---:|---:|']
     by_role = {(row['role'], row['rollout_id']): row['metrics'] for row in data['performance']}
     for step in data['optimizer_steps']:
@@ -72,10 +88,10 @@ def render(data):
         lines.append(f"| {rid} | {rollout['perf/rollout_time']:.2f} | {trainer['perf/train_time']:.2f} | {trainer['perf/train_wait_time']:.2f} |")
     lines += ['', 'The first trainer call includes cold compilation. Waiting in this synchronous run includes checkpoint and rollout work; it does not classify an asynchronous role split.', '',
         '## Attribution and limits', '',
-        '- **Infrastructure/driver:** blocking NVML calls observed; underlying cause unproven.',
-        '- **Miles:** unused sampled work is now fully accounted for. Default resume scheduler mismatch is separately reproduced in the resume report.',
-        '- **Model recipe:** finite gradients and native tensor checks passed; held-out quality and quantized execution remain unqualified.',
-        '- **Environment:** local task isolation and lifecycle audit passed for this scoped task subset.',
+        '- **Infrastructure/driver:** use the recorded continuity findings and API timings; no hardware cause is inferred.',
+        '- **Miles:** use the exact accounting above. Default resume scheduler mismatch is separately reproduced in the resume report.',
+        '- **Model recipe:** native tensor findings are recorded above; held-out quality and quantized execution remain unqualified.',
+        '- **Environment:** isolation/lifecycle findings apply only to this scoped task subset.',
         '- **Configuration:** tiny synchronous batches, cold compilation and checkpoint-every-step prevent a steady-state performance claim.', '']
     lines += ['- ' + text for text in data['limitations']]
     lines += ['', '## Reproducibility and raw evidence', '', f"Shared root: `{data['raw_evidence_root']}`.", '',

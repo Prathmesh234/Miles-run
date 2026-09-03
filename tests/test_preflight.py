@@ -43,6 +43,18 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_sync_digest_reports_current_findings_without_historical_failure_claims(self):
+        from report_journal_validation import render
+        root = Path(__file__).resolve().parents[1]
+        data = json.loads((root / 'docs/grpo-validation-job161.json').read_text())
+        data.update(findings=[], qualification='component_validation_only', slurm_state='COMPLETED',
+                    slurm_exit_code='0:0', slow_nvml_calls=[], host_cleanup=None)
+        text = render(data)
+        self.assertIn('No findings in these component audits', text)
+        self.assertNotIn('overlong collector ticks occurred', text)
+        data['findings'] = ['Synthetic missing metric']
+        self.assertIn('Synthetic missing metric', render(data))
+
     def test_full_trainer_host_cleanup_requires_identity_coverage_and_allocator_release(self):
         import copy
         from audit_grpo_attempt import audit_host_cleanup
