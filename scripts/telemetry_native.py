@@ -13,6 +13,7 @@ import re
 import socket
 import subprocess
 import time
+import traceback
 
 from evidence import atomic, utcnow
 from telemetry_health import heartbeat
@@ -226,6 +227,7 @@ def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
             atomic(root / 'nvml-validation.json', sampler.finish())
     except Exception as exc:
         findings.append(str(exc))
+        atomic(root / 'collector-exception.txt', traceback.format_exc())
         streams.write('cpu-memory-numa', dict(common, time=utcnow(), monotonic_s=time.monotonic(),
             source='collector', metric='collector_error', value=None, unit='event', error=str(exc)))
     finally:

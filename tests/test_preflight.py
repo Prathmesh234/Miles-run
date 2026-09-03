@@ -43,6 +43,20 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_pinned_binding_import_registers_module_before_defining_exports(self):
+        from telemetry_nvml import load_binding
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / 'binding.py'
+            source.write_text('import sys\nassert sys.modules[__name__].__file__ == __file__\nvalue = 138\n')
+            module = load_binding(source, sha256(source))
+            self.assertEqual(module.value, 138)
+            with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                load_binding(source, '0' * 64)
+            source.write_text('raise ValueError("import fixture")\n')
+            with self.assertRaisesRegex(ValueError, 'import fixture'):
+                load_binding(source, sha256(source))
+            self.assertIs(sys.modules['posttrainingx_pinned_nvml'], module)
+
     def test_telemetry_heartbeat_rejects_stall_error_missing_and_wrong_identity(self):
         from telemetry_health import heartbeat, assert_healthy, require_healthy
         with tempfile.TemporaryDirectory() as temporary:

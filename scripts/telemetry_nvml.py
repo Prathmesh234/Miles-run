@@ -7,6 +7,7 @@ must also supervise the heartbeat because a blocked driver call cannot self-time
 import hashlib
 import importlib.util
 from pathlib import Path
+import sys
 import time
 
 from evidence import utcnow
@@ -66,7 +67,18 @@ def load_binding(path, expected_sha256):
         raise ValueError('Pinned NVML binding hash mismatch or symlink.')
     spec = importlib.util.spec_from_file_location('posttrainingx_pinned_nvml', path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # pynvml resolves its own module while defining exported exception classes.
+    # Match normal import semantics before executing the pinned source.
+    previous = sys.modules.get(spec.name)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        if previous is None:
+            sys.modules.pop(spec.name, None)
+        else:
+            sys.modules[spec.name] = previous
+        raise
     return module
 
 
