@@ -43,6 +43,36 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_teardown_audit_requires_every_rank_and_full_host_release(self):
+        from audit_nvml_validation import audit_teardown_log
+        events = []
+        host_bytes = 24 * 1024**3
+        for rank in range(8):
+            common = dict(rank=rank, hostname='node', time='2026-09-03T03:00:00Z')
+            for index, kind in enumerate(['host_capacity_guard', 'before_allocate', 'allocated',
+                                         'before_pinned_release', 'pinned_released', 'exit_with_live_context']):
+                row = dict(event=kind, **common, monotonic_s=index)
+                if kind == 'allocated':
+                    row.update(allocation_count=4096, chunk_mib=16, pinned_bytes=host_bytes, pinned_allocation_count=3072)
+                if kind == 'pinned_released':
+                    row.update(expected_released_bytes=host_bytes, duration_s=1.0,
+                        before={'active_bytes.current': host_bytes, 'allocated_bytes.current': host_bytes},
+                        after={'active_bytes.current': 0, 'allocated_bytes.current': 0})
+                if kind == 'exit_with_live_context':
+                    row['pinned_bytes'] = 0
+                events.append(row)
+        # The real stream has NCCL text between JSON events.
+        def stream():
+            return '\nNCCL INFO control\n'.join(json.dumps(e) for e in events)
+        rows = audit_teardown_log(stream(), 'node', 'pinned-host-clean-teardown')
+        self.assertEqual(len(rows), 8)
+        events[4]['after']['allocated_bytes.current'] = 1
+        with self.assertRaisesRegex(ValueError, 'full control payload'):
+            audit_teardown_log(stream(), 'node', 'pinned-host-clean-teardown')
+        events.pop()
+        with self.assertRaisesRegex(ValueError, 'rank teardown evidence'):
+            audit_teardown_log(stream(), 'node', 'pinned-host-clean-teardown')
+
     def test_teardown_probe_respects_host_and_cgroup_memory_reserves(self):
         from teardown_probe import available_host_bytes, host_allocation_guard
         gib = 1024**3

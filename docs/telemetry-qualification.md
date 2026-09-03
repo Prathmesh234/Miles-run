@@ -11,6 +11,7 @@ Collector qualification around node-local all-reduce only. Actual training/check
 | 157 | nccl-context-teardown | 2.004 | passed |
 | 158 | fragmented-nccl-teardown: 4096x16MiB allocations per GPU, 64GiB/GPU plus EP8 NCCL, normal process exit; no training workload | 2.830 | passed |
 | 162 | pinned host:64GiB/GPU plus24GiB pinned host/rank and EP8 NCCL; ordinary exit | 10.382 | failed |
+| 163 | same pinned-host control; explicit24GiB/rank host-cache release before ordinary exit | 2.101 | passed |
 
 Job 154 had trainer-node gaps of 15.224 s / 15.479 s.
 
@@ -20,15 +21,20 @@ A control result does not repair the failed training gate or, by itself, prove a
 
 Read-only NVML; no resets. Parent rejects collector errors, missing/stale host-local heartbeat (>12s), wrong node/job identity. Unique node-owned stop markers; final CLI parity and Lustre finalization required.
 
-Exercise the actual trainer allocation/communicator lifecycle with per-API timing; do not relax the 12s deadline or infer hardware fault.
+Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.
 
-**planned; native cleanup API not yet qualified — pinned-host-clean-teardown**
+## Pinned-host release control
 
-Explicitly release only the probe-owned pinned buffers and flush the PyTorch host cache while the CUDA context is alive. Keep the same GPU allocation, NCCL communicator, workload and telemetry thresholds.
+One matched four-node control per condition. Job162 failed the3s sampling criterion (all nodes7.48-10.38s);163 passed (maximum2.10s). All32 ranks proved24GiB of pinned-host active and allocated bytes released before exit. This supports the resource-lifecycle hypothesis, but does not establish a unique hardware cause or qualify full Miles training.
 
-Same four-node32-GPU,64GiB GPU +24GiB host/rank control. Require before/after active and allocated host bytes to decrease by the full24GiB on every rank. Telemetry includes release, process exit and15s afterward; no model or optimizer.
+| Node | Ordinary-exit gap (s) | Explicit-release gap (s) | Host release min / max (s) | Verified ranks |
+|---|---:|---:|---:|---:|
+| gpu-nodes-0 | 9.053 | 1.951 | 3.252 / 3.561 | 8 |
+| gpu-nodes-1 | 9.049 | 1.996 | 3.126 / 3.510 | 8 |
+| gpu-nodes-2 | 10.382 | 2.101 | 3.154 / 3.838 | 8 |
+| gpu-nodes-3 | 7.481 | 1.818 | 3.151 / 4.719 | 8 |
 
-Job162 remains failed. Missing native API/accounting or any collector failure stops this separate attempt. Even a pass requires a later full-trainer lifecycle validation before training is qualified.
+Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.
 
 ## Evidence
 
@@ -37,5 +43,6 @@ Job162 remains failed. Missing native API/accounting or any collector failure st
 - Job 157: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v4/result.json`; SHA256 `9c63d2ab0e58985092e1b8e0898e625f74702d0b02f3825483ecb2e34a558009`.
 - Job 158: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v5/result.json`; SHA256 `331944125eacd7b0867454332bd226744c6935a8ad2b0285ac735449d312330a`.
 - Job 162: `/Users/prathmeshbhatt/Desktop/PostTrainingX/runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v6/result.json`; SHA256 `ada770b1c6dd7cab083e644e9214814addc2eb909380acec73bd68e2ef6e88bf`.
+- Job 163: `/Users/prathmeshbhatt/Desktop/PostTrainingX/runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v7/result.json`; SHA256 `35eb443c06c6f6263383218580d26ad31b183bf06c2f310a5d031b08054a6bd9`.
 
 Full per-node results, source pins and prior failures remain in `telemetry-qualification.json` and the linked raw bundles.

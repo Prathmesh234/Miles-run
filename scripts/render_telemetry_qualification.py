@@ -27,6 +27,16 @@ def render(data):
         control = meta['next_control']
         lines += [f"**{control['status']} — {control['profile']}**", '', control['hypothesis'], '',
                   control['bounded_workload'], '', control['interpretation'], '']
+    if meta.get('pinned_release_control'):
+        contrast = meta['pinned_release_control']
+        lines += ['## Pinned-host release control', '', contrast['interpretation'], '',
+            '| Node | Ordinary-exit gap (s) | Explicit-release gap (s) | Host release min / max (s) | Verified ranks |',
+            '|---|---:|---:|---:|---:|']
+        for row in contrast['nodes']:
+            stats = row['host_release_s']
+            lines.append(f"| {row['hostname']} | {row['ordinary_exit_max_gap_s']:.3f} | "
+                f"{row['explicit_release_max_gap_s']:.3f} | {stats['min']:.3f} / {stats['max']:.3f} | {stats['n']} |")
+        lines += ['', contrast['next_step'], '']
     lines += ['## Evidence', '', f"- Initial control: `{meta['evidence']}`."]
     lines += [f"- Job {row['job_id']}: `{row['evidence']}`; SHA256 `{row['sha256']}`." for row in meta['subsequent_controls']]
     lines += ['', 'Full per-node results, source pins and prior failures remain in `telemetry-qualification.json` and the linked raw bundles.', '']
