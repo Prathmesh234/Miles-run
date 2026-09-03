@@ -82,6 +82,30 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'ambiguous ownership'):
             optimizer_owners([model], optimizer)
 
+    def test_deterministic_audit_requires_native_enforcement_not_only_requested_flags(self):
+        import copy
+        from audit_resume_replay import audit_execution_control
+        from resume_replay_controls import DETERMINISTIC_ENV
+        config = dict(execution_profile='deterministic', deterministic_environment=DETERMINISTIC_ENV)
+        receipt = dict(saved_settings={'deterministic_mode': False},
+            execution_control=dict(profile='deterministic', comparison_tolerance=0,
+                original_deterministic_mode=False, resolved_deterministic_mode=True, environment=DETERMINISTIC_ENV),
+            determinism_runtime=dict(algorithms_enabled=True, warn_only=False, cudnn_deterministic=True, cudnn_benchmark=False),
+            model_deterministic_modes=[True])
+        self.assertEqual(audit_execution_control(receipt, config), [])
+        for name in ('execution_control', 'determinism_runtime', 'model_deterministic_modes'):
+            changed = copy.deepcopy(receipt)
+            changed.pop(name)
+            self.assertTrue(audit_execution_control(changed, config), name)
+        for key in receipt['determinism_runtime']:
+            changed = copy.deepcopy(receipt)
+            changed['determinism_runtime'][key] = not changed['determinism_runtime'][key]
+            self.assertTrue(audit_execution_control(changed, config), key)
+        changed = copy.deepcopy(receipt)
+        changed['execution_control']['comparison_tolerance'] = 1e-9
+        self.assertTrue(audit_execution_control(changed, config))
+        self.assertEqual(audit_execution_control({}, {}), [])
+
     def test_resume_state_comparison_is_bitwise_and_rejects_missing_or_nonfinite_state(self):
         import torch
         from resume_checkpoint_probe import compare_values, move_tensors

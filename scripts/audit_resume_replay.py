@@ -4,11 +4,34 @@ import inspect
 import json
 
 from evidence import Run, atomic, metric
+from resume_replay_controls import DETERMINISTIC_ENV
 
 
 def canonical_gpu_uuid(value):
     import uuid
     return str(uuid.UUID(value.removeprefix('GPU-')))
+
+
+def audit_execution_control(receipt, config):
+    profile = config.get('execution_profile')
+    if profile is None:
+        return []  # Historical probes did not offer the opt-in control.
+    proof = receipt.get('execution_control') or {}
+    if profile not in ('original', 'deterministic') or proof.get('profile') != profile or proof.get('comparison_tolerance') != 0:
+        return ['Missing or unexpected execution-control contract.']
+    original = receipt.get('saved_settings', {}).get('deterministic_mode')
+    if type(original) is not bool or proof.get('original_deterministic_mode') is not original:
+        return ['Execution control does not preserve the original recipe setting.']
+    if profile == 'original':
+        return [] if proof.get('resolved_deterministic_mode') is original else ['Original execution profile was changed.']
+    runtime = receipt.get('determinism_runtime') or {}
+    model_modes = receipt.get('model_deterministic_modes') or []
+    expected_runtime = dict(algorithms_enabled=True, warn_only=False, cudnn_deterministic=True, cudnn_benchmark=False)
+    okay = (config.get('deterministic_environment') == DETERMINISTIC_ENV
+        and proof.get('environment') == DETERMINISTIC_ENV and proof.get('resolved_deterministic_mode') is True
+        and all(runtime.get(key) is value for key, value in expected_runtime.items())
+        and bool(model_modes) and all(mode is True for mode in model_modes))
+    return [] if okay else ['Deterministic environment, native runtime or live model controls were not verified.']
 
 
 def audit_comparisons(rows, summary):
@@ -102,6 +125,7 @@ def audit_tree(root, attempt, job):
             row_findings = []
             try:
                 receipt = json.loads(read(folder / 'result.json'))
+                row_findings.extend(audit_execution_control(receipt, config))
                 host = next(h for h in config['hosts'] if h['replica'] == replica and h['node_rank'] == rank // 8)
                 if (receipt['rank'] != rank or receipt['replica'] != replica or str(receipt['slurm_job_id']) != str(job)
                         or receipt['hostname'] != host['hostname']
@@ -136,6 +160,8 @@ def audit_tree(root, attempt, job):
                 seen_samples.extend(selected)
                 ranks.append(dict(replica=replica, rank=rank, hostname=host['hostname'], gpu_uuid=canonical_gpu_uuid(receipt['gpu_uuid']),
                     load_duration_s=receipt.get('load_duration_s'), step_duration_s=receipt.get('step_duration_s'),
+                    execution_control=receipt.get('execution_control'), determinism_runtime=receipt.get('determinism_runtime'),
+                    model_deterministic_modes=receipt.get('model_deterministic_modes'),
                     comparisons=comparisons, findings=row_findings))
             except (ValueError, KeyError, OSError) as exc:
                 row_findings.append(str(exc))
@@ -166,7 +192,8 @@ def main(args):
     run = Run(args.run_dir)
     phase = run.phase(f'02-resume-replay-result-audit-v{args.attempt}-a{args.audit_attempt}')
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
-    source = '\n'.join(inspect.getsource(f) for f in (canonical_gpu_uuid, audit_comparisons, audit_tree))
+    source = 'DETERMINISTIC_ENV = ' + repr(DETERMINISTIC_ENV) + '\n'
+    source += '\n'.join(inspect.getsource(f) for f in (canonical_gpu_uuid, audit_execution_control, audit_comparisons, audit_tree))
     source += '\nimport json,sys\nprint(json.dumps(audit_tree(sys.argv[1],int(sys.argv[2]),int(sys.argv[3])),allow_nan=False))\n'
     atomic(phase.path / 'audit.py', source)
     try:
