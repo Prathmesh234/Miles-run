@@ -15,6 +15,7 @@ from evidence import atomic, sha256, utcnow
 from fabric_probe import active_training_ports
 from infra_node import allocated_run, read_inventory
 from telemetry_health import assert_healthy, require_healthy
+from resume_replay_controls import DETERMINISTIC_ENV
 
 
 def main(args):
@@ -93,6 +94,8 @@ def main(args):
             NCCL_DEBUG_SUBSYS='INIT,NET,GRAPH,COLL', GLOO_SOCKET_IFNAME='eth0', NCCL_SOCKET_IFNAME='eth0',
             NCCL_NET='IB', NCCL_IB_HCA='=' + ','.join(hca + ':' + port for hca, port in active_training_ports()),
             NCCL_DEBUG_FILE='/probe-output/nccl/' + host + '/nccl.%h.%p.log', PTX_RESUME_REPLICA=plan['replica'])
+        if config.get('execution_profile') == 'deterministic':
+            variables.update(DETERMINISTIC_ENV)
         command = ['enroot', 'start', '--pid', '--ipc', '--rw']
         for key, value in variables.items():
             command += ['--env', key + '=' + value]

@@ -58,8 +58,9 @@ def worker(run, attempt):
             os.environ.update(previous)
         result_file = phase.path / 'fixture/result.json'
         fixture = json.loads(result_file.read_text()) if result_file.exists() else None
-        okay = (rc == 0 and fixture is not None and fixture['status'] == 'ok' and fixture['checks'] == 11
-                and fixture['native_padding_filter_verified'] and fixture['native_class_roundtrip_verified'])
+        okay = (rc == 0 and fixture is not None and fixture['status'] == 'ok' and fixture['checks'] == 14
+                and fixture['native_padding_filter_verified'] and fixture['native_class_roundtrip_verified']
+                and fixture['deterministic_control_verified'] and fixture['native_shard_attribution_verified'])
         result = dict(manifest, slurm_job_id=os.environ['SLURM_JOB_ID'], exit_code=rc,
                       fixture=fixture, findings=[] if okay else ['Native CPU checkpoint fixture failed.'])
         atomic(phase.path / 'result.json', result)
@@ -85,7 +86,7 @@ def stage(args):
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
     prefix = f'provenance/resume-native-cpu-code-v{args.attempt}/'
     content = {name: (repo / 'scripts' / name).read_bytes() for name in (
-        'stage_resume_cpu_test.py', 'resume_checkpoint_probe.py', 'enroot_run_config.py',
+        'stage_resume_cpu_test.py', 'resume_checkpoint_probe.py', 'resume_replay_controls.py', 'enroot_run_config.py',
         'evidence.py', 'submit_native_preflight.py')}
     manifest = dict(source_git_sha=revision, miles_sha=MILES_SHA, miles_source=MILES_SOURCE,
                     files={name: hashlib.sha256(data).hexdigest() for name, data in content.items()})

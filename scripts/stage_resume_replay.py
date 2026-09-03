@@ -12,6 +12,7 @@ from probe_host_lustre import pod_manifest
 from stage_resume_cpu_test import MILES_SHA, MILES_SOURCE
 from submit_native_preflight import BOOTSTRAP, batches, entry
 from telemetry_nvml import BINDING_SHA256
+from resume_replay_controls import DETERMINISTIC_ENV
 
 
 FREEZE = '''import hashlib,json,pathlib,shutil,sys
@@ -76,7 +77,9 @@ def stage(args):
         if rc:
             raise ValueError('Read-only input or CPU qualification gate failed.')
         freeze = json.loads(out)
-        if freeze['miles_source_sha'] != MILES_SHA or freeze['cpu_gate']['files']['resume_checkpoint_probe.py'] != sha256(repo / 'scripts/resume_checkpoint_probe.py'):
+        if freeze['miles_source_sha'] != MILES_SHA or any(
+            freeze['cpu_gate']['files'].get(name) != sha256(repo / 'scripts' / name)
+            for name in ('resume_checkpoint_probe.py', 'resume_replay_controls.py')):
             raise ValueError('Native CPU gate did not test this exact probe source.')
         if args.attempt > 1:
             original = json.loads((run.root / 'tests/02-resume-replay-submission-v1/frozen-inputs.json').read_text())
@@ -102,7 +105,7 @@ def stage(args):
                               gpu_uuids=[g['uuid'] for g in physical], replica='a' if index < 2 else 'b', node_rank=index % 2))
         for index, host in enumerate(hosts):
             host['master_ip'] = hosts[index // 2 * 2]['ip']
-        names = ['resume_checkpoint_probe.py', 'resume_probe_node.py', 'evidence.py', 'infra_node.py',
+        names = ['resume_checkpoint_probe.py', 'resume_replay_controls.py', 'resume_probe_node.py', 'evidence.py', 'infra_node.py',
             'enroot_run_config.py', 'fabric_probe.py', 'container_fabric_probe.py', 'telemetry_native.py',
             'telemetry_health.py', 'telemetry_nvml.py', 'telemetry_lustre_host.py']
         content = {name: (repo / 'scripts' / name).read_bytes() for name in names}
@@ -113,13 +116,15 @@ def stage(args):
         content['load-root/latest_checkpointed_iteration.txt'] = b'0\n'
         content['load-root/iter_0000000/.mount-target'] = b'Replaced by read-only bind mount of job167 checkpoint zero.\n'
         config = dict(schema_version=1, source_git_sha=revision, miles_sha=MILES_SHA, miles_source=MILES_SOURCE,
+            execution_profile=args.execution_profile,
+            deterministic_environment=DETERMINISTIC_ENV if args.execution_profile == 'deterministic' else {},
             hosts=hosts, hf_model='models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0',
             checkpoint_root='training/sync-grpo-v14/checkpoints', dump_root='training/sync-grpo-v14/dump_details',
             small_inputs=freeze['small_inputs'], payload_stat=freeze['payload_stat'],
             cpu_gate_sha256=freeze['cpu_gate_sha256'], image_digest='sha256:59a11219eae0defc6594ec678fafe4e897c16904263223f79968cd3e0209a502',
             code_files={name: hashlib.sha256(data).hexdigest() for name, data in content.items()},
             telemetry_health_contract='Fail on errors, identity mismatch, or host-local heartbeat older than 12 seconds.',
-            scope='Two independent 16-rank replay replicas; all32 reload gate before one update each; no serving, fresh trajectory or async-resume claim.')
+            scope='Two independent 16-rank replay replicas; all32 reload gate before one update each. Explicit execution profile; original checkpoint equality remains mandatory. No serving, fresh trajectory or async-resume claim.')
         atomic(phase.path / 'launch.json', config)
         content['launch.json'] = (json.dumps(config, sort_keys=True) + '\n').encode()
         command = ['srun', '--kill-on-bad-exit=0', '--nodes=4', '--ntasks=4', '--ntasks-per-node=1',
@@ -155,7 +160,8 @@ def stage(args):
                 raise ValueError('Lustre collector is not ready; no replay submitted.')
         rc, out, _ = phase.command(worker + ['sbatch', '--parsable', '--partition=gpu-nodes', '--nodes=4',
             '--nodelist=gpu-nodes-[0-3]', '--ntasks-per-node=1', '--cpus-per-task=32', '--gres=gpu:8', '--exclusive',
-            '--time=00:30:00', '--no-requeue', '--job-name=ptx-resume-replay-v' + str(args.attempt),
+            '--time=00:30:00', '--no-requeue', '--job-name=ptx-resume-' + (
+                'deterministic' if args.execution_profile == 'deterministic' else 'replay') + '-v' + str(args.attempt),
             '--chdir=' + remote, '--output=' + remote + '/' + prefix + 'slurm-%j.out',
             '--error=' + remote + '/' + prefix + 'slurm-%j.err', remote + '/' + prefix + 'submit.sbatch'], timeout=45)
         # Do not clean live collectors after an ambiguous submission.
@@ -164,6 +170,7 @@ def stage(args):
         if rc or not job.isdigit():
             raise ValueError('Ambiguous Slurm submission; inspect the job name before any retry.')
         receipt = dict(slurm_job_id=job, source_git_sha=revision, miles_sha=MILES_SHA, gpus=32, replicas=2,
+                       execution_profile=args.execution_profile,
                        optimizer_steps_per_replica=1, telemetry_stream=label, payload_writes=False)
         atomic(phase.path / 'submission.json', receipt)
         phase.finish('ok', metadata=receipt, refresh=False)
@@ -184,4 +191,5 @@ if __name__ == '__main__':
     parser.add_argument('--kubeconfig', required=True)
     parser.add_argument('--attempt', type=int, required=True)
     parser.add_argument('--cpu-test-attempt', type=int, required=True)
+    parser.add_argument('--execution-profile', choices=('original', 'deterministic'), default='original')
     raise SystemExit(stage(parser.parse_args()))

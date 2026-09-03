@@ -18,6 +18,7 @@ import time
 import traceback
 
 from evidence import atomic, sha256, utcnow
+from resume_replay_controls import apply_control, optimizer_owners, annotate_mismatches
 
 
 def compare_values(actual, expected, path='state'):
@@ -59,7 +60,9 @@ def compare_values(actual, expected, path='state'):
             row['finite'] = bool(torch.isfinite(a).all() and torch.isfinite(b).all())
             row['equal'] = row['equal'] and row['finite']
             if a.shape == b.shape and row['finite'] and not row['equal']:
-                row['max_absolute_difference'] = (a.float() - b.float()).abs().max().item() if a.numel() else 0.0
+                # Diagnostic arithmetic must not overflow for finite FP32
+                # padding. Tensor equality still uses original bytes/dtypes.
+                row['max_absolute_difference'] = (a.double() - b.double()).abs().max().item() if a.numel() else 0.0
         return [row]
     if isinstance(actual, np.ndarray) and isinstance(expected, np.ndarray):
         row.update(actual_sha256=hashlib.sha256(actual.tobytes()).hexdigest(),
@@ -147,6 +150,7 @@ def verify_state(args, model, optimizer, scheduler, checkpoint, iteration, outpu
     components = ('model', 'optimizer', 'opt_param_scheduler', 'rng_state', 'iteration')
     actual = unwrap_shards(state)
     rows = compare_values({k: actual[k] for k in components}, {k: expected[k] for k in components})
+    annotate_mismatches(rows, state, optimizer_owners(unwrap_model(model), optimizer))
     failures = [row for row in rows if not row['equal'] and row.get('required_for_resume', True)]
     result = dict(label=label, checkpoint=str(checkpoint), iteration=iteration,
         duration_s=time.monotonic()-started, leaves=len(rows), failed_leaves=len(failures),
@@ -236,6 +240,7 @@ def worker(config):
         result['saved_settings'] = {key: getattr(args, key) for key in (
             'global_batch_size', 'seed', 'data_parallel_random_init', 'deterministic_mode',
             'enable_mtp_training', 'use_distributed_optimizer', 'bf16', 'lr', 'num_rollout')}
+        result['execution_control'] = apply_control(args, config.get('execution_profile', 'original'), os.environ)
         torch.cuda.set_device(local)
         from container_fabric_probe import verify_rdma
         result['opened_hcas'] = verify_rdma()
@@ -243,6 +248,13 @@ def worker(config):
             raise ValueError('Replay requires two whole eight-GPU nodes per replica.')
         dist.init_process_group('nccl', device_id=torch.device('cuda', local))
         init(args)
+        result['determinism_runtime'] = dict(algorithms_enabled=torch.are_deterministic_algorithms_enabled(),
+            warn_only=torch.is_deterministic_algorithms_warn_only_enabled(),
+            cudnn_deterministic=torch.backends.cudnn.deterministic,
+            cudnn_benchmark=torch.backends.cudnn.benchmark)
+        if config.get('execution_profile') == 'deterministic' and (
+            not result['determinism_runtime']['algorithms_enabled'] or result['determinism_runtime']['warn_only']):
+            raise ValueError('Native initialization did not enforce deterministic algorithms.')
         topology = dict(tp=mpu.get_tensor_model_parallel_world_size(), pp=mpu.get_pipeline_model_parallel_world_size(),
             cp=mpu.get_context_parallel_world_size(), ep=mpu.get_expert_model_parallel_world_size(),
             etp=mpu.get_expert_tensor_parallel_world_size(), dense_dp=mpu.get_data_parallel_world_size(),
@@ -254,6 +266,10 @@ def worker(config):
         started = time.monotonic()
         model, optimizer, scheduler, iteration = initialize_model_and_optimizer(args)
         result['load_duration_s'] = time.monotonic()-started
+        from megatron.training.utils import unwrap_model
+        result['model_deterministic_modes'] = [chunk.config.deterministic_mode for chunk in unwrap_model(model)]
+        if config.get('execution_profile') == 'deterministic' and not all(result['model_deterministic_modes']):
+            raise ValueError('Live model configuration did not inherit deterministic mode.')
         if iteration != 0 or optimizer is None or scheduler is None:
             raise ValueError('Checkpoint load did not restore the required trainer objects.')
         result['loaded_state'] = verify_state(args, model, optimizer, scheduler, before, 0, output, 'loaded-state')
@@ -370,7 +386,36 @@ def cpu_self_test(output):
             _set_main_param_and_optimizer_states=lambda key, data: calls.append((key, data)))
         DistributedOptimizer.load_parameter_state_from_dp_reshardable(receiver, {0: {dtype: [[padding, real]]}})
         assert len(calls) == 1 and calls[0][0] == 'real_parameter' and calls[0][1] is real
-        result = dict(status='ok', checks=11, cuda_device_count=0, torch=torch.__version__,
+        from resume_replay_controls import DETERMINISTIC_ENV
+        controlled = SimpleNamespace(deterministic_mode=False)
+        proof = apply_control(controlled, 'deterministic', DETERMINISTIC_ENV)
+        assert proof['original_deterministic_mode'] is False and controlled.deterministic_mode
+        try:
+            apply_control(controlled, 'deterministic', {})
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('Missing deterministic environment was accepted.')
+        parameter = torch.nn.Parameter(torch.arange(4.))
+        module = torch.nn.ParameterList([parameter])
+        tensors = dict(param=parameter.detach(), exp_avg=torch.zeros(4), exp_avg_sq=torch.ones(4))
+        native_optimizer = SimpleNamespace(gbuf_ranges=[{dtype: [{'param_map': {
+            parameter: {'gbuf_local': SimpleNamespace(start=0, end=4)}}}]}],
+            config=SimpleNamespace(use_precision_aware_optimizer_no_fp8_or_ds_fp8=False),
+            model_param_group_index_map={parameter: (0, 0)},
+            optimizer=SimpleNamespace(param_groups=[{'params': [tensors['param']]}],
+                state={tensors['param']: {key: value for key, value in tensors.items() if key != 'param'}}))
+        native_optimizer._get_main_param_and_optimizer_states = lambda param: (
+            DistributedOptimizer._get_main_param_and_optimizer_states(native_optimizer, param))
+        owners = optimizer_owners([module], native_optimizer)
+        shard = ShardedTensor.from_rank_offsets('fixture.moment', tensors['exp_avg'])
+        row = dict(path='state/optimizer/moment', equal=False, required_for_resume=True)
+        annotate_mismatches([row], dict(optimizer={'moment': shard}), owners)
+        assert row['optimizer_owner']['model_parameters'] == ['model[0].0']
+        assert row['optimizer_owner']['state_name'] == 'exp_avg'
+        assert row['native_shard']['global_offset'] == [0]
+        result = dict(status='ok', checks=14, cuda_device_count=0, torch=torch.__version__,
+                      deterministic_control_verified=True, native_shard_attribution_verified=True,
                       native_padding_filter_verified=True, native_class_roundtrip_verified=True,
                       fixture_writer='Native MCore conversion/planner with Torch synchronous CPU writer',
                       scope='Native DCP loader and strict comparison with corruption controls; fixture-only writer adapter, no model or optimizer execution.')

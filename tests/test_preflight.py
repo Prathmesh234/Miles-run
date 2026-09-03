@@ -43,6 +43,45 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_replay_controls_are_explicit_and_never_relax_comparisons(self):
+        from types import SimpleNamespace
+        from resume_replay_controls import apply_control, DETERMINISTIC_ENV
+        args = SimpleNamespace(deterministic_mode=False, lr=1e-6, seed=1234)
+        before = vars(args).copy()
+        result = apply_control(args, 'original', {})
+        self.assertEqual(vars(args), before)
+        self.assertEqual(result['comparison_tolerance'], 0)
+        with self.assertRaisesRegex(ValueError, 'environment differs'):
+            apply_control(args, 'deterministic', {})
+        result = apply_control(args, 'deterministic', DETERMINISTIC_ENV)
+        self.assertEqual(vars(args), dict(before, deterministic_mode=True))
+        self.assertFalse(result['original_deterministic_mode'])
+        self.assertEqual(result['comparison_tolerance'], 0)
+        with self.assertRaisesRegex(ValueError, 'Unknown replay'):
+            apply_control(args, 'unsupported', DETERMINISTIC_ENV)
+
+    def test_optimizer_owner_uses_actual_views_and_rejects_ambiguous_aliases(self):
+        import torch
+        from types import SimpleNamespace
+        from resume_replay_controls import optimizer_owners, annotate_mismatches
+        model = torch.nn.ParameterList([torch.nn.Parameter(torch.ones(4)), torch.nn.Parameter(torch.ones(4))])
+        states = {param: dict(param=param.detach(), exp_avg=torch.zeros(4)) for param in model}
+        optimizer = SimpleNamespace(gbuf_ranges=[{(torch.float32, torch.float32): [{'param_map': {
+            param: {'gbuf_local': SimpleNamespace(start=i*4, end=(i+1)*4)} for i, param in enumerate(model)}}]}],
+            _get_main_param_and_optimizer_states=lambda param: states[param])
+        owners = optimizer_owners([model], optimizer)
+        shard = SimpleNamespace(key='native.bucket.exp_avg', data=states[model[1]]['exp_avg'],
+                                global_offset=(4,), local_shape=(4,))
+        rows = [dict(path='state/optimizer/mean', equal=False), dict(path='state/model/okay', equal=True)]
+        annotate_mismatches(rows, {'optimizer': {'mean': shard}}, owners)
+        self.assertEqual(rows[0]['optimizer_owner']['model_parameters'], ['model[0].1'])
+        self.assertEqual(rows[0]['optimizer_owner']['ranges']['gbuf_local'], [4, 8])
+        self.assertEqual(rows[0]['native_shard']['global_offset'], [4])
+        self.assertNotIn('optimizer_owner', rows[1])
+        states[model[1]]['exp_avg'] = states[model[0]]['exp_avg']
+        with self.assertRaisesRegex(ValueError, 'ambiguous ownership'):
+            optimizer_owners([model], optimizer)
+
     def test_resume_state_comparison_is_bitwise_and_rejects_missing_or_nonfinite_state(self):
         import torch
         from resume_checkpoint_probe import compare_values, move_tensors
@@ -55,6 +94,11 @@ class EvidenceTests(unittest.TestCase):
         self.assertFalse(compare_values(torch.tensor([float('nan')]), torch.tensor([float('nan')]))[0]['equal'])
         self.assertFalse(compare_values({'optimizer': [1]}, {'optimizer': [1, 2]})[0]['equal'])
         self.assertFalse(compare_values({'state': 1}, {})[0]['equal'])
+        extreme = torch.tensor([torch.finfo(torch.float32).max])
+        row = compare_values(extreme, -extreme)[0]
+        self.assertFalse(row['equal'])
+        self.assertGreater(row['max_absolute_difference'], torch.finfo(torch.float32).max)
+        json.dumps(row, allow_nan=False)
         self.assertEqual(move_tensors({'metadata': ['unchanged', 3]}), {'metadata': ['unchanged', 3]})
 
     def test_resume_checkpoint_identity_rejects_modified_and_symlinked_payloads(self):
