@@ -13,9 +13,9 @@ def render(data):
     lines += ['| ' + row['component'] + ' | ' + row['state'].replace('|', '\\|') + ' |' for row in meta['components']]
     saved = meta.get('saved_checkpoint_inspection')
     if saved:
-        lines += ['', '## Inspected checkpoint', '',
+        lines += ['', '## Historical metadata-only inspection', '',
             f"`{saved['checkpoint']}` — iteration {saved['iteration']}, saved scheduler position {saved['scheduler_num_steps']}.", '',
-            'Only DCP metadata and the small common/RNG byte ranges were read. Tensor payload checksums, actual model/optimizer loading and next-step equivalence remain untested.', '',
+            'That inspection read only DCP metadata and small common/RNG byte ranges. See the later GPU replay below for actual load and next-update evidence.', '',
             'The Megatron consumed-sample counters are zero; Miles dataset cursor state is separate. Do not interpret those fields as a resumed data position.']
     defect = meta.get('scheduler_resume_reproducer')
     if defect:
@@ -37,6 +37,21 @@ def render(data):
         for item in replay['interventions']:
             lines.append('| ' + item['failure'] + ' | ' + item['fix'] + ' |')
         lines += ['', f"CPU proof: `{replay['native_cpu_evidence']}`. Submission: `{replay['submission_evidence']}`."]
+    outcome = meta.get('next_update_comparison')
+    if outcome:
+        lines += ['', f"## Job {outcome['job_id']}: exact reload, divergent next update", '',
+            outcome['conclusion'], '',
+            '| Component | Leaves per comparison | Reload differences | Next-update differences |',
+            '|---|---:|---:|---:|']
+        for name, row in outcome['components'].items():
+            lines.append(f"| {name} | {row['leaves']:,} | {row['loaded_required_failed']:,} | {row['next_required_failed']:,} |")
+        lines += ['', 'Counts cover both replicas and all 32 ranks. Undefined native optimizer padding is retained in raw evidence but excluded from logical state.', '',
+            '| Moment | Differing tensors | Largest absolute difference |', '|---|---:|---:|']
+        for name, row in outcome['moments'].items():
+            lines.append(f"| {name} | {row['tensors']} | {row['max_absolute_difference']:.9g} |")
+        lines += ['', outcome['interpretation'], '', outcome['smallest_next_step'], '',
+            outcome['telemetry']['summary'], '', outcome['input_identity_scope'], '',
+            'Evidence: ' + '; '.join(f"`{item['path']}` (SHA256 `{item['sha256']}`)" for item in outcome['evidence']) + '.']
     loaded = meta.get('loaded_component_comparison')
     if loaded:
         lines += ['', f"## Job{loaded['job_id']} loaded-state evidence", '',

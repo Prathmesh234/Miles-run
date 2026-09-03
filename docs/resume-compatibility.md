@@ -4,19 +4,19 @@
 
 | Component | Current evidence |
 |---|---|
-| Model, optimizer and LR scheduler | Job173 native checkpoint reload returned on all32 ranks. All234,880 model leaves and320 scheduler leaves matched. Logical optimizer tensors matched except explicitly marked padding;192 class comparisons were unsupported. Corrected comparator passed CPU174; next-update equality remains untested. |
-| RNG | Job173 matched20,384 saved RNG leaves on32 ranks. This proves equality to the stored RNG replica, not coverage of original per-expert-rank states when data_parallel_random_init=false. |
+| Model, optimizer and LR scheduler | Job175 loaded exact logical model/optimizer/scheduler state on all32 ranks. After one frozen update per replica, model weights and scheduler matched, but eight real Adam moment tensors differed. Strict next-update gate remains failed; see the component table below. |
+| RNG | Job175 matched20,384 saved-RNG leaves both after load and after the frozen update. This proves equality to the stored RNG replica, not coverage of original per-expert-rank states when data_parallel_random_init=false. |
 | Consumed data position and sample identities | CPU save/load preserved sample_offset, epoch_id, sample_group_index, sample_index and metadata exactly. |
 | Recycled prompt buffer | Stock inherited save/load drops the buffer. Opt-in CheckpointedRolloutDataSource passed7 native CPU roundtrip/negative tests (job155), also covered in job160; not enabled in training. |
 | Fully asynchronous completed-group queue and accounting | No checkpoint state API on built-in DataBuffer; buffer and window counters initialize empty/zero. Not restart-qualified. |
 | Broadcast policy version | Updater initializes at zero; no corresponding checkpoint restore was found in the inspected broadcast path. Must persist it with activation state. |
 | In-flight environment and scheduler state | Live asyncio tasks and sandbox processes are not serialized. A qualified checkpoint boundary must drain or explicitly account for cancellation and re-submission. |
 
-## Inspected checkpoint
+## Historical metadata-only inspection
 
 `training/sync-grpo-v10/checkpoints/iter_0000001` — iteration 1, saved scheduler position 32.
 
-Only DCP metadata and the small common/RNG byte ranges were read. Tensor payload checksums, actual model/optimizer loading and next-step equivalence remain untested.
+That inspection read only DCP metadata and small common/RNG byte ranges. See the later GPU replay below for actual load and next-update evidence.
 
 The Megatron consumed-sample counters are zero; Miles dataset cursor state is separate. Do not interpret those fields as a resumed data position.
 
@@ -33,7 +33,7 @@ This reproduces the native scheduler plus the pinned Miles post-load branch, not
 
 ## Frozen-input replay
 
-Status: **logical_state_gpu_replay_running**. Native CPU job **174**; GPU job **175**, 32 GPUs, 2 independent trainer replicas.
+Status: **FAILED 1:0; exact logical reload passed, next-update moment comparison failed**. Native CPU job **174**; GPU job **175**, 32 GPUs, 2 independent trainer replicas.
 
 Bitwise model and real optimizer tensors, exact scheduler/RNG and class identity. Undefined same-shape/dtype native padding remains in raw evidence but is not logical optimizer state. All32 ranks must pass before either replica steps; original inputs read-only, no new checkpoint payload.
 
@@ -53,6 +53,35 @@ Bitwise model and real optimizer tensors, exact scheduler/RNG and class identity
 | 192 unsupported class comparisons and391 marked padding tensors; no unexplained tensor differences. | Class identity and explicit padding semantics, proven with native CPU174. Raw failure retained; no actual parameter tolerance or runtime-package patch. |
 
 CPU proof: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-test-v5/result.json`. Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v3/submission.json`.
+
+## Job 175: exact reload, divergent next update
+
+All 32 ranks loaded exact logical model/optimizer/scheduler/stored-RNG state. Each replica performed one frozen-input update. The next-state gate failed on eight real Adam moment tensors across four ranks; model weights, scheduler, stored RNG and iteration still matched. No tolerance was relaxed and no further update ran.
+
+| Component | Leaves per comparison | Reload differences | Next-update differences |
+|---|---:|---:|---:|
+| iteration | 32 | 0 | 0 |
+| model | 234,880 | 0 | 0 |
+| opt_param_scheduler | 320 | 0 | 0 |
+| optimizer | 218,818 | 0 | 8 |
+| rng_state | 20,384 | 0 | 0 |
+
+Counts cover both replicas and all 32 ranks. Undefined native optimizer padding is retained in raw evidence but excluded from logical state.
+
+| Moment | Differing tensors | Largest absolute difference |
+|---|---:|---:|
+| exp_avg | 4 | 5.37511369e-10 |
+| exp_avg_sq | 4 | 5.45050116e-15 |
+
+The two replicas themselves differ in four next-state moment tensors. The original recipe had deterministic_mode=false. Numerical nondeterminism is a hypothesis, not a proven cause; this evidence does not establish checkpoint corruption, a Miles defect or a Vultr hardware fault.
+
+Run a separately labeled deterministic replay control using the pinned Miles determinism controls and unchanged inputs, while retaining the original failed gate. First identify the affected parameter shards and qualify the controls on the native runtime; record unsupported deterministic kernels rather than bypassing them. A deterministic-control result cannot retroactively make job175 pass, and full async buffer/policy-version recovery still needs its own test.
+
+Native telemetry audit passed: 24 finalized streams, 2,100,864 records, zero collector errors; maximum GPU sample gap 6.627s under the unchanged 12s deadline. This is not full required telemetry coverage or a one-second-cadence claim.
+
+Post-job read-only inspection matched all 32 payload file identities and all 20 frozen small-input checksums. The in-worker after-state receipts were skipped on gate failure; the separate post-job check does not retroactively fill them.
+
+Evidence: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job175-divergence-audit-v1/result.json` (SHA256 `984fe8b0643a061f6233d145ec3a5f5bd74a8e0ac7f908b9d18218355b5db127`); `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job175-native-telemetry-audit-v1/result.json` (SHA256 `708b72d5254402504198cf4247c8b57be700808831147bc4e600a55f5912023a`); `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-result-audit-v3-a1/result.json` (SHA256 `2ab61f07c803d797a5b5dc451a46dbd912edddfdd589ccec35588f44e7ab0513`); `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job175-final-evidence-v1/result.json` (SHA256 `d1682178bd6574a8f41c21eb6e4a0a31e5616522f0124cef6bf6faf330636b83`).
 
 ## Job173 loaded-state evidence
 

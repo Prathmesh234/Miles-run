@@ -1,12 +1,5 @@
 {
-  "active_submission": {
-    "gpus": 32,
-    "layout": "two independent 16-GPU trainer replicas",
-    "scope": "Replay with validated optimizer class-identity and padding semantics. Exact original inputs retained; no optimizer tolerance or checkpoint modification.",
-    "slurm_job_id": 175,
-    "status": "RUNNING; logical reload and next update not yet verified",
-    "steps_requested": 1
-  },
+  "active_submission": null,
   "blocked_or_unvalidated": [
     {
       "gate": "Hidden-test isolation",
@@ -21,7 +14,7 @@
     {
       "gate": "Broad launcher suite",
       "smallest_next_step": "Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher.",
-      "state": "78 root audit/report tests and32 targeted launcher tests passed; pinned cleanup/parser components101 passed. Broad macOS/native suites retain documented failures; no full-suite pass."
+      "state": "79 root audit/report tests and32 targeted launcher tests passed; pinned cleanup/parser components101 passed. Broad macOS/native suites retain documented failures; no full-suite pass."
     },
     {
       "gate": "GPU runtime and provenance",
@@ -30,8 +23,8 @@
     },
     {
       "gate": "GRPO, async and resume fidelity",
-      "smallest_next_step": "Audit the frozen-input replay without relaxing equality. Then qualify policy version, data source and quiesced async accounting at checkpoint boundaries.",
-      "state": "Job173 loaded all32 ranks; model, scheduler and saved RNG matched. Comparator corrections passed CPU174. Logical-state/next-update replay175 is running; full async accounting and policy-version resume remain unqualified."
+      "smallest_next_step": "Run a separately labeled deterministic replay control using the pinned Miles determinism controls and unchanged inputs, while retaining the original failed gate. First identify the affected parameter shards and qualify the controls on the native runtime; record unsupported deterministic kernels rather than bypassing them. A deterministic-control result cannot retroactively make job175 pass, and full async buffer/policy-version recovery still needs its own test.",
+      "state": "Job175 exact logical reload passed all32 ranks. Next-update gate failed on eight Adam moment tensors; model, scheduler and stored RNG matched. Original nondeterministic recipe; no tolerance relaxation or hardware attribution."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -73,12 +66,13 @@
     "Untouched evaluation:89 TB2.1 task IDs pinned at7131e4 and excluded from training. Separate Python3.12/Verifiers0.3.1/Harbor0.21 image142 built; no TB evaluation executed. Strict online Miles/Verifiers dependency conflicts remain blocked.",
     "Synchronous reference167 completed two updates/two saves on32 GPUs. All32 trainer samples and48 episodes reconcile:16 unused discards,zero unresolved. See docs/grpo-validation-job167.md; no held-out quality claim.",
     "Job167 native telemetry:24 finalized streams/3,378,085 records,zero collector errors,maxGPU sample gap3.338s. All16 trainers released423,352,733,696 pinned bytes;166 Ray snapshots verified whole-node actor placement. Full metric coverage and async qualification remain open.",
-    "Current tests:78 root audit/report tests;101 pinned native Miles journal/parser/cleanup tests in166;32 targeted launcher checks. Historical broad suites had platform/dependency failures and are not reported green.",
+    "Current tests:79 root audit/report tests;101 pinned native Miles journal/parser/cleanup tests in166;32 targeted launcher checks. Historical broad suites had platform/dependency failures and are not reported green.",
     "Checkpoint probe174 passed native CPU loader/comparison and corruption controls with exact replay imports. Fixture writer uses native MCore formatting plus Torch synchronous CPU I/O; no full-model or optimizer restore claim yet.",
     "Optional MXFP8 conversion148 reduced tensor payload71.904GB to39.502GB, but serving149\u2013151 failed before readiness. No quantized optimizer step or speedup claim; BF16 remains the baseline.",
     "Retention removed only authorized superseded dummy checkpoint payloads and preserved metadata. Six full training checkpoints remain after167; no S3 archive configured. Public telemetry uses four dense files per job; full-resolution evidence stays outside Git.",
     "Job171 failure bundle exported307 files; all eight pre/post-allocation inventory checks passed. Final dense telemetry records256,407 samples,zero collector errors, and correctly labels the job failed; no optimizer execution.",
-    "Job173 matched234,880 model leaves,320 scheduler leaves and20,384 saved-RNG leaves across32 ranks. All583 raw failures were class-comparator coverage or explicitly marked optimizer padding; no updates. Native CPU174 verifies the scoped comparator correction and actual padding-filter method. Final telemetry:1,141,504 records,zero collector errors; job remains failed."
+    "Job173 matched234,880 model leaves,320 scheduler leaves and20,384 saved-RNG leaves across32 ranks. All583 raw failures were class-comparator coverage or explicitly marked optimizer padding; no updates. Native CPU174 verifies the scoped comparator correction and actual padding-filter method. Final telemetry:1,141,504 records,zero collector errors; job remains failed.",
+    "Job175: exact logical checkpoint reload on32 ranks and one frozen update per replica. Eight finite Adam moment differences failed next-update equality; raw failure preserved. Native telemetry:24 streams/2,100,864 records,zero errors,maxGPU gap6.627s. Exported465 artifacts and checksummed96 retained raw files. See docs/resume-compatibility.md."
   ],
   "failed_slurm_jobs": [
     {
@@ -172,6 +166,10 @@
     {
       "job_id": 173,
       "reason": "Full checkpoint load returned; raw comparison gate failed on192 unsupported class comparisons and391 native optimizer-padding tensors. No unexplained tensor differences."
+    },
+    {
+      "job_id": 175,
+      "reason": "Exact load succeeded. Strict next-update comparison failed on eight real Adam moment tensors (max absolute difference5.375e-10); no further update or tolerance relaxation. Numerical cause unresolved."
     }
   ],
   "heldout_quality_measured": false,
@@ -182,9 +180,10 @@
   ],
   "last_diagnostic_submission": {
     "gpus": 32,
-    "optimizer_steps": 0,
-    "reason": "Full checkpoint load returned; raw comparison gate failed on192 unsupported class comparisons and391 native optimizer-padding tensors. No unexplained tensor differences.",
-    "slurm_job_id": 173,
+    "optimizer_steps": 2,
+    "reason": "Exact logical reload passed all32 ranks; eight finite real Adam moment tensors differed after the update. Model/scheduler/stored-RNG remained exact.",
+    "scope": "One frozen-input update per independent16-GPU trainer replica, not fresh online training.",
+    "slurm_job_id": 175,
     "status": "FAILED 1:0"
   },
   "last_training_submission": {
@@ -202,9 +201,9 @@
   "quality_protocol": "docs/quality-protocol.md",
   "run_id": "20260902-172037-a3b210",
   "schema_version": 1,
-  "state": "synchronous_validation_passed_logical_resume_replay_running",
+  "state": "synchronous_validation_passed_exact_reload_passed_next_update_gate_failed",
   "status_consolidation": "Current milestones consolidated; superseded counts and duplicate intermediate claims removed. Immutable phase logs and Git history retain all underlying evidence and failures.",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-03T04:34:46.295742Z"
+  "updated_at": "2026-09-03T04:46:49.222508Z"
 }
