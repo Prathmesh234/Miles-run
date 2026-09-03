@@ -109,6 +109,24 @@
       },
       "sha256": "8ca700ccfb094d2bd85aaff1a570cf3f8af0664243e1e76cf2e4f6edd65a7771"
     },
+    "deterministic_control": {
+      "cpu_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-audit-v6/result.json",
+      "job_id": 177,
+      "local_tests": 81,
+      "native_cpu_checks": 14,
+      "native_cpu_job": 176,
+      "preregistered_control": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/00-resume-deterministic-control-local-tests-v1/control-contract.json",
+      "scope": "32 GPUs; two independent16-GPU trainer replicas, one frozen-input update each. New numerical profile, no serving or new trajectories. Original checkpoint comparisons remain strict; no historical failure is reclassified.",
+      "settings": {
+        "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+        "NCCL_ALGO": "Ring",
+        "NVTE_ALLOW_NONDETERMINISTIC_ALGO": "0",
+        "deterministic_mode": true
+      },
+      "source_git_sha": "8ecba454f684ad039fdced30681a03ea2d4f6aad",
+      "status": "RUNNING; GPU outcome unverified",
+      "submission_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v4/submission.json"
+    },
     "initial_inspection_miles_revision": "1181014c3c78ed290d4e53fbc33ef8d4cdb1949a",
     "loaded_component_comparison": {
       "components": {
@@ -197,6 +215,12 @@
           "sha256": "d1682178bd6574a8f41c21eb6e4a0a31e5616522f0124cef6bf6faf330636b83"
         }
       ],
+      "infrastructure_plot": {
+        "path": "docs/resume-replay-infrastructure.png",
+        "scope": "One-minute means and maxima, not saturation measurements. Lustre client VFS counters are not backend or wire bandwidth; see [Lustre client-statistics semantics](https://doc.lustre.org/lustre_manual.pdf#page=503). Missing full metric families and the failed replay gate remain unchanged.",
+        "sha256": "e98281694f98b5efab58632784d1091fb187bd8c55a2ac156eaaeaf62869cf39",
+        "source": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-summary-plot-job175-v2/infrastructure.png"
+      },
       "input_identity_scope": "Post-job read-only inspection matched all 32 payload file identities and all 20 frozen small-input checksums. The in-worker after-state receipts were skipped on gate failure; the separate post-job check does not retroactively fill them.",
       "interpretation": "The two replicas themselves differ in four next-state moment tensors. The original recipe had deterministic_mode=false. Numerical nondeterminism is a hypothesis, not a proven cause; this evidence does not establish checkpoint corruption, a Miles defect or a Vultr hardware fault.",
       "job_id": 175,

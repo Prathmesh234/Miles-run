@@ -12,7 +12,8 @@ def render(data):
              f"Held-out quality measured: **{data['heldout_quality_measured']}**."]
     current = data.get('active_submission') or data.get('last_training_submission')
     if current:
-        lines += ['', f"Latest training allocation: Slurm **{current['slurm_job_id']}**, {current['gpus']} GPUs, "
+        title = 'Active allocation' if data.get('active_submission') else 'Latest training allocation'
+        lines += ['', f"{title}: Slurm **{current['slurm_job_id']}**, {current['gpus']} GPUs, "
                   f"{current['layout']}, {current['steps_requested']} requested steps. {current['scope']}",
                   '', f"**Allocation status: {current['status']}**", '',
                   f"Status snapshot: `{data.get('updated_at', 'unknown')}`; inspect Slurm for live state."]

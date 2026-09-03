@@ -52,6 +52,16 @@ def render(data):
         lines += ['', outcome['interpretation'], '', outcome['smallest_next_step'], '',
             outcome['telemetry']['summary'], '', outcome['input_identity_scope'], '',
             'Evidence: ' + '; '.join(f"`{item['path']}` (SHA256 `{item['sha256']}`)" for item in outcome['evidence']) + '.']
+        if plot := outcome.get('infrastructure_plot'):
+            lines += ['', f"![Checkpoint replay infrastructure]({Path(plot['path']).name})", '', plot['scope']]
+    control = meta.get('deterministic_control')
+    if control:
+        lines += ['', '## Separate deterministic control', '',
+            f"Job **{control['job_id']}**: **{control['status']}**. " + control['scope'], '',
+            'Settings: ' + ', '.join(f'`{key}={value}`' for key, value in control['settings'].items()) + '.', '',
+            f"Qualification: {control['local_tests']} local tests and {control['native_cpu_checks']} native CPU checks "
+            f"(job {control['native_cpu_job']}). GPU loaded-state and next-update results are not implied by these tests.", '',
+            f"Submission: `{control['submission_evidence']}`."]
     loaded = meta.get('loaded_component_comparison')
     if loaded:
         lines += ['', f"## Job{loaded['job_id']} loaded-state evidence", '',

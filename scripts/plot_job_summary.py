@@ -16,6 +16,7 @@ def main():
     parser.add_argument('--run-dir', required=True)
     parser.add_argument('--summary-dir', required=True)
     parser.add_argument('--attempt', type=int, required=True)
+    parser.add_argument('--storage-direction', choices=('read', 'write'), default='write')
     args = parser.parse_args()
     folder = Path(args.summary_dir)
     candidates = list(folder.glob('telemetry.*.json'))
@@ -41,7 +42,7 @@ def main():
     origin = timestamp(min(row['time'] for row in rows))
     specs = [('gpu_utilization', 'GPU utilization (%)'), ('gpu_hbm_used', 'HBM per GPU (GiB)'),
              ('nvlink_gpu_tx', 'NVLink Tx per GPU (GB/s)'), ('ib_rail_tx', 'IB Tx per rail (GB/s)'),
-             ('lustre_client_write', 'Lustre writes per client (GB/s)'),
+             ('lustre_client_' + args.storage_direction, 'Lustre client VFS ' + args.storage_direction + 's (GB/s)'),
              ('shared_storage_available', 'Shared storage available (TiB)')]
     figure, axes = plt.subplots(3, 2, figsize=(13, 10), sharex=True)
     for axis, (metric, title) in zip(axes.flat, specs):
@@ -66,7 +67,7 @@ def main():
         axis.set_xlabel('Minutes from ' + origin.isoformat())
     figure.suptitle(f"Job {job}: {data['status'].upper()} telemetry gate; Slurm {data['metadata']['slurm_state']}\n"
         'One-minute sample-weighted means (solid) and maxima (dotted); startup/checkpoints/teardown included.\n'
-        'Raw sampling gaps remain failures. These envelopes are not evidence of uninterrupted coverage.', fontsize=11)
+        'Raw sampling gaps remain failures. Lustre VFS bytes are not backend/wire bandwidth.', fontsize=11)
     figure.tight_layout(rect=(0, 0, 1, .91))
     destination = phase.path / 'infrastructure.png'
     temporary = phase.path / '.infrastructure.png'
@@ -82,6 +83,8 @@ def main():
         command=[sys.executable, *sys.argv], script_sha256=sha256(__file__),
         matplotlib_version=matplotlib.__version__, python_version=sys.version,
         source_gate_status=data['status'], slurm_job_id=job,
+        storage_direction=args.storage_direction,
+        lustre_semantics_source='https://doc.lustre.org/lustre_manual.pdf#page=503',
         scope='Rendering verified; source gate status is unchanged. No async or held-out quality claim.')
     atomic(phase.path / 'result.json', result)
     phase.finish('ok', metadata=result, refresh=False)

@@ -83,6 +83,20 @@ Post-job read-only inspection matched all 32 payload file identities and all 20 
 
 Evidence: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job175-divergence-audit-v1/result.json` (SHA256 `984fe8b0643a061f6233d145ec3a5f5bd74a8e0ac7f908b9d18218355b5db127`); `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job175-native-telemetry-audit-v1/result.json` (SHA256 `708b72d5254402504198cf4247c8b57be700808831147bc4e600a55f5912023a`); `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-result-audit-v3-a1/result.json` (SHA256 `2ab61f07c803d797a5b5dc451a46dbd912edddfdd589ccec35588f44e7ab0513`); `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job175-final-evidence-v1/result.json` (SHA256 `d1682178bd6574a8f41c21eb6e4a0a31e5616522f0124cef6bf6faf330636b83`).
 
+![Checkpoint replay infrastructure](resume-replay-infrastructure.png)
+
+One-minute means and maxima, not saturation measurements. Lustre client VFS counters are not backend or wire bandwidth; see [Lustre client-statistics semantics](https://doc.lustre.org/lustre_manual.pdf#page=503). Missing full metric families and the failed replay gate remain unchanged.
+
+## Separate deterministic control
+
+Job **177**: **RUNNING; GPU outcome unverified**. 32 GPUs; two independent16-GPU trainer replicas, one frozen-input update each. New numerical profile, no serving or new trajectories. Original checkpoint comparisons remain strict; no historical failure is reclassified.
+
+Settings: `deterministic_mode=True`, `NCCL_ALGO=Ring`, `NVTE_ALLOW_NONDETERMINISTIC_ALGO=0`, `CUBLAS_WORKSPACE_CONFIG=:4096:8`.
+
+Qualification: 81 local tests and 14 native CPU checks (job 176). GPU loaded-state and next-update results are not implied by these tests.
+
+Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v4/submission.json`.
+
 ## Job173 loaded-state evidence
 
 The original gate remains **failed** and no update ran. Counts include both replicas and all32 ranks; bytes are not unique model capacity.
