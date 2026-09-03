@@ -14,10 +14,11 @@
         15.479490234982222
       ],
       "job_id": 154,
-      "next_step": "Verify the corrected full-trainer job167, including16 rank-complete host-release receipts, exact trajectory accounting and unchanged telemetry deadlines.",
+      "next_step": "The corrected full-trainer job167 passed its native continuity and cleanup audits. Retain historical failures; qualify full-state resume, remaining telemetry families and fully asynchronous execution next.",
       "scope": "Neither memory-only nor EP8 NCCL context teardown control reproduces this training-runtime stall. Original failed training gate remains failed."
     },
     "full_trainer_candidate": {
+      "comparison_note": "Earlier job161 had a14.876s worstGPU sampling gap; job167 had3.338s. This single-run comparison supports the cleanup mitigation, not a universal driver diagnosis or final performance claim.",
       "jobs": [
         {
           "job_id": 164,
@@ -36,17 +37,21 @@
         },
         {
           "job_id": 167,
-          "outcome": "Running; optimizer and cleanup execution not yet verified",
+          "outcome": "Completed0:0;2 optimizer steps/2 saves,16 verified host-release receipts,24 finalized streams,zero collector errors,maxGPU gap3.338s",
           "scope": "32-GPU 2T/2R corrected full trainer"
         }
       ],
       "miles_sha": "3db148a3fec7afb87a8c6275027ae274a7122a19",
       "native_test_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-rollout-journal-native-audit-v5-a2/result.json",
       "native_test_sha256": "3cab2b435015a99f12d4d37980861785273c004dd3b6bbd3a15930a02a04405d",
+      "native_training_evidence": {
+        "path": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-sync-grpo-result-audit-v14/audit.json",
+        "sha256": "18b4fcaf1d76182e5d2ed27d5ae0b858901f208349cc9ae66a72275fc79fb712"
+      },
       "summary": "Opt-in normal-exit cleanup releases only actor/reference pinned backups after saves and broadcasts. Initial integration exposed an argument-order bug, corrected in a separate commit. Original telemetry thresholds remain unchanged."
     },
     "job_id": 153,
-    "local_tests": "73 root tests passed, including missing/duplicate/rank/host/policy/allocator corruption rejection. Native101 passed; local native-argument attempt lacked SGLang and remains a recorded collection failure.",
+    "local_tests": "74 root tests passed;101 native CPU component/argument tests passed. Historical failed attempts remain preserved.",
     "next_control": null,
     "nodes": [
       {
@@ -88,7 +93,7 @@
         162,
         163
       ],
-      "next_step": "Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.",
+      "next_step": "The corrected full-trainer job167 passed its native continuity and cleanup audits. Retain historical failures; qualify full-state resume, remaining telemetry families and fully asynchronous execution next.",
       "nodes": [
         {
           "explicit_release_max_gap_s": 1.9514846159145236,
@@ -156,6 +161,7 @@
         }
       ]
     },
+    "qualification_note": "**Job167 passed the native synchronous training telemetry gate. Full required telemetry and asynchronous execution remain unqualified.**",
     "raw_evidence_root": "/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210",
     "runtime_contract": "Read-only NVML; no resets. Parent rejects collector errors, missing/stale host-local heartbeat (>12s), wrong node/job identity. Unique node-owned stop markers; final CLI parity and Lustre finalization required.",
     "scope": "Collector qualification around node-local all-reduce only. Actual training/checkpoint load, continuous DCGM and full required telemetry remain unqualified.",

@@ -2,13 +2,13 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job161: 2; job154: 3; job143: 3 historical validation updates. None qualifies the measured benchmark.**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job167:2; job161:2; jobs154/143:3 each. These are validation updates, not a completed measured benchmark.**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **167**, 32 GPUs, 2T/2R, 2 requested steps. Corrected full-trainer cleanup validation; not the long hill climb. Four collectors active and Ray placement observer started.
+Latest training allocation: Slurm **167**, 32 GPUs, 2T/2R, 2 requested steps. 2 optimizer updates,2 saves,32 tensor-audited samples,48 accounted episodes,16 host-release receipts; native telemetry and periodic actor-placement audits passed. Not full resume, asynchronous qualification or held-out quality.
 
-**Allocation status: RUNNING; no optimizer receipt yet at03:36:12Z**
+**Allocation status: COMPLETED 0:0; synchronous component validation passed**
 
-Status snapshot: `2026-09-03T03:36:36.341960Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T03:53:20.025110Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -35,16 +35,18 @@ Status snapshot: `2026-09-03T03:36:36.341960Z`; inspect Slurm for live state.
 - Pinned-host teardown controls: job 162 failed with 7.48–10.38 s gaps after ordinary exit with 24 GiB pinned host memory per rank. Matched job 163 explicitly released those buffers first and passed on all 32 ranks: worst gap 2.101 s, slowest NVML API 0.773 s. Full Miles trainer cleanup is not yet patched or qualified; both control outcomes remain preserved.
 - Job 164 passed96 native CPU journal/cleanup tests. Job165 exposed a parser-order coverage gap and failed before model initialization. Its24 finalized telemetry streams contain545,597 records and zero collector-error rows; this is not load qualification. A separate fix and five real argument-validation tests passed in CPU job166:101 tests, zero failures/errors/skips. The first audit was premature and retained as failed; terminal audit v5-a2 passed.
 - Scoped dummy checkpoint retention removed994,517,412,320 payload bytes from two superseded checkpoints; four full checkpoints and all base models retained. Independent check found1,461,723,688,960 free bytes.
+- Job167 completed in15m19s on32 GPUs:2 optimizer updates/2 save receipts;32 native training samples and48 controller episodes reconciled,16 explicitly discarded,zero unresolved. All16 trainers released423,352,733,696 pinned tensor bytes with policy version3. Native24-stream telemetry contains3,378,085 records,zero collector errors,maxGPU sample gap3.338s;166 Ray snapshots confirm8 trainer actors per trainer node and1 EP8 engine per rollout node. Full required telemetry, resume, async and quality remain separate gates.
+- A fresh local checkout reconstructed all22 Miles patches with git am and matched the exact recorded source tree. Independent shared destination verification passed244 newly synchronized evidence files.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Control163 passed explicit pinned-host release; full Miles job165 failed before model initialization on a cleanup guard ordering error. No full-trainer cleanup qualification yet. | Verify corrected argument guard in the pinned runtime, then run full trainer with original telemetry thresholds. |
-| Broad launcher suite | 31 targeted current launcher/snapshot tests passed after refreshing an outdated snapshot of existing runtime choices; broad macOS run has platform/dependency failures. Prior pinned Linux run597passed/12failures/4errors. | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
+| Full infrastructure telemetry | Job167 passed the native synchronous telemetry/cleanup gate without relaxed thresholds:0 errors,maxGPU gap3.338s versus earlier roughly15s. Full DCGM/XID/throttle,complete RL pipeline/SGLang coverage and asynchronous qualification remain open. | Preserve job167 as the passing synchronous reference; qualify remaining metric families and fully asynchronous overlap/accounting before the measured sweep. |
+| Broad launcher suite | 32 targeted launcher/snapshot tests passed. Broad macOS run:384passed/30failed/122errors from platform/dependency limitations; not a full-suite pass. Native cleanup/parser components101passed; root reporting/audit suite74passed. | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
-| GRPO, async and resume fidelity | Job161: all32 native samples passed trainer tensor checks; all48 environment episodes joined,32 selected and16 explicitly discarded, zero unresolved. Native saved-state replay shows default scheduler32->48 after loading; explicit checkpoint-scheduler flag preserves32. Full resume/async state unqualified. | Preserve the completed journal audit; qualify full-state resume with frozen native trajectories, restored policy version/cursor/buffer, scheduler and RNG, then asynchronous accounting. |
+| GRPO, async and resume fidelity | Job167 synchronous GRPO/journal audits passed:32 native samples,48 episodes,zero unresolved. Complete resume remains unqualified; saved scheduler32->48 default-load mismatch has only a component-level fix. Async in-flight/accounting restoration remains open. | Preserve the completed journal audit; qualify full-state resume with frozen native trajectories, restored policy version/cursor/buffer, scheduler and RNG, then asynchronous accounting. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |

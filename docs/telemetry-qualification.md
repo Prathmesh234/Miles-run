@@ -1,6 +1,6 @@
 # GPU telemetry qualification
 
-**Training telemetry remains unqualified; individual control results are below.**
+**Job167 passed the native synchronous training telemetry gate. Full required telemetry and asynchronous execution remain unqualified.**
 
 Collector qualification around node-local all-reduce only. Actual training/checkpoint load, continuous DCGM and full required telemetry remain unqualified.
 
@@ -21,7 +21,7 @@ A control result does not repair the failed training gate or, by itself, prove a
 
 Read-only NVML; no resets. Parent rejects collector errors, missing/stale host-local heartbeat (>12s), wrong node/job identity. Unique node-owned stop markers; final CLI parity and Lustre finalization required.
 
-Verify the corrected full-trainer job167, including16 rank-complete host-release receipts, exact trajectory accounting and unchanged telemetry deadlines.
+The corrected full-trainer job167 passed its native continuity and cleanup audits. Retain historical failures; qualify full-state resume, remaining telemetry families and fully asynchronous execution next.
 
 ## Pinned-host release control
 
@@ -34,7 +34,7 @@ One matched four-node control per condition. Job162 failed the3s sampling criter
 | gpu-nodes-2 | 10.382 | 2.101 | 3.154 / 3.838 | 8 |
 | gpu-nodes-3 | 7.481 | 1.818 | 3.151 / 4.719 | 8 |
 
-Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.
+The corrected full-trainer job167 passed its native continuity and cleanup audits. Retain historical failures; qualify full-state resume, remaining telemetry families and fully asynchronous execution next.
 
 ## Full-trainer candidate
 
@@ -47,7 +47,7 @@ Miles revision: `3db148a3fec7afb87a8c6275027ae274a7122a19`.
 | 164 | Pinned CPU journal and cleanup components | 96 passed |
 | 165 | 32-GPU 2T/2R full trainer | Failed before model initialization: cleanup argument-order error; zero optimizer steps |
 | 166 | Pinned CPU components plus real argument validation | 101 passed; independent terminal/JUnit audit passed |
-| 167 | 32-GPU 2T/2R corrected full trainer | Running; optimizer and cleanup execution not yet verified |
+| 167 | 32-GPU 2T/2R corrected full trainer | Completed0:0;2 optimizer steps/2 saves,16 verified host-release receipts,24 finalized streams,zero collector errors,maxGPU gap3.338s |
 
 These are distinct attempts; passing unit tests does not qualify full-load telemetry.
 

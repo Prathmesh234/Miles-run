@@ -8,7 +8,7 @@ from evidence import atomic
 def render(data):
     meta = data['metadata']
     lines = ['# GPU telemetry qualification', '',
-        '**Training telemetry remains unqualified; individual control results are below.**', '',
+        data['metadata'].get('qualification_note', '**Training telemetry remains unqualified; individual control results are below.**'), '',
         meta['scope'], '',
         '| Job | Workload | Maximum GPU sample gap (s) | Result |',
         '|---|---|---:|---|',

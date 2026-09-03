@@ -1,0 +1,592 @@
+{
+  "accounting": {
+    "controller_episodes": 48,
+    "dispositions": {
+      "dynamic_filter_drop": 0,
+      "group_cancelled": 0,
+      "group_failed": 0,
+      "selected_for_training": 32,
+      "sync_excess_discarded": 0,
+      "sync_unused_discarded": 16,
+      "sync_unused_recycled": 0,
+      "unresolved": 0
+    },
+    "environment_attempts": 48,
+    "sample_attempts": 48,
+    "selected_inputs": 32,
+    "unjoined_episodes": 0
+  },
+  "actor_placement": {
+    "actors": [
+      {
+        "class_name": "DashboardCollector",
+        "count": 1,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "GpuSampler",
+        "count": 1,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "GpuSampler",
+        "count": 1,
+        "hostname": "gpu-nodes-1"
+      },
+      {
+        "class_name": "GpuSampler",
+        "count": 1,
+        "hostname": "gpu-nodes-2"
+      },
+      {
+        "class_name": "GpuSampler",
+        "count": 1,
+        "hostname": "gpu-nodes-3"
+      },
+      {
+        "class_name": "InfoActor",
+        "count": 8,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "InfoActor",
+        "count": 8,
+        "hostname": "gpu-nodes-1"
+      },
+      {
+        "class_name": "InfoActor",
+        "count": 8,
+        "hostname": "gpu-nodes-2"
+      },
+      {
+        "class_name": "InfoActor",
+        "count": 8,
+        "hostname": "gpu-nodes-3"
+      },
+      {
+        "class_name": "JobSupervisor",
+        "count": 1,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "Lock",
+        "count": 1,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "MegatronTrainRayActor",
+        "count": 8,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "MegatronTrainRayActor",
+        "count": 8,
+        "hostname": "gpu-nodes-1"
+      },
+      {
+        "class_name": "RolloutManager",
+        "count": 1,
+        "hostname": "gpu-nodes-0"
+      },
+      {
+        "class_name": "SGLangEngine",
+        "count": 1,
+        "hostname": "gpu-nodes-2"
+      },
+      {
+        "class_name": "SGLangEngine",
+        "count": 1,
+        "hostname": "gpu-nodes-3"
+      }
+    ],
+    "findings": [],
+    "ticks": 166
+  },
+  "checkpoint_saves": [
+    {
+      "iteration": 0,
+      "time": "2026-09-03T03:47:29.116140Z"
+    },
+    {
+      "iteration": 1,
+      "time": "2026-09-03T03:49:05.088591Z"
+    }
+  ],
+  "environment_outcomes": {
+    "created": 48,
+    "failed_task": 15,
+    "graded": 48,
+    "grading_error": 0,
+    "no_verdict": 0,
+    "passed": 33
+  },
+  "episode_audit_findings": [],
+  "finalized_telemetry_streams": 24,
+  "findings": [],
+  "host_cleanup": {
+    "completed_ranks": 16,
+    "duration_s": {
+      "coefficient_of_variation": 0.021454825649331613,
+      "max": 7.53281505999621,
+      "mean": 7.305715540431265,
+      "median": 7.345062122971285,
+      "min": 6.9334016650682315,
+      "n": 16,
+      "p90": 7.461658912478015,
+      "p95": 7.504332936980063,
+      "p99": 7.527118635392981
+    },
+    "findings": [],
+    "policy_versions": [
+      3
+    ],
+    "released_tensor_bytes": 423352733696
+  },
+  "infrastructure_plot": "grpo-validation-job167.png",
+  "infrastructure_plot_sha256": "831cb5fcf9c5cbd84dff0bf4583081e53f51e78bd4f93c63c4b65ecbdc646fef",
+  "job_id": 167,
+  "limitations": [
+    "Synchronous small-batch validation, not an asynchronous placement comparison.",
+    "Training-task rewards are not held-out TB2.1 quality; no quality delta is established.",
+    "Full checkpoint resume, DCGM and all required telemetry remain unqualified; periodic actor placement is reported when captured.",
+    "NVML call timing identifies the blocking API, not the underlying hardware or driver cause.",
+    "Environment-seconds sum parallel episode lifetimes; they are not elapsed wall time."
+  ],
+  "native_telemetry": {
+    "collector_errors": 0,
+    "maximum_gpu_sample_gap_s": {
+      "gpu-nodes-0": 3.005205688998103,
+      "gpu-nodes-1": 3.338219202007167,
+      "gpu-nodes-2": 2.152309902012348,
+      "gpu-nodes-3": 2.2760089799994603
+    },
+    "records": 3378085
+  },
+  "native_tensor_audit_findings": [],
+  "optimizer_steps": [
+    {
+      "metrics": {
+        "train/entropy_loss": 0.0,
+        "train/ess_ratio": 1.0,
+        "train/grad_norm": 0.6449698805809021,
+        "train/kl_loss": 0.0,
+        "train/loss": -7.450580596923828e-09,
+        "train/lr-pg_0": 1e-06,
+        "train/lr-pg_1": 1e-06,
+        "train/lr-pg_2": 1e-06,
+        "train/mtp_loss": 0.24832278490066528,
+        "train/pg_clipfrac": 0.0,
+        "train/pg_loss": -7.450580596923828e-09,
+        "train/ppo_kl": 0.0,
+        "train/step": 0,
+        "train/train_rollout_kl": 0.0015563227934762836,
+        "train/train_rollout_logprob_abs_diff": 0.014350502751767635
+      },
+      "step": 0,
+      "time": "2026-09-03T03:46:39.868Z"
+    },
+    {
+      "metrics": {
+        "train/entropy_loss": 0.0,
+        "train/ess_ratio": 1.0,
+        "train/grad_norm": 1.38631010055542,
+        "train/kl_loss": 0.00130410585552454,
+        "train/loss": 2.2351741790771484e-08,
+        "train/lr-pg_0": 1e-06,
+        "train/lr-pg_1": 1e-06,
+        "train/lr-pg_2": 1e-06,
+        "train/mtp_loss": 0.32470446825027466,
+        "train/pg_clipfrac": 0.0,
+        "train/pg_loss": 2.2351741790771484e-08,
+        "train/ppo_kl": 0.0,
+        "train/step": 1,
+        "train/train_rollout_kl": 0.001653251121751964,
+        "train/train_rollout_logprob_abs_diff": 0.016930093988776207
+      },
+      "step": 1,
+      "time": "2026-09-03T03:48:25.223Z"
+    }
+  ],
+  "performance": [
+    {
+      "metrics": {
+        "perf/effective_tokens_per_gpu_per_sec": 98.00360721816958,
+        "perf/longest_effective_sample_non_generation_time": 5.8773475787602365,
+        "perf/longest_effective_sample_tokens_per_sec": 240.76784495244144,
+        "perf/longest_effective_sample_tokens_per_sec_without_non_generation": 372.36881686671916,
+        "perf/longest_sample_non_generation_time": 5.8773475787602365,
+        "perf/longest_sample_tokens_per_sec": 278.1097110152452,
+        "perf/longest_sample_tokens_per_sec_without_non_generation": 430.12132317896504,
+        "perf/non_generation_time/max": 7.625658908160403,
+        "perf/non_generation_time/mean": 6.075274341455952,
+        "perf/non_generation_time/median": 5.710120714327786,
+        "perf/non_generation_time/min": 4.60740076599177,
+        "perf/rollout_time": 16.630127668380737,
+        "perf/tokens_per_gpu_per_sec": 119.79387890014785,
+        "rollout/avg_cached_tokens_per_sample": 10456.0,
+        "rollout/episode_raw_reward": 0.6875,
+        "rollout/episode_response_length/max": 4004,
+        "rollout/episode_response_length/mean": 1629.8125,
+        "rollout/episode_response_length/median": 1255.0,
+        "rollout/episode_response_length/min": 680,
+        "rollout/episode_total_response_length/mean": 1992.1875,
+        "rollout/num_training_samples": 16,
+        "rollout/prefix_cache_hit_rate": 0.859757946398746,
+        "rollout/repetition_frac": 0.0,
+        "rollout/response_len/max": 4004,
+        "rollout/response_len/mean": 1629.8125,
+        "rollout/response_len/median": 1255.0,
+        "rollout/response_len/min": 680,
+        "rollout/spec_accept_length": 2.709335009037521,
+        "rollout/spec_accept_rate": 0.855349846716943,
+        "rollout/tito_session_mismatch_rate/v1": 0.125,
+        "rollout/tito_session_mismatch_rate/v1/assistant_text": 0.0,
+        "rollout/tito_session_mismatch_rate/v1/non_assistant_text": 0.0,
+        "rollout/tito_session_mismatch_rate/v1/special_token_count": 0.125,
+        "rollout/tito_session_mismatch_rate/v1/special_token_type": 0.0,
+        "rollout/truncated_ratio": 0.125,
+        "rollout/weight_version/max": 1,
+        "rollout/weight_version/mean": 1.0,
+        "rollout/weight_version/median": 1.0,
+        "rollout/weight_version/min": 1,
+        "rollout/weight_version/mixed_version_ratio": 0.0,
+        "rollout/zero_std/all_one_percentage": 0.5,
+        "rollout/zero_std/all_zero_percentage": 0.0,
+        "rollout/zero_std/count_1.0": 1
+      },
+      "role": "rollout",
+      "rollout_id": 0,
+      "time": "2026-09-03T03:44:14.450Z"
+    },
+    {
+      "metrics": {
+        "perf/effective_tokens_per_gpu_per_sec": 69.90760927429592,
+        "perf/longest_effective_sample_non_generation_time": 5.205409298185259,
+        "perf/longest_effective_sample_tokens_per_sec": 146.29582228865124,
+        "perf/longest_effective_sample_tokens_per_sec_without_non_generation": 177.57745388680948,
+        "perf/longest_sample_non_generation_time": 5.5797418870497495,
+        "perf/longest_sample_tokens_per_sec": 152.25188630040293,
+        "perf/longest_sample_tokens_per_sec_without_non_generation": 187.69315225750628,
+        "perf/non_generation_time/max": 7.993313957005739,
+        "perf/non_generation_time/mean": 6.348245017288718,
+        "perf/non_generation_time/median": 6.37147950445069,
+        "perf/non_generation_time/min": 3.7000314278993756,
+        "perf/rollout_time": 29.549715995788574,
+        "perf/tokens_per_gpu_per_sec": 88.12690451478925,
+        "rollout/avg_cached_tokens_per_sample": 15092.0,
+        "rollout/episode_raw_reward": 0.75,
+        "rollout/episode_response_length/max": 4323,
+        "rollout/episode_response_length/mean": 2065.75,
+        "rollout/episode_response_length/median": 1804.0,
+        "rollout/episode_response_length/min": 1068,
+        "rollout/episode_total_response_length/mean": 2604.125,
+        "rollout/num_training_samples": 16,
+        "rollout/prefix_cache_hit_rate": 0.8774514257059488,
+        "rollout/repetition_frac": 0.0,
+        "rollout/response_len/max": 4323,
+        "rollout/response_len/mean": 2065.75,
+        "rollout/response_len/median": 1804.0,
+        "rollout/response_len/min": 1068,
+        "rollout/spec_accept_length": 2.6426052362224324,
+        "rollout/spec_accept_rate": 0.8211545973035728,
+        "rollout/tito_session_mismatch_rate/v1": 0.0,
+        "rollout/tito_session_mismatch_rate/v1/assistant_text": 0.0,
+        "rollout/tito_session_mismatch_rate/v1/non_assistant_text": 0.0,
+        "rollout/tito_session_mismatch_rate/v1/special_token_count": 0.0,
+        "rollout/tito_session_mismatch_rate/v1/special_token_type": 0.0,
+        "rollout/truncated_ratio": 0.0,
+        "rollout/weight_version/max": 2,
+        "rollout/weight_version/mean": 2.0,
+        "rollout/weight_version/median": 2.0,
+        "rollout/weight_version/min": 2,
+        "rollout/weight_version/mixed_version_ratio": 0.0,
+        "rollout/zero_std/all_one_percentage": 0.0,
+        "rollout/zero_std/all_zero_percentage": 0.0
+      },
+      "role": "rollout",
+      "rollout_id": 1,
+      "time": "2026-09-03T03:48:03.197Z"
+    },
+    {
+      "metrics": {
+        "perf/actor_train_mfu": 0.00017620628380694373,
+        "perf/actor_train_tflops": 0.3964641385656234,
+        "perf/actor_train_time": 105.0234591960907,
+        "perf/actor_train_tok_per_s": 424.6955903130285,
+        "perf/data_preprocess_time": 0.00160980224609375,
+        "perf/finalize_and_resume_engines_time": 0.009980201721191406,
+        "perf/log_probs_tflops": 20.42151827541757,
+        "perf/log_probs_time": 0.6796431541442871,
+        "perf/mfu_peak_tflops": 2250.0,
+        "perf/ref_log_probs_tflops": 0.35431976403488075,
+        "perf/ref_log_probs_time": 39.17180609703064,
+        "perf/step_time": 169.01876020431519,
+        "perf/train_time": 145.3988857269287,
+        "perf/train_wait_time": 23.619874477386475,
+        "perf/update_weights_implementation_time": 5.366728782653809,
+        "perf/update_weights_time": 5.4188714027404785,
+        "perf/wait_time_ratio": 0.1397470579528215
+      },
+      "role": "trainer",
+      "rollout_id": 0,
+      "time": "2026-09-03T03:46:40.143Z"
+    },
+    {
+      "metrics": {
+        "perf/actor_train_mfu": 0.001941858104948,
+        "perf/actor_train_tflops": 4.369180736133,
+        "perf/actor_train_time": 12.940722942352295,
+        "perf/actor_train_tok_per_s": 4554.459612693521,
+        "perf/data_preprocess_time": 0.0018122196197509766,
+        "perf/finalize_and_resume_engines_time": 0.009557962417602539,
+        "perf/log_probs_tflops": 5.4577254093168,
+        "perf/log_probs_time": 3.453230857849121,
+        "perf/mfu_peak_tflops": 2250.0,
+        "perf/ref_log_probs_tflops": 5.93311836694834,
+        "perf/ref_log_probs_time": 3.176539659500122,
+        "perf/save_model_time": 48.98323464393616,
+        "perf/step_time": 105.35533690452576,
+        "perf/train_time": 22.003131866455078,
+        "perf/train_wait_time": 83.35220503807068,
+        "perf/update_weights_implementation_time": 3.0486741065979004,
+        "perf/update_weights_time": 3.151061534881592,
+        "perf/wait_time_ratio": 0.7911531345925591
+      },
+      "role": "trainer",
+      "rollout_id": 1,
+      "time": "2026-09-03T03:48:25.495Z"
+    }
+  ],
+  "populations": {
+    "selected_for_training": {
+      "environment_seconds": 358.216474478133,
+      "episodes": 32,
+      "passed": 23,
+      "samples": 32
+    },
+    "sync_unused_discarded": {
+      "environment_seconds": 147.18833980185445,
+      "episodes": 16,
+      "passed": 10,
+      "samples": 16
+    }
+  },
+  "provenance": {
+    "layout": "2t2r",
+    "miles_sha": "3db148a3fec7afb87a8c6275027ae274a7122a19",
+    "optimizer_steps_requested": 2,
+    "root_sha": "3a19b593b2a530340f1d4e2630f9e8a3cc2c3f21",
+    "task_ids": [
+      "task_06652",
+      "task_14118",
+      "task_10753",
+      "task_09467"
+    ]
+  },
+  "qualification": "component_validation_only",
+  "raw_evidence_root": "/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210",
+  "runtime_warnings": [
+    "SGLang logged 2 post-warmup freeze_gc failures. Retained as runtime warnings; no configuration was changed to suppress them."
+  ],
+  "schema_version": 1,
+  "slow_nvml_calls": [
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-042b468a-5f46-4b8f-c659-2be865525f4a",
+      "hostname": "gpu-nodes-0",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731504.157119778,
+      "role": "trainer",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:26.806796Z",
+      "unit": "s",
+      "value": 2.3849875569576398
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-ec52f3ef-8f41-cbaa-d2c2-7e8b56d3b32a",
+      "hostname": "gpu-nodes-0",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731502.964554739,
+      "role": "trainer",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:25.614231Z",
+      "unit": "s",
+      "value": 0.994869984104298
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-05b02219-2b03-f8a7-ca66-04c0a7befe66",
+      "hostname": "gpu-nodes-0",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731099.627332123,
+      "role": "trainer",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:42:42.277008Z",
+      "unit": "s",
+      "value": 0.5811036849627271
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-2ab0b43f-4c77-d27b-7ccf-21c99d80be08",
+      "hostname": "gpu-nodes-1",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731483.932148587,
+      "role": "trainer",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:26.416939Z",
+      "unit": "s",
+      "value": 2.371954952017404
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-2ab0b43f-4c77-d27b-7ccf-21c99d80be08",
+      "hostname": "gpu-nodes-1",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731300.931625097,
+      "role": "trainer",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:46:23.416416Z",
+      "unit": "s",
+      "value": 0.9935143761103973
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-e1134404-a7de-f243-63f1-5fd7e11c635f",
+      "hostname": "gpu-nodes-1",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731301.948581425,
+      "role": "trainer",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:46:24.433373Z",
+      "unit": "s",
+      "value": 0.9856356170494109
+    },
+    {
+      "api": "nvmlDeviceGetMemoryInfo",
+      "error": null,
+      "gpu_uuid": "GPU-b159dd83-dd72-8f98-ed64-6627dd4ac56e",
+      "hostname": "gpu-nodes-2",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 113511.674650595,
+      "role": "rollout",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:21.874277Z",
+      "unit": "s",
+      "value": 0.6297565330023644
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-86218e11-8977-19fa-201a-44a56b6e3af3",
+      "hostname": "gpu-nodes-2",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 113507.602872058,
+      "role": "rollout",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:17.802499Z",
+      "unit": "s",
+      "value": 0.6126593259978108
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-983d90f7-787b-aff5-36d7-b6493c473cbf",
+      "hostname": "gpu-nodes-2",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 112657.777039575,
+      "role": "rollout",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:35:07.976666Z",
+      "unit": "s",
+      "value": 0.592545046005398
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-11d63c84-1166-0a29-92d4-cd3dd5761a86",
+      "hostname": "gpu-nodes-3",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731606.394437242,
+      "role": "rollout",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:17.585008Z",
+      "unit": "s",
+      "value": 0.742005318053998
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-6a8efa14-0d09-d842-ae39-0eef7f0feb50",
+      "hostname": "gpu-nodes-3",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 731608.850358882,
+      "role": "rollout",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:49:20.040930Z",
+      "unit": "s",
+      "value": 0.6958814130630344
+    },
+    {
+      "api": "nvmlDeviceGetFieldValues",
+      "error": null,
+      "gpu_uuid": "GPU-1d061bc6-8ece-408b-e20e-b75dccbc370e",
+      "hostname": "gpu-nodes-3",
+      "metric": "nvml_api_duration",
+      "monotonic_s": 730758.01035576,
+      "role": "rollout",
+      "slurm_job_id": "167",
+      "source": "persistent-nvml",
+      "time": "2026-09-03T03:35:09.200927Z",
+      "unit": "s",
+      "value": 0.5965116500156
+    }
+  ],
+  "slurm_exit_code": "0:0",
+  "slurm_state": "COMPLETED",
+  "sources": {
+    "allocation": {
+      "path": "tests/02-sync-grpo-result-audit-v14/audit.json",
+      "sha256": "18b4fcaf1d76182e5d2ed27d5ae0b858901f208349cc9ae66a72275fc79fb712"
+    },
+    "episodes": {
+      "path": "tests/02-sync-grpo-environment-audit-v14-join-v1/episodes.json",
+      "sha256": "31cfce4cb1d92c9059a53699a55a4d069cd81561ba20c03608732cba5ce4e637"
+    },
+    "nvml": {
+      "path": "tests/01-nvml-call-audit-job167-v1/result.json",
+      "sha256": "8edfd879a456832fbb93c404149969b21cabcae00fbb7712b9c766fbd7927596"
+    },
+    "optimizer": {
+      "path": "tests/02-sync-grpo-v14-optimizer-observation-a1/result.json",
+      "sha256": "a2f2aa54489bad9331ac7568027494a8cb43a47ebd9b9aed53e0cfcb927b4c04"
+    },
+    "placement": {
+      "path": "tests/02-ray-placement-observer-sync-grpo-v14/result.json",
+      "sha256": "ab1af1813acfcf5f3a3b7bbcfc26b6578cb85b52d44784f7d6e3d3c3f27d86b3"
+    },
+    "tensors": {
+      "path": "tests/02-grpo-tensor-audit-v14-a1/result.json",
+      "sha256": "54e6e2341a0701bad77d743052253afb78baec5120e039a6c211b338ac4e53de"
+    }
+  },
+  "training_attempt": 14,
+  "zero_variance_groups": 1
+}

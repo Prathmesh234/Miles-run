@@ -1,5 +1,6 @@
 """Build a dense failed-or-passed sync validation digest from audited evidence."""
 import argparse
+import collections
 import json
 from pathlib import Path
 
@@ -15,6 +16,14 @@ def build(run, attempt, job):
         nvml=f'tests/01-nvml-call-audit-job{job}-v1/result.json')
     sources = {key: json.loads((run / name).read_text()) for key, name in names.items()}
     allocation, tensors, episodes, optimizer, nvml = (sources[key] for key in names)
+    placement_path = f'tests/02-ray-placement-observer-sync-grpo-v{attempt}/result.json'
+    placement = None
+    if (run / placement_path).exists():
+        names['placement'] = placement_path
+        source = json.loads((run / placement_path).read_text())
+        counts = collections.Counter((r['class_name'], r['assigned_hostname']) for r in source['observed_alive_actors'])
+        placement = dict(ticks=source['ticks'], findings=source['findings'], actors=[
+            dict(class_name=k[0], hostname=k[1], count=v) for k, v in sorted(counts.items())])
     if any(str(sources[key]['slurm_job_id']) != str(job) for key in ('allocation', 'optimizer', 'nvml')):
         raise ValueError('Audits refer to different Slurm jobs.')
     journal = episodes['journal_accounting']
@@ -29,6 +38,8 @@ def build(run, attempt, job):
     if journal['counts']['selected_inputs'] != tensors['trained_input_samples']:
         raise ValueError('Native journal and trainer counts disagree.')
     findings = allocation['findings'] + tensors['findings'] + episodes['findings'] + nvml['findings']
+    if placement:
+        findings += placement['findings']
     cleanup = allocation.get('host_cleanup')
     cleanup_summary = None
     if cleanup:
@@ -46,13 +57,17 @@ def build(run, attempt, job):
         environment_outcomes=episodes['counts'], zero_variance_groups=sum(row['zero_variance_groups'] for row in tensors['batches']),
         native_tensor_audit_findings=tensors['findings'], episode_audit_findings=episodes['findings'],
         performance=optimizer['performance'], finalized_telemetry_streams=len(allocation['coverage']),
-        host_cleanup=cleanup_summary,
+        host_cleanup=cleanup_summary, actor_placement=placement,
+        native_telemetry=dict(records=sum(r['records'] for r in allocation['coverage']),
+            collector_errors=sum(r['collector_errors'] for r in allocation['coverage']),
+            maximum_gpu_sample_gap_s={r['hostname']: r['max_interval_s'] for r in allocation['coverage']
+                                      if r['path'].endswith('/nvidia-smi.jsonl')}),
         slow_nvml_calls=[row for node in nvml['nodes'] for row in node['slowest_calls'][:3]],
         raw_evidence_root='/shared/posttrainingx/runs/vultr-b200-slurm/' + run.name,
         sources={key: dict(path=name, sha256=sha256(run / name)) for key, name in names.items()},
         limitations=['Synchronous small-batch validation, not an asynchronous placement comparison.',
             'Training-task rewards are not held-out TB2.1 quality; no quality delta is established.',
-            'Full checkpoint resume, actor placement capture, DCGM and all required telemetry remain unqualified.',
+            'Full checkpoint resume, DCGM and all required telemetry remain unqualified; periodic actor placement is reported when captured.',
             'NVML call timing identifies the blocking API, not the underlying hardware or driver cause.',
             'Environment-seconds sum parallel episode lifetimes; they are not elapsed wall time.'])
 
@@ -76,6 +91,22 @@ def render(data):
         cleanup = data['host_cleanup']
         lines += ['', f"Pinned-backup cleanup: {cleanup['completed_ranks']} completed rank receipts, "
             f"{cleanup['released_tensor_bytes']:,} tensor bytes released; {len(cleanup['findings'])} findings.", '']
+    if data.get('native_telemetry'):
+        telemetry = data['native_telemetry']
+        lines += ['', f"Native telemetry: {telemetry['records']:,} records; {telemetry['collector_errors']} collector errors.", '',
+            '| Node | Maximum GPU sampling gap (s) |', '|---|---:|']
+        lines += [f'| {host} | {gap:.3f} |' for host, gap in telemetry['maximum_gpu_sample_gap_s'].items()]
+    if data.get('actor_placement'):
+        placement = data['actor_placement']
+        lines += ['', f"Actor placement: {placement['ticks']} snapshots; {len(placement['findings'])} findings.", '',
+                  '| Node | Actor class | Count |', '|---|---|---:|']
+        lines += [f"| {r['hostname']} | {r['class_name']} | {r['count']} |" for r in placement['actors']
+                  if r['class_name'] in ('MegatronTrainRayActor', 'SGLangEngine')]
+    if data.get('infrastructure_plot'):
+        lines += ['', '## Infrastructure time series', '', f"![Native infrastructure telemetry]({data['infrastructure_plot']})", '']
+    if data.get('runtime_warnings'):
+        lines += ['', '## Runtime warnings', '']
+        lines += ['- ' + warning for warning in data['runtime_warnings']]
     lines += ['', '### Slow NVML calls', '', '| Node | API | Duration (s) | UTC start |', '|---|---|---:|---|']
     for row in data['slow_nvml_calls']:
         if row['value'] >= 1:
@@ -106,7 +137,17 @@ if __name__ == '__main__':
     parser.add_argument('--attempt', type=int, required=True)
     parser.add_argument('--job-id', type=int, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--infrastructure-plot', type=Path)
     args = parser.parse_args()
     data = build(args.run_dir, args.attempt, args.job_id)
+    if args.infrastructure_plot:
+        if args.infrastructure_plot.parent.resolve() != args.output.parent.resolve():
+            raise ValueError('The published plot must be alongside the report.')
+        data['infrastructure_plot'] = args.infrastructure_plot.name
+        data['infrastructure_plot_sha256'] = sha256(args.infrastructure_plot)
+    log = args.run_dir / f'training/sync-grpo-v{args.attempt}/logs/gpu-nodes-0/miles.out'
+    if log.exists():
+        count = log.read_text().count('post-warmup freeze_gc failed')
+        data['runtime_warnings'] = ([f'SGLang logged {count} post-warmup freeze_gc failures. Retained as runtime warnings; no configuration was changed to suppress them.'] if count else [])
     atomic(args.output, data)
     atomic(args.output.with_suffix('.md'), render(json.loads(args.output.read_text())))
