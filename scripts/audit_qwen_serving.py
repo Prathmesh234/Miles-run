@@ -28,7 +28,7 @@ for mode in ['off','on']:
   outputs.append({'text':g['response']['text'],'completion_tokens':meta['completion_tokens'],
    'output_token_ids':[x[1] for x in logprobs],'logprobs_valid':valid,
    'client_first_text_s':g['client_first_text_s'],'duration_s':g['duration_s']})
- result['cases'].append({'mtp':mode,'startup_s':d['startup_s'],'outputs':outputs,
+ result['cases'].append({'mtp':mode,'precision':d.get('precision','bf16'),'startup_s':d['startup_s'],'outputs':outputs,
   'acceptance':d['mtp_acceptance_metrics'],'cleanup':d['cleanup'],
   'metrics_coverage':d['metrics_coverage'],'raw_path':str(p.relative_to(root))})
  if mode=='on' and not any(m['metric']=='sglang:spec_accept_rate' and m['value']>0 for m in d['mtp_acceptance_metrics']):
@@ -72,10 +72,11 @@ def main():
     data = json.loads(out) if not rc else {'findings': ['Read-only serving audit failed.']}
     data['scope'] = ('Single-node deterministic serving smoke, not RL, throughput/latency characterization, '
                      'a full telemetry qualification or quality evaluation. MTP timings are not a controlled comparison.')
-    data['limitations'] = ['No finite forward-timer sample during these very short requests.',
-        'SGLang logs NCCL process-group destructor warnings during shutdown; no live child processes survived.',
-        'SGLang post-warmup freeze_gc warning occurred before readiness.',
-        'Native coverage here does not establish all required DCGM, XID, throttle, Ray, Miles or weight-transfer metrics.']
+    data['limitations'] = [
+        'Native coverage here does not establish all required DCGM, XID, throttle, Ray, Miles or weight-transfer metrics.',
+        'Short deterministic prompts do not establish task quality or trainer/rollout logprob equivalence.']
+    if data.get('cases') and not any(case['metrics_coverage'].get('finite_forward_timer_samples', 0) for case in data['cases']):
+        data['limitations'].append('No finite forward-timer sample during these very short requests.')
     atomic(phase.path / 'audit.json', data)
     values = []
     for case in data.get('cases', []):
