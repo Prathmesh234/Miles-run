@@ -103,6 +103,8 @@ def main():
                     '--openenv-message-timeout-s', '360', '--sglang-max-running-requests', '16',
                     '--session-server-workers', '4']
                 launch += ['--verify-initial-weight-broadcast']
+                if config['release_pinned_backups_on_exit']:
+                    launch += ['--release-pinned-backups-on-exit']
                 atomic(output / 'training-command.json', {'argv': launch, 'time': utcnow(),
                     'scope': f"{config['optimizer_steps_requested']} real synchronous GRPO optimizer steps, initial validation only; not a quality result."})
                 with (logs / 'miles.out').open('x') as out2, (logs / 'miles.err').open('x') as err2:

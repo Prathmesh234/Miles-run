@@ -6,7 +6,7 @@ import json
 from evidence import Run, atomic, metric
 
 
-def prune(root_text, apply=False, attempt=1):
+def prune(root_text, apply=False, attempt=1, profile='original'):
     import datetime
     import hashlib
     import json
@@ -35,6 +35,31 @@ def prune(root_text, apply=False, attempt=1):
         'training/sync-grpo-v9/checkpoints/iter_0000001': 'b49c6d59804631c3ab7f6c5dcc79604592fd3941f9259add6d6df36bb5048662',
         keep: 'd2129901a8ad1d1fbc4e9e6f606df8971d5ea0afdc440cef13c5a5d7dbfc0651',
     }
+    retained = [keep]
+    pointer_values = {'training/sync-grpo-v9/checkpoints/latest_checkpointed_iteration.txt': '2',
+                      'training/sync-grpo-v6/checkpoints/latest_checkpointed_iteration.txt': '1'}
+    obsolete_pointers = ['training/sync-grpo-v6/checkpoints/latest_checkpointed_iteration.txt']
+    source_jobs = {'139': ['FAILED', '1:0'], '143': ['COMPLETED', '0:0']}
+    if profile == 'post-job161':
+        # Read-only inventory: 02-checkpoint-retention-followup-inventory-v1.
+        # Keep job154's A/B resume pair and both job161 checkpoints.
+        keep = 'training/sync-grpo-v12/checkpoints/iter_0000001'
+        expected_hashes = {
+            'training/sync-grpo-v9/checkpoints/iter_0000002': 'd2129901a8ad1d1fbc4e9e6f606df8971d5ea0afdc440cef13c5a5d7dbfc0651',
+            'training/sync-grpo-v10/checkpoints/iter_0000000': '4a2d5e15a30a71c8e1f2014e688f9e9905ff6749d478c4652849ec9391bd6e29',
+            'training/sync-grpo-v10/checkpoints/iter_0000001': '615a4beb9ce67cc390fddc5ae852212707fdae2b03a851ef448fe38fe697bd54',
+            'training/sync-grpo-v10/checkpoints/iter_0000002': '42d217369d2ca3e2dd33517a690af2fe575f4fba1db38ea06eae5b970f7cab75',
+            'training/sync-grpo-v12/checkpoints/iter_0000000': '626e5b8936a75847a41ca7cc6a7b0b8e245dda039f59237e8266b0eb3973e3b7',
+            keep: 'ae80d8caba7f048ed20b52f42723788aacbb4b2712221677afbba34b3934d268',
+        }
+        retained = list(expected_hashes)[2:]
+        pointer_values = {'training/sync-grpo-v9/checkpoints/latest_checkpointed_iteration.txt': '2',
+                          'training/sync-grpo-v10/checkpoints/latest_checkpointed_iteration.txt': '2',
+                          'training/sync-grpo-v12/checkpoints/latest_checkpointed_iteration.txt': '1'}
+        obsolete_pointers = ['training/sync-grpo-v9/checkpoints/latest_checkpointed_iteration.txt']
+        source_jobs = {'143': ['COMPLETED', '0:0'], '154': ['FAILED', '1:0'], '161': ['FAILED', '1:0']}
+    elif profile != 'original':
+        raise ValueError('Unknown explicit retention profile.')
     payload_names = {f'__{rank}_0.distcp' for rank in range(16)}
     small_names = {'.metadata', 'metadata.json', 'debug_events/actor_cell0_rank0.jsonl',
                    'debug_events/rollout_manager.jsonl'}
@@ -92,29 +117,31 @@ def prune(root_text, apply=False, attempt=1):
         queue = subprocess.check_output(['squeue', '-h', '-o', '%i|%T|%N'], text=True)
         if queue.strip():
             raise RuntimeError('Refusing to prune while scheduler jobs are active.')
-        jobs = subprocess.check_output(['sacct', '-j', '139,143', '-X', '-n', '-P',
+        jobs = subprocess.check_output(['sacct', '-j', ','.join(source_jobs), '-X', '-n', '-P',
                                         '-o', 'JobID,State,ExitCode'], text=True)
         states = {line.split('|')[0]: line.split('|')[1:3] for line in jobs.splitlines() if line.strip()}
-        if states.get('143') != ['COMPLETED', '0:0'] or states.get('139') != ['FAILED', '1:0']:
+        if any(states.get(job) != value for job, value in source_jobs.items()):
             raise RuntimeError('Expected completed/failed source jobs were not found.')
         return {'squeue': queue, 'sacct': jobs}
 
     scheduler = scheduler_gate()
-    latest = root / 'training/sync-grpo-v9/checkpoints/latest_checkpointed_iteration.txt'
-    old_latest = root / 'training/sync-grpo-v6/checkpoints/latest_checkpointed_iteration.txt'
-    for path, value in ((latest, '2'), (old_latest, '1')):
+    for relative, value in pointer_values.items():
+        path = root / relative
         if path.is_symlink() or path.read_text().strip() != value:
             raise ValueError('Latest checkpoint marker differs from expected completed iteration.')
-    log = root / 'training/sync-grpo-v9/logs/gpu-nodes-0/miles.out'
+    training_directory = (root / keep).parents[1]
+    iteration = int(Path(keep).name.removeprefix('iter_'))
+    log = training_directory / 'logs/gpu-nodes-0/miles.out'
     success = [line.strip() for line in log.open(errors='replace')
-               if 'successfully saved checkpoint from iteration       2' in line]
+               if f'successfully saved checkpoint from iteration {iteration:7d}' in line]
     if not success:
         raise RuntimeError('Latest checkpoint has no completed-save log receipt.')
     manifests = {relative: inventory(relative) for relative in expected_hashes}
-    remove = [relative for relative in expected_hashes if relative != keep]
+    remove = [relative for relative in expected_hashes if relative not in retained]
     usage = shutil.disk_usage(root)
     result = {
         'schema_version': 1, 'status': 'planned', 'root': str(root), 'retained_checkpoint': keep,
+        'retained_checkpoints': retained, 'profile': profile,
         'pruned_checkpoints': remove, 'inventory': manifests, 'scheduler': scheduler,
         'latest_save_receipt': success, 'disk_before': dict(zip(('total', 'used', 'free'), usage)),
         'planned_payload_bytes': sum(row['bytes'] for relative in remove for row in manifests[relative]
@@ -122,7 +149,7 @@ def prune(root_text, apply=False, attempt=1):
         'authorization': 'User explicitly authorized removal of older checkpoints from this dummy run.',
         'resume_verified': False,
         'payload_hashes_computed': False,
-        'scope': 'Preserve latest complete save, all metadata/debug logs and rollout state; delete only 64 explicitly enumerated old tensor payloads. No archive upload or resume claim.',
+        'scope': 'Preserve retained saves, all metadata/debug logs and rollout state; delete only explicitly enumerated old tensor payloads. No archive upload or resume claim.',
         'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     if not apply:
@@ -159,10 +186,16 @@ def prune(root_text, apply=False, attempt=1):
         completed.append(relative)
         write(evidence / 'progress.json', {'completed': completed})
     # Remove the failed attempt's stale resume pointer, preserving its exact bytes.
-    archived_pointer = evidence / 'preserved' / old_latest.relative_to(root)
-    os.rename(old_latest, archived_pointer)
-    if inventory(keep) != manifests[keep] or latest.read_text().strip() != '2':
+    for relative in obsolete_pointers:
+        archived_pointer = evidence / 'preserved' / relative
+        archived_pointer.parent.mkdir(parents=True, exist_ok=True)
+        os.rename(root / relative, archived_pointer)
+    if any(inventory(relative) != manifests[relative] for relative in retained):
         raise RuntimeError('Retained checkpoint changed during cleanup.')
+    for relative, value in pointer_values.items():
+        path = evidence / 'preserved' / relative if relative in obsolete_pointers else root / relative
+        if path.read_text().strip() != value:
+            raise RuntimeError('Checkpoint pointer changed during cleanup.')
     if any((root / relative).exists() for relative in remove):
         raise RuntimeError('An old checkpoint directory remains in the original location.')
     result.update(status='ok', completed=completed,
@@ -184,18 +217,19 @@ def main():
     parser.add_argument('--kubeconfig', required=True)
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--attempt', type=int, default=1)
+    parser.add_argument('--profile', choices=['original', 'post-job161'], default='original')
     args = parser.parse_args()
     run = Run(args.run_dir)
     if run.root.name != '20260902-172037-a3b210':
         raise ValueError('Only the operator-authorized dummy run is permitted.')
     label = f'02-checkpoint-retention-v{args.attempt}' + ('' if args.apply else '-plan')
     phase = run.phase(label)
-    source = inspect.getsource(prune) + '\nimport sys,json\nprint(json.dumps(prune(sys.argv[1], sys.argv[2] == "apply", int(sys.argv[3]))))\n'
+    source = inspect.getsource(prune) + '\nimport sys,json\nprint(json.dumps(prune(sys.argv[1], sys.argv[2] == "apply", int(sys.argv[3]), sys.argv[4])))\n'
     atomic(phase.path / 'remote-prune.py', source)
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
     rc, out, _ = phase.command(['kubectl', '--kubeconfig', args.kubeconfig, '-n', 'slurm', 'exec',
         'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', source, remote,
-        'apply' if args.apply else 'plan', str(args.attempt)], timeout=120)
+        'apply' if args.apply else 'plan', str(args.attempt), args.profile], timeout=120)
     result = json.loads(out.splitlines()[-1]) if not rc else {'status': 'fail', 'error': 'Cleanup stopped; inspect command logs and remote progress before any retry.'}
     atomic(phase.path / 'result.json', result)
     phase.finish('fail' if rc else 'ok',

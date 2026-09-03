@@ -51,8 +51,9 @@ def main():
     ap.add_argument('--attempt', type=int, default=1)
     ap.add_argument('--environment-attempt', type=int, required=True)
     ap.add_argument('--steps', type=int, choices=range(2, 6), default=3)
-    ap.add_argument('--nvml-attempt', type=int, default=5)
+    ap.add_argument('--nvml-attempt', type=int, default=7)
     ap.add_argument('--tito-attempt', type=int, default=4)
+    ap.add_argument('--native-test-attempt', type=int, default=4)
     a = ap.parse_args()
     repo = Path(__file__).resolve().parents[1]
     miles = repo / 'vendor/miles'
@@ -75,15 +76,19 @@ def main():
         if hashlib.sha256(qualified).hexdigest() != sha256(repo / 'scripts' / name):
             phase.finish('fail', failure_summary='Collector differs from the load-qualified revision: ' + name, refresh=False)
             return 1
-    journal_gate = run.root / 'tests/02-rollout-journal-native-audit-v3-a2/result.json'
-    journal_proof = json.loads(journal_gate.read_text())['result']
+    journal_gate = run.root / f'tests/02-rollout-journal-native-audit-v{a.native_test_attempt}-a1/result.json'
+    journal_audit = json.loads(journal_gate.read_text())
+    journal_proof = journal_audit['result']
     changed_since_tests = subprocess.check_output(['git', '-C', str(miles), 'diff', '--name-only', journal_proof['miles_revision'], miles_sha], text=True).splitlines()
     allowed = {'scripts/run_qwen3_6_35b_a3b_posttrainingx.py', 'tests/fast/launch_scripts/test_qwen36_posttrainingx.py',
                'docs/models/qwen/qwen3-6-moe.md',
                'tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt'}
-    if (journal_proof['exit_code'] != 0 or journal_proof['counts'] != dict(tests=54, failures=0, errors=0, skipped=0)
+    from stage_rollout_journal_tests import TESTS as required_native_tests
+    if (journal_audit['findings'] or journal_proof['exit_code'] != 0
+            or journal_proof['counts'] != dict(tests=96, failures=0, errors=0, skipped=0)
+            or journal_proof['test_paths'] != required_native_tests
             or not set(changed_since_tests) <= allowed):
-        phase.finish('fail', failure_summary='Native journal candidate differs from the tested core or CPU tests failed.', refresh=False)
+        phase.finish('fail', failure_summary='Native journal/cleanup candidate differs from the tested core or CPU tests failed.', refresh=False)
         return 1
     tito_gate = run.root / f'tests/02-tito-candidate-validation-v{a.tito_attempt}/result.json'
     tito_proof = json.loads(tito_gate.read_text())
@@ -147,6 +152,7 @@ def main():
         'task_ids': ['task_06652', 'task_14118', 'task_10753', 'task_09467'],
         'layout': '2t2r', 'optimizer_steps_requested': a.steps, 'group_size': 8, 'global_batch_size': 16,
         'rollout_journal': 'enabled; immutable native sample and controller receipts',
+        'release_pinned_backups_on_exit': True,
         'journal_native_test_sha256': sha256(journal_gate),
         'checkpoint_space_required_bytes': required_bytes,
         'diagnostic_reason': 'Per-API NVML timing and durable rollout accounting after failed job154; its 12s telemetry gate remains unchanged.',
