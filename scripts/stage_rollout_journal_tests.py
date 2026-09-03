@@ -55,8 +55,12 @@ def run_tests(run, phase, attempt):
     runtime = run.root / f'images/rollout-journal-native-tests-v{attempt}'
     runtime.mkdir(exist_ok=False)
     env = prepare(runtime)
-    env['NVIDIA_VISIBLE_DEVICES'] = 'void'
-    command = ['enroot', 'start', '--pid', '--ipc', '--rw', '--env', 'NVIDIA_VISIBLE_DEVICES=void',
+    # The site's inspected NVIDIA hook mounts driver libraries without devices
+    # for `none`. Transformer Engine imports libcuda even in these CPU tests.
+    env['NVIDIA_VISIBLE_DEVICES'] = 'none'
+    env['NVIDIA_DRIVER_CAPABILITIES'] = 'compute,utility'
+    command = ['enroot', 'start', '--pid', '--ipc', '--rw', '--env', 'NVIDIA_VISIBLE_DEVICES=none',
+        '--env', 'NVIDIA_DRIVER_CAPABILITIES=compute,utility',
         '--env', 'CUDA_VISIBLE_DEVICES=', '--env', 'PYTHONDONTWRITEBYTECODE=1',
         '--env', 'PYTHONPATH=/miles-source:/root/Megatron-LM', '--env', 'PYTEST_DISABLE_PLUGIN_AUTOLOAD=1',
         '--env', 'HF_HUB_OFFLINE=1', '--env', 'TRANSFORMERS_OFFLINE=1']
