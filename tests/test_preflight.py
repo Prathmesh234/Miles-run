@@ -43,6 +43,26 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_ray_placement_capture_excludes_runtime_secrets_and_rejects_partial_state(self):
+        from collect_ray_placements import placements
+        row = dict(actor_id='a', node_id='n', state='ALIVE', class_name='Trainer',
+            required_resources={'GPU': 1}, serialized_runtime_env='do-not-persist', call_site='private')
+        body = dict(result=[row], num_filtered=1, num_after_truncation=1, warnings=[], partial_failure_warning='')
+        packet = dict(result=True, data={'result': body})
+        result = placements(packet, {'n': 'node'})
+        self.assertEqual(result[0]['assigned_hostname'], 'node')
+        self.assertNotIn('serialized_runtime_env', result[0])
+        self.assertNotIn('call_site', result[0])
+        with self.assertRaisesRegex(ValueError, 'outside'):
+            placements(packet, {})
+        body['num_filtered'] = 2
+        with self.assertRaisesRegex(ValueError, 'truncated'):
+            placements(packet, {'n': 'node'})
+        body['num_filtered'] = 1
+        body['partial_failure_warning'] = 'missing node'
+        with self.assertRaisesRegex(ValueError, 'partial'):
+            placements(packet, {'n': 'node'})
+
     def test_teardown_audit_requires_every_rank_and_full_host_release(self):
         from audit_nvml_validation import audit_teardown_log
         events = []
