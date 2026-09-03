@@ -108,6 +108,40 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(compare_values(torch.optim.Adam, torch.optim.Adam)[0]['equal'])
         self.assertFalse(compare_values(torch.optim.Adam, torch.optim.SGD)[0]['equal'])
 
+    def test_resume_auditor_rejects_forged_equality_exclusions_and_incomplete_coverage(self):
+        import copy
+        import torch
+        from audit_resume_replay import audit_comparisons, canonical_gpu_uuid
+        from resume_checkpoint_probe import compare_values
+        state = dict(model={'weight': torch.ones(2)}, optimizer={0: {'param_state': {
+            0: {'padding': False, 'exp_avg': torch.zeros(2)},
+            1: {'padding': True, 'exp_avg': torch.zeros(2)}}}},
+            rng_state=torch.ones(4, dtype=torch.uint8), opt_param_scheduler={'num_steps': 16}, iteration=0)
+        expected = copy.deepcopy(state)
+        expected['optimizer'][0]['param_state'][1]['exp_avg'].fill_(2)
+        rows = compare_values(state, expected)
+        summary = dict(leaves=len(rows), failed_leaves=0, tensor_bytes=sum(r.get('bytes', 0) for r in rows),
+            excluded_padding_leaves=1, excluded_padding_bytes=8, missing_keys=[], unexpected_keys=[], findings=[],
+            duration_s=1, comparison_contract='logical_state_v2_exact_nonpadding_tensors_and_class_identity')
+        self.assertFalse(audit_comparisons(rows, summary)['findings'])
+        gpu = '042b468a-5f46-4b8f-c659-2be865525f4a'
+        self.assertEqual(canonical_gpu_uuid('GPU-' + gpu), canonical_gpu_uuid(gpu))
+        with self.assertRaises(ValueError):
+            canonical_gpu_uuid('GPU-invalid')
+        for mutation in ('hash', 'exclusion', 'missing', 'duplicate', 'summary'):
+            changed, total = copy.deepcopy(rows), dict(summary)
+            if mutation == 'hash':
+                next(r for r in changed if r['path'] == 'state/model/weight')['expected_sha256'] = 'incorrect'
+            elif mutation == 'exclusion':
+                next(r for r in changed if r['path'] == 'state/model/weight')['required_for_resume'] = False
+            elif mutation == 'missing':
+                changed = [r for r in changed if not r['path'].startswith('state/rng_state')]
+            elif mutation == 'duplicate':
+                changed.append(changed[0])
+            else:
+                total['failed_leaves'] = 1
+            self.assertTrue(audit_comparisons(changed, total)['findings'], mutation)
+
     def test_sync_digest_reports_current_findings_without_historical_failure_claims(self):
         from report_journal_validation import render
         root = Path(__file__).resolve().parents[1]
