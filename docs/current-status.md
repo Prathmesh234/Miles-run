@@ -4,15 +4,15 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job154: 3; job143: 3 historical validation updates. Neither qualifies the measured benchmark.**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **154**, 32 GPUs, 2t2r, 3 requested steps. Four-node BF16 synchronous validation completed three updates. Tensor audit passed for all 48 trained samples. Native telemetry stalled for 15.22/15.48s on trainer nodes during teardown; 32 of 80 controller episodes lack native sample joins. Not async, resume, or held-out quality qualification.
+Latest training allocation: Slurm **161**, 32 GPUs, 2T/2R, 2 requested steps. Bounded validation of native trajectory journal and per-API NVML timing, not the final hill climb. Retain both requested checkpoints; preserve the12s telemetry gate.
 
-**Allocation status: FAILED, Slurm exit 1:0; three optimizer updates and three saves verified**
+**Allocation status: RUNNING; startup observed, optimizer execution not yet confirmed**
 
-Status snapshot: `2026-09-03T02:13:30.568423Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T02:37:14.470203Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
-- Committed B200 launcher with whole-node role mapping and separate trainer/rollout placement. The current 17-commit Miles patch series replays to its recorded tree; runtime source remains pinned independently of the image-bundled checkout.
+- Committed B200 launcher with whole-node role mapping and separate trainer/rollout placement. The current 19-commit Miles patch series replays to its recorded tree; runtime source remains pinned independently of the image-bundled checkout.
 - Four-node preflight: jobs 109/110 reconciled32 B200 GPUs and exercised node-local/four-node all-reduce correctness plus all32 active400G IB rails. Job 111 passed 2 GiB fio per node and180 one-second Lustre samples per node. These are bounded checks, not saturation/burn-in results.
 - Pinned runtime: Python 3.12.3, Torch 2.13.0+cu130, CUDA 13.0.88, NCCL 2.29.7, Ray 2.58.0, SGLang 0.5.19.dev52+g98bb145, OpenAI 2.6.1; Megatron 8c1e05747eb612b382df2632783df5c83a853646. Run-local Enroot settings and NVIDIA_VISIBLE_DEVICES=all leave cluster-wide configuration unchanged.
 - Qwen model revision 995ad96eacd98c81ed38be0c5b274b04031597b0:40 files /71,926,865,825 bytes individually hash-verified. Pinned32,608,673,792-byte Miles image SHA256 2262e639192be83c00b285a79bcda07c6a23a06295cb4828aecc879e0f2d2698.
@@ -31,17 +31,17 @@ Status snapshot: `2026-09-03T02:13:30.568423Z`; inspect Slurm for live state.
 - Optional quantization: jobs 147/148 passed expert MXFP8 byte checks and full conversion (71.904 GB to39.502 GB tensor payload). Metadata-only repackaging preserved weights. Serving149/150/151 failed before readiness; no quantized optimizer step or speedup/quality claim.
 - Batch compatibility: pinned Megatron calculator rejects global64 at denseDP24 and accepts96 across DP8/16/24. Stage4 stays64; Stage5 common96 requires actual trainer validation. CollectiveX/DeepEP V2 sources are pinned, but the Miles image has the incompatible legacy API; no CollectiveX performance result.
 - Evidence/retention: authorized pruning removed 1,989,034,824,640 bytes of older dummy checkpoint payloads while retaining latest checkpoint and metadata. No S3 archive configured. Public telemetry keeps four dense files per job, not raw chunks; job 154 summarizes3,657,250 records in 156,009 bytes and explicitly fails its coverage gate.
-- Tests: root evidence/launcher-preparation64 passed; targeted launcher28 passed; OpenEnv 101 passed/3 skipped. Latest tested full Linux Miles suite had 597 passes/12 failures/4 errors matching its baseline failures; this is not a whole-tree green claim.
+- Tests: root evidence suite 66 passed; updated targeted launcher/snapshot checks 31 passed. Pinned CPU journal/scheduler/cursor tests passed 54/54 in job160. macOS broad launcher attempt failed (382 passed, 31 failed, 122 errors, including absent /proc); prior pinned Linux baseline remains 597 passed/12 failures/4 errors. No whole-suite green claim.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven. | Instrument the actual trainer/Ray allocation lifecycle; simple memory-context and EP8 NCCL-context controls156/157 both passed and did not reproduce154. Preserve12s deadline and failed coverage state. |
-| Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
+| Full infrastructure telemetry | Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven. | Instrument the actual trainer/Ray lifecycle; memory-only, EP8 NCCL, and fragmented-allocation teardown controls156/157/158 passed without reproducing154. Keep the 12s deadline and the failed training coverage state. |
+| Broad launcher suite | 31 targeted current launcher/snapshot tests passed after refreshing an outdated snapshot of existing runtime choices; broad macOS run has platform/dependency failures. Prior pinned Linux run597passed/12failures/4errors. | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
-| GRPO, async and resume fidelity | Job15448 tensor samples passed;32 of80 controller episodes have no durable native sample join. Job1557 opt-in cursor/buffer tests passed; full restart and async state remain unqualified. | Add durable lifecycle receipts for every sampled group, including discarded/cancelled work; test model/optimizer/scheduler/RNG/queue/policy resume on frozen samples. |
+| GRPO, async and resume fidelity | Job154: 48 tensor samples passed; 32 of80 episodes remain unjoined. Job160: 54 native journal/cancellation/scheduler/cursor tests passed. Exact TITO replay preserves32 samples and rejects7 negative controls. Journal now explicitly selectable; full runtime accounting remains unqualified. | Validate the durable sample/controller journal during real model execution, then qualify full-state resume and asynchronous accounting. Native CPU tests do not establish those gates. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |

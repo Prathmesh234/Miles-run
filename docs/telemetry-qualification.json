@@ -18,7 +18,7 @@
       "scope": "Neither memory-only nor EP8 NCCL context teardown control reproduces this training-runtime stall. Original failed training gate remains failed."
     },
     "job_id": 153,
-    "local_tests": "64 passed; scoped health, API timing and publication-gate regressions included",
+    "local_tests": "66 passed; scoped health, API timing, publication and journal reconciliation regressions included",
     "nodes": [
       {
         "cli_bracket_passed": true,
@@ -115,6 +115,35 @@
         ],
         "scope": "nccl-context-teardown",
         "sha256": "9c63d2ab0e58985092e1b8e0898e625f74702d0b02f3825483ecb2e34a558009"
+      },
+      {
+        "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v5/result.json",
+        "findings": [],
+        "job_id": 158,
+        "nodes": [
+          {
+            "hostname": "gpu-nodes-0",
+            "max_gpu_sample_gap_s": 1.850633408059366,
+            "status": "ok"
+          },
+          {
+            "hostname": "gpu-nodes-1",
+            "max_gpu_sample_gap_s": 1.7083853839430958,
+            "status": "ok"
+          },
+          {
+            "hostname": "gpu-nodes-2",
+            "max_gpu_sample_gap_s": 2.830383514999994,
+            "status": "ok"
+          },
+          {
+            "hostname": "gpu-nodes-3",
+            "max_gpu_sample_gap_s": 1.923990321927704,
+            "status": "ok"
+          }
+        ],
+        "scope": "fragmented-nccl-teardown: 4096x16MiB allocations per GPU, 64GiB/GPU plus EP8 NCCL, normal process exit; no training workload",
+        "sha256": "331944125eacd7b0867454332bd226744c6935a8ad2b0285ac735449d312330a"
       }
     ]
   },
