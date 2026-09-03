@@ -57,6 +57,25 @@ class EvidenceTests(unittest.TestCase):
         self.assertFalse(compare_values({'state': 1}, {})[0]['equal'])
         self.assertEqual(move_tensors({'metadata': ['unchanged', 3]}), {'metadata': ['unchanged', 3]})
 
+    def test_resume_checkpoint_identity_rejects_modified_and_symlinked_payloads(self):
+        from resume_checkpoint_probe import verify_payload_identity
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = root / 'rank.distcp'
+            payload.write_bytes(b'fixture')
+            info = payload.stat()
+            expected = {'rank.distcp': dict(bytes=info.st_size, inode=info.st_ino, mtime_ns=info.st_mtime_ns)}
+            verify_payload_identity(root, expected)
+            payload.write_bytes(b'changed fixture')
+            with self.assertRaisesRegex(ValueError, 'identity changed'):
+                verify_payload_identity(root, expected)
+            payload.unlink()
+            other = root / 'other'
+            other.write_bytes(b'fixture')
+            payload.symlink_to(other)
+            with self.assertRaisesRegex(ValueError, 'symlink refused'):
+                verify_payload_identity(root, expected)
+
     def test_sync_digest_reports_current_findings_without_historical_failure_claims(self):
         from report_journal_validation import render
         root = Path(__file__).resolve().parents[1]

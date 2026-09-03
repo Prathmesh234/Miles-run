@@ -10,6 +10,7 @@ import gc
 import hashlib
 import io
 import json
+import logging
 import os
 from pathlib import Path
 import socket
@@ -116,6 +117,7 @@ def verify_state(args, model, optimizer, scheduler, checkpoint, iteration, outpu
     import torch
     import torch.distributed as dist
     from megatron.core import dist_checkpointing, mpu
+    from megatron.core.rerun_state_machine import get_rerun_state_machine
     from megatron.training.checkpointing import _build_sharded_state_dict_metadata, generate_state_dict, get_rng_state
     from megatron.training.utils import unwrap_model
 
@@ -124,7 +126,8 @@ def verify_state(args, model, optimizer, scheduler, checkpoint, iteration, outpu
     rng = get_rng_state(args.ckpt_format, mpu.get_tensor_model_parallel_group(),
                         mpu.get_pipeline_model_parallel_group())
     state = generate_state_dict(args, unwrap_model(model), optimizer, scheduler, rng,
-        iteration=iteration, optim_sd_kwargs=dict(metadata=metadata), model_sd_kwargs=dict(metadata=metadata))
+        iteration=iteration, optim_sd_kwargs=dict(metadata=metadata), model_sd_kwargs=dict(metadata=metadata),
+        rerun_state=get_rerun_state_machine().state_dict(data_iterator=None, ckpt_format=args.ckpt_format))
     state = expand_shards(state)
     expected, missing, unexpected = dist_checkpointing.load(cpu_reference(state), str(checkpoint), strict='return_all')
     components = ('model', 'optimizer', 'opt_param_scheduler', 'rng_state', 'iteration')
@@ -158,6 +161,16 @@ def move_tensors(value):
     return value
 
 
+def verify_payload_identity(root, expected):
+    for name, identity in expected.items():
+        path = root / name
+        if path.is_symlink():
+            raise ValueError('Checkpoint payload symlink refused.')
+        stat = path.stat()
+        if dict(bytes=stat.st_size, inode=stat.st_ino, mtime_ns=stat.st_mtime_ns) != identity:
+            raise ValueError('Frozen checkpoint file identity changed: ' + name)
+
+
 def worker(config):
     import torch
     import torch.distributed as dist
@@ -174,6 +187,8 @@ def worker(config):
     result = dict(schema_version=1, hostname=socket.gethostname(), rank=rank, replica=replica,
         slurm_job_id=os.environ['SLURM_JOB_ID'], started_at=utcnow(), optimizer_steps=0, findings=[])
     try:
+        logging.basicConfig(level=logging.INFO)
+        verify_payload_identity(Path('/run-artifacts'), config['payload_stat'])
         for name, digest in config['small_inputs'].items():
             if sha256(Path('/run-artifacts') / name) != digest:
                 raise ValueError('Frozen input checksum differs: ' + name)
@@ -182,14 +197,29 @@ def worker(config):
         after = checkpoint_root / 'iter_0000001'
         args = copy.deepcopy(load_common_state_dict(str(before))['args'])
         args.rank, args.local_rank, args.world_size = rank, local, 16
-        args.load, args.ckpt_step = str(checkpoint_root), 0
+        # Native Megatron treats ckpt_step=0 as false. An isolated read-only
+        # root with its own tracker selects step zero without editing job167.
+        args.load, args.ckpt_step = '/reload-root', None
         args.no_load_optim = args.no_load_rng = args.finetune = False
         args.use_checkpoint_opt_param_scheduler = True
         args.hf_checkpoint = '/model'
         args.save = args.save_hf = args.save_debug_train_data = args.save_debug_rollout_data = None
         args.save_debug_trajectory_data = args.save_debug_event_data = args.dump_details = None
         args.custom_megatron_before_train_step_hook_path = args.custom_megatron_post_save_hook_path = None
+        if args.stream_optimizer_state_to_disk or args.reset_optimizer_states or args.debug_disable_optimizer:
+            raise ValueError('Replay cannot stream, reset, or disable optimizer state.')
+        if args.custom_megatron_init_path or args.enable_witness:
+            raise ValueError('Unexpected custom initialization or witness path.')
+        if args.dumper_enable or args.save_local_weight_checksum:
+            raise ValueError('Unexpected auxiliary dump path in replay settings.')
+        result['saved_settings'] = {key: getattr(args, key) for key in (
+            'global_batch_size', 'seed', 'data_parallel_random_init', 'deterministic_mode',
+            'enable_mtp_training', 'use_distributed_optimizer', 'bf16', 'lr', 'num_rollout')}
         torch.cuda.set_device(local)
+        from container_fabric_probe import verify_rdma
+        result['opened_hcas'] = verify_rdma()
+        if int(os.environ['WORLD_SIZE']) != 16 or torch.cuda.device_count() != 8:
+            raise ValueError('Replay requires two whole eight-GPU nodes per replica.')
         dist.init_process_group('nccl', device_id=torch.device('cuda', local))
         init(args)
         topology = dict(tp=mpu.get_tensor_model_parallel_world_size(), pp=mpu.get_pipeline_model_parallel_world_size(),
@@ -206,6 +236,15 @@ def worker(config):
         if iteration != 0 or optimizer is None or scheduler is None:
             raise ValueError('Checkpoint load did not restore the required trainer objects.')
         result['loaded_state'] = verify_state(args, model, optimizer, scheduler, before, 0, output, 'loaded-state')
+        # Neither independent replica may step until all 32 ranks pass reload.
+        ready = Path('/probe-output/load-ready')
+        atomic(ready / f'{replica}-{rank:02d}.json', dict(rank=rank, replica=replica, time=utcnow()))
+        deadline = time.monotonic() + 180
+        expected_ready = {f'{rep}-{r:02d}.json' for rep in ('a', 'b') for r in range(16)}
+        while {p.name for p in ready.glob('*.json')} != expected_ready:
+            if time.monotonic() > deadline:
+                raise ValueError('All-rank reload barrier timed out; no optimizer step permitted.')
+            time.sleep(0.5)
         source = Path('/run-artifacts') / config['dump_root'] / 'train_data' / f'1_{rank}.pt'
         dump = torch.load(source, map_location='cpu', weights_only=False)
         if dump['rank'] != rank or dump['rollout_id'] != 1 or dump['cp_size'] != 1:
@@ -223,6 +262,7 @@ def worker(config):
             raise ValueError('Replay optimizer step was not normal.')
         result.update(optimizer_steps=1, step_duration_s=time.monotonic()-started)
         result['next_state'] = verify_state(args, model, optimizer, scheduler, after, 1, output, 'next-state')
+        verify_payload_identity(Path('/run-artifacts'), config['payload_stat'])
         dist.barrier()
     except Exception as exc:
         result['findings'].append(type(exc).__name__ + ': ' + str(exc))
@@ -240,6 +280,14 @@ def cpu_self_test(output):
     from megatron.core import dist_checkpointing
     from megatron.core.dist_checkpointing.mapping import ShardedObject, ShardedTensor
     from megatron.core.dist_checkpointing.serialization import load_common_state_dict
+    # Import the exact replay entrypoints while CUDA remains hidden. This
+    # catches package/API mismatches without building a model or optimizer.
+    from megatron.training.utils import unwrap_model
+    from miles.backends.megatron_utils.model import initialize_model_and_optimizer, train, TrainStepOutcome
+    from miles.backends.training_utils.data import get_data_iterator, get_num_rollouts
+    assert all(callable(f) for f in (unwrap_model, initialize_model_and_optimizer, train,
+                                   get_data_iterator, get_num_rollouts))
+    assert TrainStepOutcome.NORMAL is not None
     from megatron.core.dist_checkpointing.strategies.torch import (
         MCoreSavePlanner, TorchDistSaveShardedStrategy,
         _replace_state_dict_keys_with_sharded_keys, mcore_to_pyt_state_dict,
