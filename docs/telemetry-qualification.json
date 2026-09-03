@@ -18,7 +18,7 @@
       "scope": "Neither memory-only nor EP8 NCCL context teardown control reproduces this training-runtime stall. Original failed training gate remains failed."
     },
     "job_id": 153,
-    "local_tests": "66 passed; scoped health, API timing, publication and journal reconciliation regressions included",
+    "local_tests": "67 passed; includes call-latency missing-GPU, wrong-identity, nonfinite and >12s failure controls.",
     "nodes": [
       {
         "cli_bracket_passed": true,
@@ -117,6 +117,14 @@
         "sha256": "9c63d2ab0e58985092e1b8e0898e625f74702d0b02f3825483ecb2e34a558009"
       },
       {
+        "api_timing_audit": {
+          "errors": 0,
+          "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-call-audit-job158-v1/result.json",
+          "observed_calls": 16920,
+          "scope": "Observed NVML call latency only. Slurm outcome, collector continuity, GPU performance and hardware causality require separate evidence; a passing API audit does not qualify the training run.",
+          "sha256": "6dccba67627795969c89fc1f5a1e57bab01f42b20f5864f544b99d4a6694b5e0",
+          "slowest_call_s": 0.9623565500369295
+        },
         "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v5/result.json",
         "findings": [],
         "job_id": 158,

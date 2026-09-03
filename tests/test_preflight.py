@@ -43,6 +43,25 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_nvml_call_audit_keeps_stalls_errors_and_rejects_missing_gpu_or_invalid_timing(self):
+        from audit_nvml_calls import analyze_calls
+        rows = [dict(time='2026-09-03T00:00:00Z', monotonic_s=1.0, hostname='node',
+            slurm_job_id='161', gpu_uuid=gpu, metric='nvml_api_duration', source='persistent-nvml',
+            unit='s', api='memory', value=value, error=None) for gpu, value in [('a', 0.1), ('b', 15.0)]]
+        result = analyze_calls(rows, 'node', 161, {'a', 'b'})
+        self.assertIn('12s', result['findings'][0])
+        self.assertEqual(result['slowest_calls'][0]['gpu_uuid'], 'b')
+        self.assertEqual(result['by_api'][0]['statistics']['max'], 15.0)
+        rows[1]['error'] = 'driver error'
+        self.assertEqual(analyze_calls(rows, 'node', 161, {'a', 'b'})['error_count'], 1)
+        with self.assertRaisesRegex(ValueError, 'every expected GPU'):
+            analyze_calls(rows[:1], 'node', 161, {'a', 'b'})
+        with self.assertRaisesRegex(ValueError, 'identity'):
+            analyze_calls(rows, 'wrong-node', 161, {'a', 'b'})
+        rows[1]['value'] = float('nan')
+        with self.assertRaisesRegex(ValueError, 'Invalid NVML call timing'):
+            analyze_calls(rows, 'node', 161, {'a', 'b'})
+
     def test_journal_joins_discarded_and_cancelled_work_without_reward_inference(self):
         from audit_trajectory_journal import audit_journal
         from copy import deepcopy
