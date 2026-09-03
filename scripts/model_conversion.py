@@ -21,6 +21,10 @@ MILES_SHA = 'b61dbe83ee815412b72c84ed367ffd329d7922d4'
 MEGATRON_SHA = '8c1e05747eb612b382df2632783df5c83a853646'
 
 
+def conversion_stem(format_name):
+    return {'bf16': 'model-conversion', 'mxfp8-probe': 'qwen-mxfp8-probe'}[format_name]
+
+
 def torchrun_prefix(ranks):
     return [sys.executable, '-m', 'torch.distributed.run', '--rdzv-backend=static',
             '--master-addr=127.0.0.1', '--master-port=31873', '--nnodes=1', '--node-rank=0',

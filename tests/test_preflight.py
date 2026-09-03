@@ -43,6 +43,92 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_mxfp8_probe_uses_separate_paths_and_preserves_whole_node_visibility(self):
+        from run_model_conversion import container_command
+
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Run.create(Path(temporary) / 'run', {})
+            (run.root / 'images').mkdir()
+            with patch('run_model_conversion.prepare', return_value={}), patch.dict(os.environ, SLURM_JOB_ID='999'):
+                command = container_command(run, Path('/code'), 1, Path('/pinned/miles'), 'mxfp8-probe')
+            self.assertIn('/ptx/qwen_mxfp8_probe.py', command)
+            self.assertNotIn('/ptx/model_conversion.py', command)
+            self.assertIn('NVIDIA_VISIBLE_DEVICES=all', command)
+            self.assertTrue((run.root / 'images/qwen-mxfp8-probe-runtime-v1').is_dir())
+            self.assertIn('/pinned/miles:/miles-source:none:bind,ro,x-create=dir', command)
+            with patch('run_model_conversion.prepare', return_value={}), patch.dict(os.environ, SLURM_JOB_ID='999'):
+                baseline = container_command(run, Path('/code'), 1, Path('/pinned/miles'))
+            self.assertIn('/ptx/model_conversion.py', baseline)
+            self.assertTrue((run.root / 'images/model-conversion-runtime-v1').is_dir())
+
+    def test_qwen_mxfp8_expert_unpacking_preserves_expert_gate_up_and_scale_order(self):
+        import torch
+        from convert_qwen_mxfp8 import unpack
+
+        name = 'model.language_model.layers.0.mlp.experts.gate_up_proj'
+        weights = torch.arange(2 * 4 * 32).reshape(2, 4, 32)
+        parts = dict(unpack(name, weights))
+        prefix = 'model.language_model.layers.0.mlp.experts.'
+        restored = torch.stack([torch.cat([parts[f'{prefix}{i}.{p}_proj.weight'] for p in ('gate', 'up')])
+                                for i in range(2)])
+        self.assertTrue(torch.equal(weights, restored))
+        scales = torch.arange(8, dtype=torch.uint8).reshape(2, 4, 1)
+        scale_parts = dict(unpack(name, scales))
+        self.assertEqual(set(parts), set(scale_parts))
+        self.assertTrue(torch.equal(scale_parts[prefix + '1.up_proj.weight'], scales[1, 2:]))
+        down = dict(unpack('mtp.layers.0.mlp.experts.down_proj', weights))
+        self.assertTrue(torch.equal(down['mtp.layers.0.mlp.experts.1.down_proj.weight'], weights[1]))
+        with self.assertRaisesRegex(ValueError, 'even gate/up'):
+            list(unpack(name, torch.zeros(2, 3, 32)))
+
+    def test_qwen_mxfp8_candidate_preserves_gdn_vision_router_and_mtp_glue(self):
+        from convert_qwen_mxfp8 import configuration, precision
+
+        for name in ('model.language_model.layers.0.linear_attn.in_proj_qkv.weight',
+                     'model.visual.blocks.0.mlp.fc1.weight', 'mtp.fc.weight',
+                     'model.language_model.layers.0.mlp.shared_expert_gate.weight'):
+            self.assertEqual(precision(name, [32, 32], 'BF16'), 'source')
+        for name in ('model.language_model.layers.0.mlp.experts.gate_up_proj',
+                     'mtp.layers.0.mlp.experts.down_proj',
+                     'model.language_model.layers.3.self_attn.q_proj.weight'):
+            self.assertEqual(precision(name, [32, 32], 'BF16'), 'mxfp8')
+            with self.assertRaisesRegex(ValueError, 'shape/dtype'):
+                precision(name, [32, 31], 'BF16')
+        with self.assertRaisesRegex(ValueError, 'Unrecognized expert'):
+            precision('model.layers.0.mlp.experts.unknown', [32, 32], 'BF16')
+        original = {'model_type': 'qwen3_5_moe', 'text_config': {'num_hidden_layers': 40, 'num_experts': 256}}
+        converted = configuration(original)
+        self.assertNotIn('quantization_config', original)
+        self.assertIn('linear_attn', converted['quantization_config']['modules_to_not_convert'])
+        with self.assertRaisesRegex(ValueError, 'unquantized'):
+            configuration(converted)
+
+    def test_quantization_audit_uses_actual_stock_selectors_and_model_layout(self):
+        from audit_quantization_recipe import audit, selectors
+
+        miles = Path(__file__).resolve().parents[1] / 'vendor/miles'
+        config = json.dumps({'text_config': {'num_hidden_layers': 40}}).encode()
+        def tensor(name, shape, size):
+            return dict(name=name, shape=shape, dtype='BF16', payload_bytes=size)
+        packed = tensor('model.language_model.layers.0.mlp.experts.gate_up_proj', [256,1024,2048],1024)
+        conv = tensor('model.language_model.layers.0.linear_attn.conv1d.weight', [8192,1,4],64)
+        dense = tensor('model.language_model.layers.0.self_attn.q_proj.weight', [2048,2048],128)
+        rows = [packed,conv,dense]
+        fp8,mxfp8 = selectors(miles)
+        self.assertFalse(fp8(packed))
+        self.assertFalse(mxfp8(packed))
+        self.assertTrue(fp8(conv))
+        self.assertFalse(mxfp8(conv))
+        self.assertTrue(fp8(dense) and mxfp8(dense))
+        inventory = dict(config_sha256=hashlib.sha256(config).hexdigest(),model_type='qwen3_5_moe',tensors=rows)
+        report = audit(inventory,config,miles)
+        self.assertEqual(report['packed_expert_tensor_count'],1)
+        self.assertEqual(report['converters'][0]['non_2d_selected'][0]['shape'],[8192,1,4])
+        self.assertTrue(any('top-level num_hidden_layers' in p for p in report['converters'][1]['problems']))
+        self.assertTrue(all(row['status']=='blocked_stock_recipe' for row in report['converters']))
+        with self.assertRaisesRegex(ValueError,'Configuration differs'):
+            audit(inventory,b'{}',miles)
+
     def test_public_telemetry_preserves_errors_and_rejects_unreviewed_data(self):
         from publish_telemetry import validate_rows
 

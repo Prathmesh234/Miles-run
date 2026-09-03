@@ -1,0 +1,78 @@
+{
+  "candidate": "Qwen-aware expert unpacking, nested text configuration, explicit BF16 GDN/vision exceptions, and matching export/loader precision; not enabled until conversion, hot reload, logprob and gradient checks pass.",
+  "converters": [
+    {
+      "gdn_tensors_selected": 180,
+      "mode": "fp8_blockwise",
+      "non_2d_examples": [
+        {
+          "name": "model.language_model.layers.0.linear_attn.conv1d.weight",
+          "shape": [
+            8192,
+            1,
+            4
+          ]
+        }
+      ],
+      "non_2d_selected_count": 30,
+      "packed_expert_tensors_selected": 0,
+      "problems": [
+        "The block converter unpacks exactly two dimensions but selects non-2D tensors.",
+        "Packed MoE expert names do not end in .weight and are left unquantized by the stock selector."
+      ],
+      "selected_payload_bytes": 3781259264,
+      "selected_tensors": 499,
+      "status": "blocked_stock_recipe",
+      "vision_tensors_selected": 110
+    },
+    {
+      "gdn_tensors_selected": 150,
+      "mode": "mxfp8",
+      "non_2d_examples": [],
+      "non_2d_selected_count": 0,
+      "packed_expert_tensors_selected": 0,
+      "problems": [
+        "The MXFP8 converter requires top-level num_hidden_layers; this model nests it under text_config.",
+        "Packed MoE expert names do not end in .weight and are left unquantized by the stock selector."
+      ],
+      "selected_payload_bytes": 3511549952,
+      "selected_tensors": 442,
+      "status": "blocked_stock_recipe",
+      "vision_tensors_selected": 83
+    }
+  ],
+  "documentation_url": "https://github.com/radixark/miles/blob/0709889b2848f293b5575d50aa3340fa4de5a20d/docs/advanced/low-precision.md",
+  "model_type": "qwen3_5_moe",
+  "packed_expert_payload_bytes": 66035122176,
+  "packed_expert_payload_fraction": 0.9183835089486705,
+  "packed_expert_tensor_count": 82,
+  "payload_bytes": 71903645408,
+  "provenance": {
+    "header_evidence": "tests/02-quantization-model-header-preflight-v1/model-header-inventory.json",
+    "image_digest": "sha256:59a11219eae0defc6594ec678fafe4e897c16904263223f79968cd3e0209a502",
+    "installed_loader_sources": "tests/02-qwen-quantization-sglang-source-v3/manifest.json",
+    "kernel_sha256": "47b13f3dc1d5e144090c45ce253a50de443f47b9a972cc97580a21975a07b8fd",
+    "miles_base_sha": "0709889b2848f293b5575d50aa3340fa4de5a20d",
+    "model_revision": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+    "run_id": "20260902-172037-a3b210",
+    "stock_audit": "tests/02-quantization-recipe-audit-v1/result.json"
+  },
+  "qualification": [
+    "Miles documents MXFP8 on B200 as beta, including BF16-trainer/MXFP8-rollout and matching MXFP8 forward recipes. Its tested models do not list Qwen3.6.",
+    "Qwen-aware candidate selects 249 tensors / 66,892,857,344 input bytes, including all 82 packed expert tensors. GDN, vision, routers, norms, embeddings and MTP glue remain BF16. No full conversion or optimizer change yet.",
+    "Installed SGLang source captured directly from the pinned SquashFS: Qwen loader supports individual expert projections and FP8 scales. Live loader/activation remains untested.",
+    "Bounded B200 probe pre-registers maximum relative L2 reconstruction error 0.06 and byte-exact agreement between packed conversion and Miles per-expert live export. Tests real main/MTP slices and zero control; not a gradient, speed or quality claim.",
+    "Prior source inspection failures retained: v1 timed out pulling an uncached Docker image; v2 assumed a nonexistent standalone mxfp8.py module. v3 discovered and captured installed sources without running Docker.",
+    "Training quantization stays disabled until full load, MTP, broadcast activation, fixed-token logprob/gradient and end-to-end telemetry gates pass. NVFP4 is not enabled."
+  ],
+  "reproducer": ".venv-launch-tests/bin/python scripts/stage_model_conversion.py \\\n  --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \\\n  --kubeconfig /path/to/kubeconfig --format mxfp8-probe --attempt 1",
+  "schema_version": 1,
+  "scope": "Exact stock selection logic replayed on real headers. No weights read, quantized, replaced, or trained.",
+  "source_sha256": {
+    "docs/advanced/low-precision.md": "a6c2174621a1d3f553ca38acdac0fe5a65b45e5b9dc2c2967555ddc7d306305b",
+    "miles_plugins/models/qwen3_5.py": "de034529c9a80a34046b71a3079600899b92ac69074bb212612c1fb7fa47e10b",
+    "tools/convert_hf_to_fp8.py": "02106d1185ff10fc7ae0982513fb4f57cb3f670a9b4e63de41b35c3a781acdce",
+    "tools/convert_hf_to_mxfp8.py": "ada860e4569372acfac37d60c5d667ad843847ef1b9defe4b77a69ac24cfe167"
+  },
+  "tensor_count": 1045
+}
