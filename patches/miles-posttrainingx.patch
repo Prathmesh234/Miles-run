@@ -1,353 +1,122 @@
-diff --git a/docs/models/qwen/qwen3-6-moe.md b/docs/models/qwen/qwen3-6-moe.md
-index d8b988d49cd29bca1841e5b820aecd2a74b8037d..3acfd0c57c2b83937b7ba8da2af63bfc72306820 100644
---- a/docs/models/qwen/qwen3-6-moe.md
-+++ b/docs/models/qwen/qwen3-6-moe.md
-@@ -2,6 +2,61 @@
- title: Qwen3.6 MoE
- description: Launch recipe for Qwen3.6-35B-A3B with MTP training and EAGLE speculative rollout.
- ---
-+
-+## Disaggregated B200 agentic-RL benchmark
-+
-+`scripts/run_qwen3_6_35b_a3b_posttrainingx.py` combines this model recipe with
-+the fully asynchronous OpenEnv control flow. It requires four eight-GPU B200
-+nodes and an external, run-owned Ray cluster. It never starts or kills shared
-+Ray, Miles, SGLang, or Redis processes.
-+
-+The `--layout` choices are `1t3r`, `2t2r`, and `3t1r`. Each rollout node hosts
-+one EP8 engine. The trainer retains TP1/EP8/CP1/PP1/ETP1 and the cookbook MTP,
-+optimizer, and recomputation settings. It uses broadcast weight updates at
-+interval one, staleness one, and sample-granularity submission. `retract` is
-+the initial pause mode. Select `--pause-generation-mode in_place` only after
-+the broadcast activation test passes.
-+
-+This is a benchmark implementation awaiting GPU validation, not a qualified
-+performance recipe. Supply pinned checkpoints and clean Terminal-Lego or TMAX
-+prompt data. Terminal-Bench 2.1 is reserved for separate offline evaluation.
-+The launcher does not install packages, download benchmark tasks, assert
-+checkpoint/resume fidelity, or bypass the environment-isolation gate.
-+
-+```bash
-+python scripts/run_qwen3_6_35b_a3b_posttrainingx.py \
-+    --hardware B200 --layout 2t2r --execution async \
-+    --output-dir /shared/posttrainingx/runs/vultr-b200-slurm \
-+    --run-id example --model-dir /shared/posttrainingx/runs/vultr-b200-slurm/example/models \
-+    --openenv-env-url http://ENV_CONTROLLER:8003 --num-rollout 400
-+```
-+
-+Use `--hf-checkpoint` and `--ref-load` when the pinned HF and converted
-+checkpoint directories do not follow the cookbook's default names. These
-+options select inputs; they do not download, convert, or validate them.
-+
-+Use `--execution sync --num-rollout 3` for the optimizer correctness test. The
-+site adapter must validate inventory, assets, environment isolation, and
-+serving first. `--host-map` points at a JSON object with `schema_version: 1`
-+and a `nodes` list. Each node supplies `hostname`, numeric IPv4 `ray_node_ip`,
-+`role` (`trainer` or `rollout`), and all eight physical `gpu_uuids`. List trainer
-+nodes first, then rollout nodes. Rotate that order to rotate physical roles.
-+Ray placement is rejected if a host or physical GPU differs from the map.
-+For a resume launch, provide a new `--placement-record-path` so the previous
-+placement record remains immutable.
-+
-+The optimizer budget defaults to 400 steps with saves every 50 steps. This
-+does not guarantee a quality improvement. Evaluation budgets and the final
-+comparison must be pre-registered independently of Terminal-Bench outcomes.
-+Megatron's dense-parameter DP and expert DP are distinct quantities. With TP1,
-+dense DP has one rank per trainer GPU, while expert DP equals trainer-node
-+count. The 2T/2R reference keeps rollout batch 8, group size 8, and global batch
-+64. For the controlled three-layout sweep, use `--rollout-batch-size 12
-+--global-batch-size 96` in **every** layout: 96 is divisible by dense DP8, DP16,
-+and DP24. The launcher rejects incompatible batches, including the default
-+64 with `3t1r`; it never silently rounds or drops samples. Runtime and gradient
-+validation must still pass before that sweep is qualified.
-+
- ## 1. Model Introduction
+From ec73981bd361fcd09c48255f922d9f143fe55fe6 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 10:56:12 -0700
+Subject: [PATCH 01/17] Support external Ray submission without broad process
+ cleanup
+
+---
+ miles/utils/external_utils/command_utils.py | 39 ++++++++++++---------
+ tests/fast/utils/test_command_utils.py      | 13 +++++++
+ 2 files changed, 35 insertions(+), 17 deletions(-)
+
+diff --git a/miles/utils/external_utils/command_utils.py b/miles/utils/external_utils/command_utils.py
+index a8d527011..67842aa32 100644
+--- a/miles/utils/external_utils/command_utils.py
++++ b/miles/utils/external_utils/command_utils.py
+@@ -148,6 +148,8 @@ def fp8_cast_bf16(path_src, path_dst):
+ @dataclass
+ class ExecuteTrainConfig:
+     cuda_core_dump: bool = False
++    external_ray: bool = False
++    cleanup_existing_processes: bool = True
+     num_nodes: int = field(default_factory=lambda: int(os.environ.get("SLURM_JOB_NUM_NODES", "1")))
+     extra_env_vars: str = ""
+     output_dir: str = "/root/shared_data"
+@@ -176,28 +178,31 @@ def execute_train(
+         config = ExecuteTrainConfig()
+     if not os.path.isabs(train_script):
+         train_script = f"{repo_base_dir}/{train_script}"
+-    external_ray = get_bool_env_var("MILES_SCRIPT_EXTERNAL_RAY")
++    external_ray = config.external_ray or get_bool_env_var("MILES_SCRIPT_EXTERNAL_RAY")
++    if not config.cleanup_existing_processes and not external_ray:
++        raise ValueError("Disabling process cleanup requires an externally managed Ray cluster.")
+     master_addr = os.environ.get("MASTER_ADDR", "127.0.0.1")
  
- [Qwen3.6-35B-A3B](https://github.com/QwenLM/Qwen3) is the sparse MoE branch of
-diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
-new file mode 100644
-index 0000000000000000000000000000000000000000..abcc7e2d445b02ea38b61b90f09680fcf6604917
---- /dev/null
-+++ b/examples/experimental/openenv/posttrainingx_local_agent.py
-@@ -0,0 +1,194 @@
-+"""Clean local-file OpenEnv transport; Miles retains sampling and token tracing.
+     train_backend_fsdp = "--train-backend fsdp" in train_args
+     assert train_backend_fsdp == (megatron_model_type is None)
+ 
+-    exec_command_cpu(
+-        "pkill -9 sglang; "
+-        "sleep 3; "
+-        f"{'' if external_ray else 'ray stop --force; '}"
+-        f"{'' if external_ray else 'pkill -9 ray; '}"
+-        # cannot be run in CI, o/w kill the parent script
+-        # TODO: do we really need this kill? (or can we instead kill miles)
+-        # "pkill -9 python; "
+-        "pkill -9 miles; "
+-        "sleep 3; "
+-        f"{'' if external_ray else 'pkill -9 ray; '}"
+-        # "pkill -9 python; "
+-        "pkill -9 miles; "
+-        "pkill -9 redis; "
+-        "true; "
+-    )
++    if config.cleanup_existing_processes:
++        exec_command_cpu(
++            "pkill -9 sglang; "
++            "sleep 3; "
++            f"{'' if external_ray else 'ray stop --force; '}"
++            f"{'' if external_ray else 'pkill -9 ray; '}"
++            # cannot be run in CI, o/w kill the parent script
++            # TODO: do we really need this kill? (or can we instead kill miles)
++            # "pkill -9 python; "
++            "pkill -9 miles; "
++            "sleep 3; "
++            f"{'' if external_ray else 'pkill -9 ray; '}"
++            # "pkill -9 python; "
++            "pkill -9 miles; "
++            "pkill -9 redis; "
++            "true; "
++        )
+ 
+     if not external_ray:
+         exec_command_cpu(
+diff --git a/tests/fast/utils/test_command_utils.py b/tests/fast/utils/test_command_utils.py
+index 1c7727ae1..91994128e 100644
+--- a/tests/fast/utils/test_command_utils.py
++++ b/tests/fast/utils/test_command_utils.py
+@@ -31,6 +31,19 @@ def _runtime_env(submit_command):
+ 
+ 
+ class TestExecuteTrainConfig:
++    def test_external_allocation_can_submit_without_killing_existing_processes(self, commands):
++        config = command_utils.ExecuteTrainConfig(external_ray=True, cleanup_existing_processes=False)
++        command_utils.execute_train("--train-backend fsdp", 8, None, config=config)
++        assert len(commands) == 1
++        assert "ray job submit" in commands[0]
++        assert all(word not in commands[0] for word in ("pkill", "ray stop", "ray start"))
 +
-+No Verifiers upgrade, re-tokenization, host shell, or post-grading policy action.
-+Operational errors stop this qualification run instead of becoming reward zero.
-+"""
-+import hashlib
-+import json
-+import math
-+from functools import lru_cache
-+from pathlib import Path
++    def test_no_cleanup_requires_an_external_cluster_before_any_shell_command(self, commands):
++        config = command_utils.ExecuteTrainConfig(cleanup_existing_processes=False)
++        with pytest.raises(ValueError, match="externally managed"):
++            command_utils.execute_train("--train-backend fsdp", 8, None, config=config)
++        assert commands == []
 +
-+
-+@lru_cache(maxsize=1)
-+def _qwen_comparator(model_path, template_path, template_kwargs):
-+    # Optional heavy tokenizer imports are deferred until a truncated sample
-+    # actually requires canonical replay. The launch recipe fixes these paths.
-+    from miles.utils.processing_utils import load_tokenizer
-+    from miles.utils.chat_template_utils.tito_tokenizer import Qwen36TITOTokenizer, resolve_fixed_chat_template
-+
-+    fixed_path, _ = resolve_fixed_chat_template('qwen36')
-+    if not template_path or Path(template_path).read_bytes() != Path(fixed_path).read_bytes():
-+        raise RuntimeError('Truncation comparison requires the resolved Qwen3.6 fixed renderer.')
-+    tokenizer = load_tokenizer(model_path, chat_template_path=template_path, trust_remote_code=True)
-+    return Qwen36TITOTokenizer(tokenizer, chat_template_kwargs=json.loads(template_kwargs))
-+
-+
-+def _validate_truncated_tito(args, sample):
-+    """Recheck an unfinished final message without inventing a sampled EOS.
-+
-+    Only the expected canonical sequence loses its single final closer. Native
-+    tokens, logprobs, masks, rewards and the original mismatch are never edited.
-+    Internal boundaries and non-assistant text must still compare successfully.
-+    """
-+    if (getattr(args, 'tito_model', None) != 'qwen36'
-+            or sample.status.value != 'truncated'
-+            or sample.metadata.get('agent_metrics', {}).get('end_reason') != 'length'
-+            or {m.get('type') for m in sample.metadata['tito_session_mismatch']} != {'special_token_count'}):
-+        raise RuntimeError('Strict native session-tokenization mismatch; unsupported truncation context.')
-+    actual = sample.metadata.get('accumulated_token_ids')
-+    if actual != sample.tokens:
-+        raise RuntimeError('Truncated sample no longer equals native accumulated token IDs.')
-+    tito = _qwen_comparator(args.hf_checkpoint, args.chat_template_path,
-+                            json.dumps(args.apply_chat_template_kwargs or {}, sort_keys=True))
-+    comparator = tito.create_comparator()
-+    expected = tito.apply_chat_template(sample.metadata['messages'], add_generation_prompt=False, tokenize=True)
-+    replayed = [m.to_dict() for m in comparator.compare_sequences(expected, actual)]
-+    if replayed != sample.metadata['tito_session_mismatch']:
-+        raise RuntimeError('Canonical replay did not reproduce the native mismatch exactly.')
-+    end_id = tito.tokenizer.convert_tokens_to_ids('<|im_end|>')
-+    while expected and expected[-1] in tito.trailing_token_ids:
-+        expected.pop()
-+    if not expected or expected[-1] != end_id or not actual or actual[-1] == end_id:
-+        raise RuntimeError('Truncation discrepancy is not an unsampled final closer.')
-+    compared = expected[:-1]
-+    remaining = [m.to_dict() for m in comparator.compare_sequences(compared, actual)]
-+    if any(m['type'] != 'assistant_text' for m in remaining):
-+        raise RuntimeError('Strict TITO mismatch remains inside the unfinished message sequence.')
-+    return {'contract': 'qwen36_length_limited_final_message_v1',
-+            'renderer_sha256': hashlib.sha256(Path(args.chat_template_path).read_bytes()).hexdigest(),
-+            'native_ids_sha256': hashlib.sha256(json.dumps(actual).encode()).hexdigest(),
-+            'expected_comparison_ids_sha256': hashlib.sha256(json.dumps(compared).encode()).hexdigest(),
-+            'omitted_expected_final_token_id': end_id, 'native_sample_changed': False,
-+            'remaining_mismatches': remaining}
-+
-+
-+async def run_episode(policy, model_name, messages, request_kwargs, metadata):
-+    from openenv_agent_function import multi_turn, _shared_run_body
-+    from posttrainingx_openenv_client import Action, LocalOpenEnvClient
-+
-+    attempts = metadata.get('posttrainingx_environment_attempts')
-+
-+    async def recorded_run_body(env_cls, context, body):
-+        async def record_attempt(env):
-+            try:
-+                return await body(env)
-+            finally:
-+                if attempts is not None and env.episode_id is not None:
-+                    attempts.append(
-+                        {'episode_id': env.episode_id, 'task_id': env.task_id})
-+        return await _shared_run_body(env_cls, context, record_attempt)
-+
-+    return await multi_turn(
-+        {'env': LocalOpenEnvClient, 'action': Action}, policy, model_name,
-+        messages, request_kwargs, metadata, run_body=recorded_run_body,
-+    )
-+
-+
-+async def run(base_url, prompt, request_kwargs=None, metadata=None, **kwargs):
-+    from openenv_agent_function import run_for_training
-+
-+    context = dict(metadata or {}, posttrainingx_environment_attempts=[])
-+    result = await run_for_training(base_url, prompt, request_kwargs, context, run_episode)
-+    result = result if result is not None else {'reward': None, 'exit_status': 'operational_error'}
-+    # Controller-generated IDs are accounting metadata, never policy messages.
-+    result['posttrainingx_environment_attempts'] = context['posttrainingx_environment_attempts']
-+    return result
-+
-+
-+async def reward_func(args, samples, **kwargs):
-+    def reward(sample):
-+        value = sample.metadata.get('reward')
-+        if value not in (0.0, 1.0) or sample.metadata.get('exit_status') not in ('completed', 'timeout'):
-+            raise RuntimeError('Local environment returned no valid verdict; stopping rather than fabricating a negative reward.')
-+        return float(value)
-+    return [reward(s) for s in samples] if isinstance(samples, list) else reward(samples)
-+
-+
-+def _validate_group(args, rows):
-+    from miles.rollout.filter_hub.base_types import DynamicFilterOutput
-+    from miles.utils.types import Sample
-+    if len(rows) != args.n_samples_per_prompt or len({s.group_index for s in rows}) != 1:
-+        raise RuntimeError('GRPO group cardinality or identity mismatch.')
-+    for sample in rows:
-+        if sample.status == Sample.Status.ABORTED:
-+            raise RuntimeError('Aborted trajectory in synchronous qualification; preserving failure instead of silently retrying.')
-+        if not sample.tokens or not all(type(t) is int and t >= 0 for t in sample.tokens):
-+            raise RuntimeError('Missing native sampled token IDs.')
-+        if (sample.rollout_log_probs is None or len(sample.rollout_log_probs) != sample.response_length
-+                or not all(math.isfinite(p) for p in sample.rollout_log_probs)):
-+            raise RuntimeError('Native response token/logprob accounting mismatch.')
-+        if sample.loss_mask is None or len(sample.loss_mask) != sample.response_length or not any(sample.loss_mask):
-+            raise RuntimeError('Missing native response loss mask.')
-+        mismatches = sample.metadata.get('tito_session_mismatch')
-+        if not isinstance(mismatches, list):
-+            raise RuntimeError('Missing native session-tokenization verification.')
-+        if any(m.get('type') != 'assistant_text' for m in mismatches):
-+            sample.metadata['posttrainingx_tito_comparison'] = _validate_truncated_tito(args, sample)
-+        # Qwen's processor returns {"images": None, "videos": None} even for
-+        # text-only prompts. Match Miles' native media-presence semantics;
-+        # never truth-test media tensors or discard actual media values.
-+        if (sample.multimodal_inputs and any(v is not None for v in sample.multimodal_inputs.values())) or sample.multimodal_train_inputs:
-+            raise RuntimeError('Text-only recipe received multimodal inputs.')
-+    return DynamicFilterOutput(keep=True)
-+
-+
-+def validate_group(args, samples, **kwargs):
-+    """Keep native token evidence even when a qualification gate fails."""
-+    import datetime
-+    import hashlib
-+    import json
-+    import os
-+    from pathlib import Path
-+    import shutil
-+    import tempfile
-+    import uuid
-+
-+    rows = [s for item in samples for s in (item if isinstance(item, list) else [item])]
-+    failure = None
-+    try:
-+        return _validate_group(args, rows)
-+    except Exception as exc:
-+        failure = f'{type(exc).__name__}: {exc}'
-+        raise
-+    finally:
-+        if not args.dump_details:
-+            raise RuntimeError('Qualification requires a run-owned dump_details directory.')
-+        target = Path(args.dump_details) / 'qualification-groups'
-+        target.mkdir(parents=True, exist_ok=True)
-+        if shutil.disk_usage(target).free < 128 * 1024**2:
-+            raise RuntimeError('Insufficient space to preserve native group evidence.')
-+
-+        def safe(value):
-+            if isinstance(value, float) and not math.isfinite(value):
-+                return {'nonfinite': str(value)}
-+            if isinstance(value, dict):
-+                return {str(k): safe(v) for k, v in value.items()}
-+            if isinstance(value, (list, tuple)):
-+                return [safe(v) for v in value]
-+            if value is None or isinstance(value, (str, int, float, bool)):
-+                return value
-+            return {'unsupported_type': type(value).__name__}
-+
-+        keys = ('index', 'group_index', 'tokens', 'response_length', 'rollout_log_probs',
-+                'loss_mask', 'weight_versions', 'reward', 'prompt', 'response', 'metadata')
-+        payload = {'schema_version': 1, 'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-+                   'status': 'fail' if failure else 'ok', 'failure': failure,
-+                   'scope': 'Pre-optimizer native sample gate; not proof of gradients or quality improvement.',
-+                   'samples': [{**{key: safe(getattr(s, key)) for key in keys}, 'status': s.status.value,
-+                                'raw_media_types': {k: None if v is None else type(v).__name__
-+                                                    for k, v in (s.multimodal_inputs or {}).items()},
-+                                'processed_media_keys': list((s.multimodal_train_inputs or {}).keys())}
-+                               for s in rows]}
-+        content = json.dumps(payload, sort_keys=True, allow_nan=False).encode()
-+        name = 'group-' + uuid.uuid4().hex + '-' + hashlib.sha256(content).hexdigest() + '.json'
-+        fd, temporary = tempfile.mkstemp(dir=target, prefix='.group-')
-+        try:
-+            with os.fdopen(fd, 'wb') as handle:
-+                handle.write(content)
-+                handle.flush()
-+                os.fsync(handle.fileno())
-+            os.replace(temporary, target / name)
-+        finally:
-+            if os.path.exists(temporary):
-+                os.unlink(temporary)
-diff --git a/examples/experimental/openenv/posttrainingx_openenv_client.py b/examples/experimental/openenv/posttrainingx_openenv_client.py
-new file mode 100644
-index 0000000000000000000000000000000000000000..a2be80cd20a34caad3152b6f4618b0fe35ab90e2
---- /dev/null
-+++ b/examples/experimental/openenv/posttrainingx_openenv_client.py
-@@ -0,0 +1,75 @@
-+"""Small OpenEnv WS client; no OpenEnv/OpenAI dependency upgrade in GPU image.
-+
-+Carries only environment actions/observations. Policy sampling, renderer, token
-+IDs and logprobs stay in the existing Miles session server and agent loop.
-+"""
-+import asyncio
-+import json
-+import re
-+from types import SimpleNamespace
-+from urllib.parse import urlsplit, urlunsplit
-+
-+
-+class Action(SimpleNamespace):
-+    pass
-+
-+
-+class LocalOpenEnvClient:
-+    def __init__(self, base_url, message_timeout_s=360):
-+        url = urlsplit(base_url)
-+        if url.scheme not in ('http', 'https') or url.username or url.password or url.query or url.fragment:
-+            raise ValueError('Expected a plain configured environment endpoint.')
-+        self.url = urlunsplit(('wss' if url.scheme == 'https' else 'ws', url.netloc, url.path.rstrip('/') + '/ws', '', ''))
-+        self.timeout = message_timeout_s
-+        self.ws = None
-+        self.episode_id = None
-+        self.task_id = None
-+
-+    async def __aenter__(self):
-+        from websockets.asyncio.client import connect
-+        self.ws = await connect(self.url, proxy=None, open_timeout=20, max_size=20*1024**2)
-+        return self
-+
-+    async def __aexit__(self, *exc):
-+        if self.ws is not None:
-+            try:
-+                await self.ws.send(json.dumps({'type': 'close'}))
-+            finally:
-+                await self.ws.close()
-+
-+    async def _request(self, operation, data):
-+        message = {'type': operation}
-+        if data is not None:
-+            message['data'] = data
-+        await self.ws.send(json.dumps(message))
-+        reply = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=self.timeout))
-+        if reply.get('type') == 'error':
-+            error = reply.get('data', {})
-+            raise RuntimeError('Environment error: ' + str(error.get('code', 'UNKNOWN')))
-+        expected = 'state' if operation == 'state' else 'observation'
-+        if reply.get('type') != expected or not isinstance(reply.get('data'), dict):
-+            raise RuntimeError('Unexpected OpenEnv reply type.')
-+        return reply['data']
-+
-+    async def exchange(self, operation, data):
-+        value = await self._request(operation, data)
-+        observation = SimpleNamespace(**value.get('observation', {}))
-+        return SimpleNamespace(observation=observation, reward=value.get('reward'), done=value.get('done'),
-+                               metadata=value.get('metadata'))
-+
-+    async def reset(self, **kwargs):
-+        self.episode_id = self.task_id = None
-+        result = await self.exchange('reset', kwargs)
-+        state = await self._request('state', None)
-+        episode_id = state.get('episode_id')
-+        task_id = state.get('task_id')
-+        expected_task = kwargs.get('task_id') or kwargs.get('task_name')
-+        if (not isinstance(episode_id, str) or not re.fullmatch('[0-9a-f]{32}', episode_id)
-+                or not task_id or task_id != getattr(result.observation, 'task_id', None)
-+                or (expected_task and task_id != expected_task)):
-+            raise RuntimeError('OpenEnv episode/task identity did not reconcile after reset.')
-+        self.episode_id, self.task_id = episode_id, task_id
-+        return result
-+
-+    async def step(self, action):
-+        return await self.exchange('step', vars(action))
+     def test_num_nodes_reads_the_slurm_allocation_when_the_config_is_built(self, monkeypatch):
+         """A plain class-level default would bake in the allocation at import and ignore later changes."""
+         monkeypatch.setenv("SLURM_JOB_NUM_NODES", "8")
+-- 
+2.50.1 (Apple Git-155)
+
+
+From d296c802a829e218cbd07c208a45350d7582341f Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 10:56:12 -0700
+Subject: [PATCH 02/17] Bind whole-node placement to frozen physical GPU
+ identities
+
+---
+ miles/ray/host_placement.py           |  94 ++++++++++++++++++++++
+ miles/ray/placement_group.py          | 111 +++++++++++++++++++++-----
+ miles/utils/arguments.py              |   4 +
+ tests/fast/ray/test_host_placement.py |  95 ++++++++++++++++++++++
+ 4 files changed, 285 insertions(+), 19 deletions(-)
+ create mode 100644 miles/ray/host_placement.py
+ create mode 100644 tests/fast/ray/test_host_placement.py
+
 diff --git a/miles/ray/host_placement.py b/miles/ray/host_placement.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..206bc4c3f931b5c56c60a1ff1f94f2f65313f430
+index 000000000..206bc4c3f
 --- /dev/null
 +++ b/miles/ray/host_placement.py
 @@ -0,0 +1,94 @@
@@ -446,7 +215,7 @@ index 0000000000000000000000000000000000000000..206bc4c3f931b5c56c60a1ff1f94f2f6
 +    finally:
 +        os.unlink(temporary)
 diff --git a/miles/ray/placement_group.py b/miles/ray/placement_group.py
-index e1d9c09596066c488cc5b3c4d16e17b3306b1ddc..3f0e7b0838e4c9f80d88be65e7ff401c09d855fd 100644
+index e1d9c0959..43f2695df 100644
 --- a/miles/ray/placement_group.py
 +++ b/miles/ray/placement_group.py
 @@ -1,12 +1,20 @@
@@ -498,7 +267,7 @@ index e1d9c09596066c488cc5b3c4d16e17b3306b1ddc..3f0e7b0838e4c9f80d88be65e7ff401c
  
  def sort_key(x):
      index, node_identifier, gpu_id = x
-@@ -48,33 +76,64 @@ def sort_key(x):
+@@ -48,33 +76,60 @@ def sort_key(x):
      return (node_ip_parts, gpu_id)
  
  
@@ -540,10 +309,6 @@ index e1d9c09596066c488cc5b3c4d16e17b3306b1ddc..3f0e7b0838e4c9f80d88be65e7ff401c
 +        if is_rdt or not record_path:
 +            raise ValueError("Explicit host placement requires a record path and does not support RDT.")
 +        nodes = load_host_map(host_map_path, num_gpus=num_gpus, trainer_gpus=trainer_gpus, gpus_per_node=gpus_per_node)
-+        # Unlike placement_group(), the state API does not auto-initialize Ray.
-+        # Connect only to the externally managed cluster; never start a new one.
-+        if not ray.is_initialized():
-+            ray.init(address="auto")
 +        bundles = placement_bundles(nodes, ray.nodes(), gpus_per_node=gpus_per_node)
      pg = placement_group(bundles, strategy="PACK")
      num_bundles = len(bundles)
@@ -580,7 +345,7 @@ index e1d9c09596066c488cc5b3c4d16e17b3306b1ddc..3f0e7b0838e4c9f80d88be65e7ff401c
          # Give the trainer the node PACK filled, so rollout bundles land where GPUs
          # are still free: RayEngine STRICT_PACKs its SchedulerActors onto the engine
          # actor's node and deadlocks if nothing there is unreserved.
-@@ -120,8 +179,26 @@ def create_placement_groups(args):
+@@ -120,8 +175,26 @@ def create_placement_groups(args):
      num_gpus, rollout_offset = _get_placement_group_layout(args)
  
      logger.info(f"Creating placement group with {num_gpus} GPUs...")
@@ -608,38 +373,8 @@ index e1d9c09596066c488cc5b3c4d16e17b3306b1ddc..3f0e7b0838e4c9f80d88be65e7ff401c
      )
  
      rollout_pg_reordered_bundle_indices = actor_pg_reordered_bundle_indices[rollout_offset:]
-diff --git a/miles/rollout/session/samples/codec.py b/miles/rollout/session/samples/codec.py
-index 81d9c5a5d68a5a33ea1ce654aff7ad6a8bc8d977..2692a828fb8309584012b4e6348e9a2d50c4e4ef 100644
---- a/miles/rollout/session/samples/codec.py
-+++ b/miles/rollout/session/samples/codec.py
-@@ -43,6 +43,7 @@ SAMPLES_VALUE_SPEC: dict[str, ValueSpec] = {
-     "status": ValueSpec("json"),
-     "weight_versions": ValueSpec("json"),
-     "prefix_cache_info": ValueSpec("json"),
-+    "spec_info": ValueSpec("json"),
-     "metadata": ValueSpec("json"),
- }
- 
-@@ -114,7 +115,7 @@ def encode_samples(
-             if spec.codec == "json":
-                 if field == "status":
-                     value = value.value
--                elif field == "prefix_cache_info":
-+                elif field in ("prefix_cache_info", "spec_info"):
-                     value = value.to_dict()
-                 sample_meta[field] = value
-                 continue
-@@ -180,6 +181,8 @@ def decode_samples_and_merge_input_sample(
-                     value = list(value)
-                 elif field == "prefix_cache_info":
-                     value = Sample.PrefixCacheInfo.from_dict(value)
-+                elif field == "spec_info":
-+                    value = Sample.SpecInfo.from_dict(value)
-                 elif field == "reward":
-                     # Server reward is authoritative only when assigned; a null
-                     # keeps the driver input's local reward.
 diff --git a/miles/utils/arguments.py b/miles/utils/arguments.py
-index 24f3f2f792e139051c01a7b934fd40e8d607c7f4..c26e01fcc8de7682c96b6a9e25d2be7ba7228c65 100644
+index 24f3f2f79..c26e01fcc 100644
 --- a/miles/utils/arguments.py
 +++ b/miles/utils/arguments.py
 @@ -104,6 +104,10 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
@@ -653,661 +388,9 @@ index 24f3f2f792e139051c01a7b934fd40e8d607c7f4..c26e01fcc8de7682c96b6a9e25d2be7b
              parser.add_argument("--actor-num-nodes", type=int, default=1, help="Number of nodes for training actor")
              parser.add_argument(
                  "--actor-num-gpus-per-node", type=int, default=8, help="Number of gpus per node for training actor"
-diff --git a/miles/utils/external_utils/command_utils.py b/miles/utils/external_utils/command_utils.py
-index a8d527011c8a7cb3e0d2d9450e2bd07400452fd8..67842aa32d70eea52c8f9aae0b4aff218ff3c8be 100644
---- a/miles/utils/external_utils/command_utils.py
-+++ b/miles/utils/external_utils/command_utils.py
-@@ -148,6 +148,8 @@ def fp8_cast_bf16(path_src, path_dst):
- @dataclass
- class ExecuteTrainConfig:
-     cuda_core_dump: bool = False
-+    external_ray: bool = False
-+    cleanup_existing_processes: bool = True
-     num_nodes: int = field(default_factory=lambda: int(os.environ.get("SLURM_JOB_NUM_NODES", "1")))
-     extra_env_vars: str = ""
-     output_dir: str = "/root/shared_data"
-@@ -176,28 +178,31 @@ def execute_train(
-         config = ExecuteTrainConfig()
-     if not os.path.isabs(train_script):
-         train_script = f"{repo_base_dir}/{train_script}"
--    external_ray = get_bool_env_var("MILES_SCRIPT_EXTERNAL_RAY")
-+    external_ray = config.external_ray or get_bool_env_var("MILES_SCRIPT_EXTERNAL_RAY")
-+    if not config.cleanup_existing_processes and not external_ray:
-+        raise ValueError("Disabling process cleanup requires an externally managed Ray cluster.")
-     master_addr = os.environ.get("MASTER_ADDR", "127.0.0.1")
- 
-     train_backend_fsdp = "--train-backend fsdp" in train_args
-     assert train_backend_fsdp == (megatron_model_type is None)
- 
--    exec_command_cpu(
--        "pkill -9 sglang; "
--        "sleep 3; "
--        f"{'' if external_ray else 'ray stop --force; '}"
--        f"{'' if external_ray else 'pkill -9 ray; '}"
--        # cannot be run in CI, o/w kill the parent script
--        # TODO: do we really need this kill? (or can we instead kill miles)
--        # "pkill -9 python; "
--        "pkill -9 miles; "
--        "sleep 3; "
--        f"{'' if external_ray else 'pkill -9 ray; '}"
--        # "pkill -9 python; "
--        "pkill -9 miles; "
--        "pkill -9 redis; "
--        "true; "
--    )
-+    if config.cleanup_existing_processes:
-+        exec_command_cpu(
-+            "pkill -9 sglang; "
-+            "sleep 3; "
-+            f"{'' if external_ray else 'ray stop --force; '}"
-+            f"{'' if external_ray else 'pkill -9 ray; '}"
-+            # cannot be run in CI, o/w kill the parent script
-+            # TODO: do we really need this kill? (or can we instead kill miles)
-+            # "pkill -9 python; "
-+            "pkill -9 miles; "
-+            "sleep 3; "
-+            f"{'' if external_ray else 'pkill -9 ray; '}"
-+            # "pkill -9 python; "
-+            "pkill -9 miles; "
-+            "pkill -9 redis; "
-+            "true; "
-+        )
- 
-     if not external_ray:
-         exec_command_cpu(
-diff --git a/miles/utils/types.py b/miles/utils/types.py
-index 149deeaa76744597536002dcfb10bd2220b11243..59015a138a95dc50b1ab6f00045f86ab1fcb7803 100644
---- a/miles/utils/types.py
-+++ b/miles/utils/types.py
-@@ -100,8 +100,14 @@ class Sample:
-             return self.completion_token_num / self.spec_verify_ct if self.spec_verify_ct > 0 else 0.0
- 
-         def add(self, meta_info: dict):
--            self.spec_accept_token_num += meta_info.get("spec_accept_token_num", 0)
--            self.spec_draft_token_num += meta_info.get("spec_draft_token_num", 0)
-+            # Current SGLang returns correct/proposed drafts. Prefer that pair
-+            # without double counting when a backend also includes old aliases.
-+            self.spec_accept_token_num += meta_info.get(
-+                "spec_num_correct_drafts", meta_info.get("spec_accept_token_num", 0)
-+            )
-+            self.spec_draft_token_num += meta_info.get(
-+                "spec_num_proposed_drafts", meta_info.get("spec_draft_token_num", 0)
-+            )
-             self.spec_verify_ct += meta_info.get("spec_verify_ct", 0)
-             self.completion_token_num += meta_info.get("completion_tokens", 0)
- 
-diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
-new file mode 100644
-index 0000000000000000000000000000000000000000..c48d0639e20a5bc5a51c9205f9e60bfd225c6fda
---- /dev/null
-+++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
-@@ -0,0 +1,253 @@
-+"""Qwen3.6-35B-A3B GRPO with local OpenEnv tasks on four B200 nodes.
-+
-+Requires pinned HF and converted checkpoints, clean training prompt data, a
-+validated local OpenEnv endpoint, and a pre-existing run-owned Ray cluster.
-+The site adapter owns allocation, image pins, GPU reconciliation, and cleanup.
-+Terminal-Bench is evaluation-only and is not downloaded by this launcher.
-+
-+Args:
-+    layout: Whole-node trainer/rollout split: 1t3r, 2t2r, or 3t1r.
-+    execution: sync uses train.py for correctness; async uses train_async.py.
-+    host_map: JSON placement map, in trainer-first then rollout node order.
-+    num_rollout: Optimizer-step budget when the one-step invariant holds.
-+    hf_checkpoint: Explicit pinned HF directory; defaults to model_dir/model_name.
-+    ref_load: Explicit converted reference checkpoint; defaults to the cookbook directory.
-+
-+Example:
-+    python scripts/run_qwen3_6_35b_a3b_posttrainingx.py --hardware B200 \
-+        --output-dir /shared/posttrainingx/runs/vultr-b200-slurm \
-+        --run-id example --layout 2t2r --num-rollout 400
-+
-+This launcher defines the recipe. It does not assert that environment, resume,
-+gradient, placement, or quality gates have passed.
-+"""
-+
-+import shlex
-+from dataclasses import dataclass
-+from pathlib import Path
-+from typing import Literal
-+
-+import typer
-+
-+import miles.utils.external_utils.command_utils as U
-+
-+
-+@dataclass
-+class ScriptArgs(U.ExecuteTrainConfig):
-+    num_nodes: int = 4
-+    external_ray: bool = True
-+    cleanup_existing_processes: bool = False
-+    hardware: Literal["auto", "B200"] = "auto"
-+    num_gpus_per_node: int = 8
-+    run_id: str = U.create_run_id()
-+    layout: Literal["1t3r", "2t2r", "3t1r"] = "2t2r"
-+    execution: Literal["sync", "async"] = "async"
-+    model_name: str = "Qwen3.6-35B-A3B"
-+    megatron_model_type: str = "qwen3.6-35B-A3B"
-+    model_dir: str = "/root/models"
-+    hf_checkpoint: str = ""
-+    ref_load: str = ""
-+    megatron_path: str = "/root/Megatron-LM"
-+    prompt_data: str = ""
-+    host_map: str = ""
-+    placement_record_path: str = ""
-+    load_from: str = ""
-+    num_rollout: int = 400
-+    save_interval: int = 50
-+    rollout_batch_size: int = 8
-+    n_samples_per_prompt: int = 8
-+    global_batch_size: int = 64
-+    seed: int = 1234
-+    max_tokens_per_gpu: int = 8192
-+    max_seq_len: int = 65536
-+    rollout_max_response_len: int = 8192
-+    async_max_concurrent_samples: int = 128
-+    pause_generation_mode: Literal["retract", "in_place"] = "retract"
-+    openenv_env_url: str = "http://127.0.0.1:8003"
-+    openenv_max_turns: int = 30
-+    openenv_max_rollout_time_seconds: int = 3600
-+    openenv_message_timeout_s: int = 1200
-+    session_server_port: int = 30000
-+    session_server_workers: int = 32
-+    sglang_max_running_requests: int = 256
-+    enable_mtp: bool = True
-+    verify_initial_weight_broadcast: bool = False
-+
-+    def __post_init__(self):
-+        self.hardware = U.resolve_hardware(self)
-+        if self.hardware != "B200" or self.num_gpus_per_node != U.NUM_GPUS_OF_HARDWARE[self.hardware]:
-+            raise ValueError("This profile requires eight B200 GPUs per node.")
-+        if self.num_nodes != 4 or self.layout not in ("1t3r", "2t2r", "3t1r"):
-+            raise ValueError("The placement sweep requires exactly four whole nodes.")
-+        if self.cleanup_existing_processes or not self.external_ray:
-+            raise ValueError("This recipe requires external Ray and disables broad process cleanup.")
-+        if self.rollout_batch_size * self.n_samples_per_prompt != self.global_batch_size:
-+            raise ValueError("rollout_batch_size * n_samples_per_prompt must equal global_batch_size.")
-+        # EP8 gives one expert-DP rank per trainer node, but dense-DP spans all
-+        # trainer GPUs at TP1/PP1/CP1. Megatron must not silently round the batch.
-+        dense_dp = self.trainer_nodes * self.num_gpus_per_node
-+        if self.global_batch_size % dense_dp:
-+            raise ValueError(
-+                f"global_batch_size must be divisible by dense DP {dense_dp}; "
-+                "use one common compatible batch across the placement sweep (e.g. 96)."
-+            )
-+        if min(self.num_rollout, self.save_interval, self.global_batch_size, self.n_samples_per_prompt) <= 0:
-+            raise ValueError("Step, checkpoint, and batch budgets must be positive.")
-+        if self.async_max_concurrent_samples < self.n_samples_per_prompt:
-+            raise ValueError("Async concurrency must admit at least one complete GRPO group.")
-+        self.prompt_data = self.prompt_data or f"{self.output_dir}/{self.run_id}/data/train.prompts.jsonl"
-+        self.hf_checkpoint = self.hf_checkpoint or f"{self.model_dir}/{self.model_name}"
-+        self.ref_load = self.ref_load or f"{self.model_dir}/{self.model_name}_torch_dist"
-+        self.host_map = self.host_map or f"{self.output_dir}/{self.run_id}/inventory/role-host-map.json"
-+        self.placement_record_path = (
-+            self.placement_record_path or f"{self.output_dir}/{self.run_id}/inventory/ray-placement.json"
-+        )
-+
-+    @property
-+    def trainer_nodes(self) -> int:
-+        return int(self.layout[0])
-+
-+
-+def _checkpoint_args(args: ScriptArgs) -> str:
-+    checkpoint = f"{args.output_dir}/{args.run_id}/checkpoints"
-+    return (
-+        f"--hf-checkpoint {shlex.quote(args.hf_checkpoint)} "
-+        f"--ref-load {shlex.quote(args.ref_load)} "
-+        f"--load {shlex.quote(args.load_from or checkpoint)} --save {shlex.quote(checkpoint)} "
-+        f"--save-interval {args.save_interval} "
-+    )
-+
-+
-+def _rollout_args(args: ScriptArgs) -> str:
-+    asynchronous = (
-+        f"--fully-async --pause-generation-mode {args.pause_generation_mode} "
-+        f"--async-max-concurrent-samples {args.async_max_concurrent_samples} --max-weight-staleness 1 "
-+        if args.execution == "async"
-+        else ""
-+    )
-+    return (
-+        asynchronous + "--rollout-submission-granularity sample "
-+        f"--prompt-data {shlex.quote(args.prompt_data)} --input-key prompt --apply-chat-template "
-+        f"--num-rollout {args.num_rollout} --rollout-batch-size {args.rollout_batch_size} "
-+        f"--n-samples-per-prompt {args.n_samples_per_prompt} --global-batch-size {args.global_batch_size} "
-+        f"--num-steps-per-rollout 1 --max-seq-len {args.max_seq_len} "
-+        f"--rollout-max-response-len {args.rollout_max_response_len} --rollout-temperature 1 "
-+        f"--seed {args.seed} --balance-data "
-+    )
-+
-+
-+def _performance_args(args: ScriptArgs) -> str:
-+    return (
-+        "--tensor-model-parallel-size 1 --sequence-parallel --pipeline-model-parallel-size 1 "
-+        "--context-parallel-size 1 --expert-model-parallel-size 8 --expert-tensor-parallel-size 1 "
-+        "--recompute-granularity full --recompute-method uniform --recompute-num-layers 1 "
-+        f"--use-dynamic-batch-size --max-tokens-per-gpu {args.max_tokens_per_gpu} "
-+        "--attention-dropout 0.0 --hidden-dropout 0.0 --accumulate-allreduce-grads-in-fp32 "
-+        "--attention-softmax-in-fp32 --attention-backend flash --moe-token-dispatcher-type flex "
-+    )
-+
-+
-+def _algorithm_args() -> str:
-+    return (
-+        "--advantage-estimator grpo --use-kl-loss --kl-loss-coef 0.00 --kl-loss-type low_var_kl "
-+        "--entropy-coef 0.00 --eps-clip 0.2 --eps-clip-high 0.28 "
-+        "--optimizer adam --lr 1e-6 --lr-decay-style constant --weight-decay 0.1 "
-+        "--adam-beta1 0.9 --adam-beta2 0.98 --optimizer-cpu-offload "
-+        "--overlap-cpu-optimizer-d2h-h2d --use-precision-aware-optimizer "
-+    )
-+
-+
-+def _sglang_args(args: ScriptArgs) -> str:
-+    mtp = (
-+        "--sglang-speculative-algorithm EAGLE --sglang-speculative-num-steps 2 "
-+        "--sglang-speculative-eagle-topk 1 --sglang-speculative-num-draft-tokens 3 "
-+        "--sglang-mamba-scheduler-strategy extra_buffer "
-+        "--enable-mtp-training --mtp-num-layers 1 --mtp-loss-scaling-factor 0.2 "
-+        if args.enable_mtp
-+        else ""
-+    )
-+    return (
-+        "--rollout-num-gpus-per-engine 8 --sglang-ep-size 8 --sglang-mem-fraction-static 0.7 "
-+        # B200 auto-selected flashinfer_trtllm in job 137, whose BF16 hot
-+        # reload retained packed 4-D weights and rejected the first broadcast.
-+        # Pin the canonical-layout backend without changing TP/EP or MTP.
-+        "--sglang-moe-runner-backend triton "
-+        "--sglang-cuda-graph-bs 1 2 4 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128 "
-+        f"--sglang-max-running-requests {args.sglang_max_running_requests} " + mtp
-+    )
-+
-+
-+def _agent_args(args: ScriptArgs) -> str:
-+    return (
-+        "--custom-generate-function-path miles.rollout.generate_hub.agentic_tool_call.generate "
-+        "--custom-agent-function-path posttrainingx_local_agent.run "
-+        "--custom-rm-path posttrainingx_local_agent.reward_func "
-+        "--dynamic-sampling-filter-path posttrainingx_local_agent.validate_group "
-+        "--tito-model qwen36 --use-session-server "
-+        f"--session-server-port {args.session_server_port} --session-server-workers {args.session_server_workers} "
-+    )
-+
-+
-+def execute(args: ScriptArgs):
-+    run_dir = f"{args.output_dir}/{args.run_id}"
-+    placement_args = (
-+        f"--actor-num-nodes {args.trainer_nodes} --actor-num-gpus-per-node 8 --num-gpus-per-node 8 "
-+        f"--rollout-num-gpus {(4 - args.trainer_nodes) * 8} "
-+        f"--placement-host-order-file {shlex.quote(args.host_map)} "
-+        f"--placement-record-path {shlex.quote(args.placement_record_path)} "
-+        "--update-weight-transfer-mode broadcast --update-weights-interval 1 "
-+    )
-+    evidence_args = (
-+        f"--dump-details {shlex.quote(run_dir + '/dump_details')} "
-+        "--use-miles-dashboard --dashboard-sglang-scrape-mode direct "
-+    )
-+    if args.verify_initial_weight_broadcast:
-+        evidence_args += (
-+            "--check-weight-update-equal --check-weight-update-selector all "
-+            "--check-weight-update-skip-list visual "
-+        )
-+    train_args = " ".join(
-+        [
-+            _checkpoint_args(args),
-+            _rollout_args(args),
-+            _performance_args(args),
-+            _algorithm_args(),
-+            _sglang_args(args),
-+            _agent_args(args),
-+            placement_args,
-+            evidence_args,
-+            U.get_default_wandb_args(__file__, run_id=args.run_id),
-+        ]
-+    )
-+    openenv_dir = Path(U.repo_base_dir) / "examples/experimental/openenv"
-+    extra_env_vars = {
-+        "PYTHONPATH": str(openenv_dir),
-+        "OPENENV_ENV_URL": args.openenv_env_url,
-+        "OPENENV_MAX_TURNS": str(args.openenv_max_turns),
-+        "OPENENV_MAX_ROLLOUT_TIME_SECONDS": str(args.openenv_max_rollout_time_seconds),
-+        "OPENENV_MESSAGE_TIMEOUT_S": str(args.openenv_message_timeout_s),
-+        "AGENT_MODEL_NAME": "model",
-+        # Partial bucket reloads must preserve canonical expert row order.
-+        "SGLANG_OPT_FUSE_SWIGLU_INTERLEAVED": "0",
-+        "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096",
-+        "TORCH_NCCL_DUMP_ON_TIMEOUT": "1",
-+        "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": run_dir + "/telemetry/nccl_trace",
-+    }
-+    U.execute_train(
-+        train_args=train_args,
-+        config=args,
-+        num_gpus_per_node=8,
-+        megatron_model_type=args.megatron_model_type,
-+        megatron_path=args.megatron_path,
-+        extra_env_vars=extra_env_vars,
-+        train_script="train_async.py" if args.execution == "async" else "train.py",
-+    )
-+
-+
-+@U.dataclass_cli
-+def main(args: ScriptArgs):
-+    execute(args)
-+
-+
-+if __name__ == "__main__":
-+    typer.run(main)
-diff --git a/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py b/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py
-index c12e587517456e99e16f08bf1622a0be6766a8b3..83e3c9ea96d146ebac13a3011d66904d2beeff1a 100644
---- a/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py
-+++ b/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py
-@@ -11,9 +11,11 @@ below are shared with it.
- """
- 
- import asyncio
-+import copy
- import types
- 
- import openenv_agent_function as oaf
-+import pytest
- 
- 
- def run_async(coro):
-@@ -98,6 +100,71 @@ class _NoCommandPolicy(_FakePolicy):
- _CLASSES = {"env": _FakeEnv, "action": _FakeAction}
- 
- 
-+@pytest.mark.parametrize("outcome", ["completed", "timeout", "operational_error"])
-+def test_local_agent_records_controller_ids_without_policy_leakage(monkeypatch, outcome):
-+    import posttrainingx_local_agent as local
-+    import posttrainingx_openenv_client as client
-+
-+    requests, identities, closed = [], [], []
-+
-+    class RecordingEnv(_FakeEnv):
-+        episode_id = task_id = None
-+
-+        async def reset(self, task_id=None):
-+            self.episode_id = f"{len(identities) + 1:032x}"
-+            self.task_id = task_id
-+            identities.append({"episode_id": self.episode_id, "task_id": self.task_id})
-+            return await super().reset(task_id)
-+
-+    class RecordingPolicy(_FakePolicy):
-+        async def _create(self, **kwargs):
-+            requests.append(copy.deepcopy(kwargs))
-+            if outcome == "timeout":
-+                await asyncio.Event().wait()
-+            if outcome == "operational_error":
-+                raise RuntimeError("Injected policy failure")
-+            return await super()._create(**kwargs)
-+
-+        async def close(self):
-+            closed.append(True)
-+
-+    monkeypatch.setattr(client, "LocalOpenEnvClient", RecordingEnv)
-+    monkeypatch.setattr(oaf, "AsyncOpenAI", lambda **kwargs: RecordingPolicy())
-+    monkeypatch.setattr(oaf, "resolve_session_url", lambda base_url: base_url)
-+    monkeypatch.setattr(oaf, "_MAX_ROLLOUT_TIME_S", 0.02 if outcome == "timeout" else 5)
-+    prompt = [{"role": "system", "content": "Follow the task."}]
-+    metadata = {"task_id": "task_00000", "posttrainingx_environment_attempts": [{"old": "not reused"}]}
-+    original = copy.deepcopy(metadata)
-+    first = run_async(local.run("http://unused", prompt, metadata=metadata))
-+    second = run_async(local.run("http://unused", prompt, metadata=metadata))
-+    assert metadata == original
-+    assert first["exit_status"] == second["exit_status"] == outcome
-+    assert first["posttrainingx_environment_attempts"] == identities[:1]
-+    assert second["posttrainingx_environment_attempts"] == identities[1:]
-+    assert first["posttrainingx_environment_attempts"] is not second["posttrainingx_environment_attempts"]
-+    assert len(closed) == 2 and len(identities) == 2
-+    assert first["reward"] == {"completed": 1.0, "timeout": 0.0, "operational_error": None}[outcome]
-+    assert requests
-+    for request in requests:
-+        assert all(identity["episode_id"] not in str(request) for identity in identities)
-+        assert "posttrainingx_environment_attempts" not in str(request)
-+
-+
-+def test_local_direct_episode_does_not_require_a_training_ledger(monkeypatch):
-+    import posttrainingx_local_agent as local
-+    import posttrainingx_openenv_client as client
-+
-+    class DirectEnv(_FakeEnv):
-+        episode_id = "a" * 32
-+        task_id = "task_00000"
-+
-+    monkeypatch.setattr(client, "LocalOpenEnvClient", DirectEnv)
-+    metadata = {"task_id": "task_00000"}
-+    reward, metrics = run_async(local.run_episode(_FakePolicy(), "m", [], {}, metadata))
-+    assert reward == 1.0 and metrics["turns"] == 2
-+    assert metadata == {"task_id": "task_00000"}
-+
-+
- # --- episode dispatch ------------------------------------------------------
- 
- 
-diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
-new file mode 100644
-index 0000000000000000000000000000000000000000..50c257fa70b9e4aff9a361c3d35bf5b65d551271
---- /dev/null
-+++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
-@@ -0,0 +1,216 @@
-+import json
-+import shlex
-+import hashlib
-+import importlib.util
-+import copy
-+import sys
-+from types import SimpleNamespace
-+
-+import pytest
-+
-+from tests.fast.launch_scripts.py_harness import (
-+    REPO_ROOT,
-+    freeze_environment,
-+    import_launch_script,
-+    install_command_recorder,
-+)
-+
-+
-+def _local_group(tmp_path):
-+    from miles.utils.types import Sample
-+    source = REPO_ROOT / 'examples/experimental/openenv/posttrainingx_local_agent.py'
-+    spec = importlib.util.spec_from_file_location('local_gate_test', source)
-+    module = importlib.util.module_from_spec(spec)
-+    spec.loader.exec_module(module)
-+    samples = [Sample(index=i, group_index=0, tokens=[1, 2], response_length=1,
-+                      rollout_log_probs=[-0.5], loss_mask=[1], reward=1.0,
-+                      metadata={'tito_session_mismatch': []},
-+                      multimodal_inputs={'images': None, 'videos': None},
-+                      status=Sample.Status.COMPLETED) for i in range(8)]
-+    return module, SimpleNamespace(n_samples_per_prompt=8, dump_details=str(tmp_path)), samples
-+
-+
-+def test_local_text_gate_accepts_qwen_null_media_and_preserves_native_ids(tmp_path):
-+    module, args, samples = _local_group(tmp_path)
-+    assert module.validate_group(args, samples).keep
-+    path, = (tmp_path / 'qualification-groups').glob('*.json')
-+    data = json.loads(path.read_text())
-+    assert data['status'] == 'ok' and len(data['samples']) == 8
-+    assert data['samples'][0]['tokens'] == [1, 2]
-+    assert data['samples'][0]['raw_media_types'] == {'images': None, 'videos': None}
-+    assert hashlib.sha256(path.read_bytes()).hexdigest() in path.name
-+
-+
-+@pytest.mark.parametrize('fault', ['raw_media', 'processed_media', 'nan_logprob', 'wrong_group', 'missing_mask',
-+                                  'missing_tito', 'special_token_count', 'special_token_type', 'non_assistant_text'])
-+def test_local_group_failures_keep_evidence_and_do_not_relax_other_gates(tmp_path, fault):
-+    module, args, samples = _local_group(tmp_path)
-+    first = samples[0]
-+    if fault == 'raw_media':
-+        first.multimodal_inputs['images'] = object()
-+    elif fault == 'processed_media':
-+        first.multimodal_train_inputs = {'pixel_values': object()}
-+    elif fault == 'nan_logprob':
-+        first.rollout_log_probs = [float('nan')]
-+    elif fault == 'wrong_group':
-+        first.group_index = 1
-+    elif fault == 'missing_mask':
-+        first.loss_mask = None
-+    elif fault == 'missing_tito':
-+        first.metadata.pop('tito_session_mismatch')
-+    else:
-+        first.status = type(first.status).TRUNCATED
-+        first.metadata['tito_session_mismatch'] = [{'type': fault}]
-+    with pytest.raises(RuntimeError):
-+        module.validate_group(args, samples)
-+    path, = (tmp_path / 'qualification-groups').glob('*.json')
-+    data = json.loads(path.read_text())
-+    assert data['status'] == 'fail' and data['failure']
-+    if fault == 'nan_logprob':
-+        assert data['samples'][0]['rollout_log_probs'] == [{'nonfinite': 'nan'}]
-+
-+
-+@pytest.mark.parametrize('fault', [None, 'missing_internal_end', 'changed_system', 'extra_end', 'not_length'])
-+def test_unfinished_message_comparison_never_rewrites_samples_or_hides_internal_errors(tmp_path, monkeypatch, fault):
-+    # Load the actual dependency-free comparator without importing the HF
-+    # package facade; this launcher suite deliberately has no HF environment.
-+    source = REPO_ROOT / 'miles/utils/chat_template_utils/token_seq_comparator.py'
-+    spec = importlib.util.spec_from_file_location('local_comparator_test', source)
-+    comparator_module = importlib.util.module_from_spec(spec)
-+    monkeypatch.setitem(sys.modules, spec.name, comparator_module)
-+    spec.loader.exec_module(comparator_module)
-+    TokenSeqComparator = comparator_module.TokenSeqComparator
-+
-+    module, args, samples = _local_group(tmp_path)
-+    mapping = {1: '<|im_start|>', 2: '<|im_end|>', 3: '\n', 10: 'system\nx', 11: 'assistant\ny', 12: 'corrupted'}
-+    tokenizer = SimpleNamespace(all_special_ids=[1, 2], decode=lambda ids, **kwargs: ''.join(mapping[i] for i in ids),
-+                                convert_tokens_to_ids=lambda text: 2)
-+    comparator = TokenSeqComparator(tokenizer, '<|im_start|>assistant', trim_trailing_ids={3})
-+    expected = [1, 10, 2, 3, 1, 11, 2, 3]
-+    tito = SimpleNamespace(tokenizer=tokenizer, trailing_token_ids={3}, create_comparator=lambda: comparator,
-+                           apply_chat_template=lambda *a, **k: list(expected))
-+    def configured_comparator(model_path, template_path, template_kwargs):
-+        assert json.loads(template_kwargs) == {'preserve_thinking': True}
-+        return tito
-+    monkeypatch.setattr(module, '_qwen_comparator', configured_comparator)
-+    args.tito_model = 'qwen36'
-+    args.hf_checkpoint = '/unused'
-+    args.chat_template_path = str(tmp_path / 'template.jinja')
-+    # Use Miles' actual parsed argument, with no invented compatibility alias.
-+    args.apply_chat_template_kwargs = {'preserve_thinking': True}
-+    (tmp_path / 'template.jinja').write_text('fixture')
-+    sample = samples[0]
-+    sample.status = type(sample.status).TRUNCATED
-+    sample.tokens = [1, 10, 2, 3, 1, 11]
-+    if fault == 'missing_internal_end':
-+        sample.tokens.pop(2)
-+    elif fault == 'changed_system':
-+        sample.tokens[1] = 12
-+    elif fault == 'extra_end':
-+        sample.tokens.insert(2, 2)
-+    sample.metadata = {'agent_metrics': {'end_reason': 'stop' if fault == 'not_length' else 'length'},
-+                       'accumulated_token_ids': list(sample.tokens), 'messages': [],
-+                       'tito_session_mismatch': [m.to_dict() for m in comparator.compare_sequences(expected, sample.tokens)]}
-+    before = copy.deepcopy(sample.to_dict())
-+    if fault:
-+        with pytest.raises(RuntimeError):
-+            module._validate_truncated_tito(args, sample)
-+    else:
-+        result = module._validate_truncated_tito(args, sample)
-+        assert result['remaining_mismatches'] == [] and result['native_sample_changed'] is False
-+    assert sample.to_dict() == before
-+
-+
-+def _launch(monkeypatch, **overrides):
-+    freeze_environment(monkeypatch, hardware="B200")
-+    recording = install_command_recorder(monkeypatch)
-+    module = import_launch_script(REPO_ROOT / "scripts/run_qwen3_6_35b_a3b_posttrainingx.py")
-+    args = module.ScriptArgs(**overrides)
-+    module.execute(args)
-+    command = next(c for c in recording.commands if "ray job submit" in c)
-+    tokens = shlex.split(command)
-+    env = json.loads(next(x.split("=", 1)[1] for x in tokens if x.startswith("--runtime-env-json=")))["env_vars"]
-+    return args, recording.commands, tokens, env
-+
-+
-+@pytest.mark.parametrize("layout,trainers,rollout_gpus", [("1t3r", 1, 24), ("2t2r", 2, 16), ("3t1r", 3, 8)])
-+def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_services(
-+    monkeypatch, layout, trainers, rollout_gpus
-+):
-+    args, commands, tokens, env = _launch(monkeypatch, layout=layout, global_batch_size=96, rollout_batch_size=12)
-+    value = lambda flag: tokens[tokens.index(flag) + 1]
-+    assert value("--actor-num-nodes") == str(trainers)
-+    assert value("--rollout-num-gpus") == str(rollout_gpus)
-+    assert value("--rollout-num-gpus-per-engine") == value("--sglang-ep-size") == "8"
-+    assert value("--sglang-moe-runner-backend") == "triton"
-+    assert env["SGLANG_OPT_FUSE_SWIGLU_INTERLEAVED"] == "0"
-+    assert value("--tensor-model-parallel-size") == value("--context-parallel-size") == "1"
-+    assert value("--pipeline-model-parallel-size") == value("--expert-tensor-parallel-size") == "1"
-+    assert value("--expert-model-parallel-size") == "8"
-+    assert value("--update-weight-transfer-mode") == "broadcast"
-+    assert value("--max-weight-staleness") == value("--update-weights-interval") == "1"
-+    assert value("--rollout-submission-granularity") == "sample"
-+    assert "--fully-async" in tokens and "--colocate" not in tokens
-+    assert any(x.endswith("/train_async.py") for x in tokens)
-+    assert value("--tito-model") == "qwen36"
-+    assert value("--custom-agent-function-path") == "posttrainingx_local_agent.run"
-+    assert value("--custom-rm-path") == "posttrainingx_local_agent.reward_func"
-+    assert value("--dynamic-sampling-filter-path") == "posttrainingx_local_agent.validate_group"
-+    assert value("--sglang-speculative-num-steps") == "2"
-+    assert value("--sglang-speculative-num-draft-tokens") == "3"
-+    assert value("--mtp-num-layers") == "1" and value("--mtp-loss-scaling-factor") == "0.2"
-+    assert int(value("--rollout-batch-size")) * int(value("--n-samples-per-prompt")) == int(
-+        value("--global-batch-size")
-+    )
-+    assert all(term not in "\n".join(commands) for term in ("pkill", "ray stop", "ray start", "DAYTONA"))
-+    assert "SGLANG_ENABLE_SPEC_V2" not in env
-+    assert env["OPENENV_ENV_URL"] == args.openenv_env_url
-+    assert value("--placement-host-order-file") == args.host_map
-+
-+
-+def test_sync_validation_and_mtp_ablation_have_explicit_distinct_commands(monkeypatch):
-+    _, _, tokens, env = _launch(monkeypatch, execution="sync", num_rollout=3, enable_mtp=False)
-+    assert any(x.endswith("/train.py") for x in tokens)
-+    assert "--fully-async" not in tokens and "--async-max-concurrent-samples" not in tokens
-+    assert "--enable-mtp-training" not in tokens and "--sglang-speculative-algorithm" not in tokens
-+    assert tokens[tokens.index("--num-rollout") + 1] == "3"
-+    assert "SGLANG_ENABLE_SPEC_V2" not in env
-+
-+
-+def test_reference_batch_and_explicit_pinned_paths_are_preserved(monkeypatch):
-+    _, _, tokens, _ = _launch(
-+        monkeypatch, hf_checkpoint="/shared/pinned model revision", ref_load="/shared/converted-v2"
-+    )
-+    assert tokens[tokens.index("--global-batch-size") + 1] == "64"
-+    assert tokens[tokens.index("--rollout-batch-size") + 1] == "8"
-+    assert tokens[tokens.index("--hf-checkpoint") + 1] == "/shared/pinned model revision"
-+    assert tokens[tokens.index("--ref-load") + 1] == "/shared/converted-v2"
-+    assert tokens.count("--hf-checkpoint") == tokens.count("--ref-load") == 1
-+
-+
-+def test_initial_broadcast_verification_covers_target_and_mtp_but_not_untrained_vision(monkeypatch):
-+    _, _, tokens, _ = _launch(monkeypatch, verify_initial_weight_broadcast=True)
-+    assert "--check-weight-update-equal" in tokens
-+    assert tokens[tokens.index("--check-weight-update-selector") + 1] == "all"
-+    assert tokens[tokens.index("--check-weight-update-skip-list") + 1] == "visual"
-+
-+
-+@pytest.mark.parametrize(
-+    "overrides",
-+    [
-+        dict(num_nodes=3),
-+        dict(num_gpus_per_node=4),
-+        dict(hardware="H200"),
-+        dict(global_batch_size=63),
-+        dict(layout="3t1r"),  # 64 is not divisible by dense DP24; no implicit rounding.
-+        dict(cleanup_existing_processes=True),
-+        dict(external_ray=False),
-+    ],
-+)
-+def test_invalid_profile_is_rejected_before_any_shell_command(monkeypatch, overrides):
-+    freeze_environment(monkeypatch, hardware="B200")
-+    recording = install_command_recorder(monkeypatch)
-+    module = import_launch_script(REPO_ROOT / "scripts/run_qwen3_6_35b_a3b_posttrainingx.py")
-+    with pytest.raises((ValueError, AssertionError)):
-+        module.execute(module.ScriptArgs(**overrides))
-+    assert recording.commands == []
 diff --git a/tests/fast/ray/test_host_placement.py b/tests/fast/ray/test_host_placement.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..7f29fe4df091acbf92a17c675e245a6f9184fc63
+index 000000000..7f29fe4df
 --- /dev/null
 +++ b/tests/fast/ray/test_host_placement.py
 @@ -0,0 +1,95 @@
@@ -1406,87 +489,408 @@ index 0000000000000000000000000000000000000000..7f29fe4df091acbf92a17c675e245a6f
 +        bad[0][field] = value
 +        with pytest.raises(ValueError):
 +            validate_observed_placement(nodes, bad, gpus_per_node=8)
-diff --git a/tests/fast/rollout/session/test_samples_codec.py b/tests/fast/rollout/session/test_samples_codec.py
-index 13117d836a6907722b00520fcbdf2c1f54ba25c9..e81f6dbd452bdd1cef0eff020ca6aaab6cfebe2a 100644
---- a/tests/fast/rollout/session/test_samples_codec.py
-+++ b/tests/fast/rollout/session/test_samples_codec.py
-@@ -37,6 +37,7 @@ def _computed_sample(**overrides) -> Sample:
-     s.status = Sample.Status.COMPLETED
-     s.weight_versions = ["w1", "w2"]
-     s.prefix_cache_info = Sample.PrefixCacheInfo.from_dict({"cached_tokens": 2, "total_prompt_tokens": 3})
-+    s.spec_info = Sample.SpecInfo(spec_accept_token_num=7, spec_draft_token_num=10, spec_verify_ct=4, completion_token_num=11)
-     s.metadata = {
-         "lifecycle": [{"t0": 1.0, "t1": 2.0, "turn": 1}],
-         "messages": [{"role": "assistant", "content": "done"}],
-@@ -57,6 +58,24 @@ def _mutated_payload(payload: bytes, mutate) -> bytes:
- 
- 
- class TestSamplesWireCodec:
-+    @pytest.mark.parametrize("names", ["canonical", "legacy", "both"])
-+    def test_sglang_speculative_metadata_accumulates_and_survives_wire(self, names):
-+        sample = _computed_sample(spec_info=Sample.SpecInfo())
-+        for accepted, proposed, verified, tokens in [(7, 10, 4, 11), (3, 6, 2, 5)]:
-+            metadata = {"spec_verify_ct": verified, "completion_tokens": tokens}
-+            if names in ("canonical", "both"):
-+                metadata.update(spec_num_correct_drafts=accepted, spec_num_proposed_drafts=proposed)
-+            if names in ("legacy", "both"):
-+                metadata.update(spec_accept_token_num=accepted, spec_draft_token_num=proposed)
-+            sample.spec_info.add(metadata)
-+        (out,) = decode_samples_and_merge_input_sample(encode_samples([sample], {}, None), Sample()).samples
-+        assert out.spec_info.to_dict() == {"spec_accept_token_num": 10, "spec_draft_token_num": 16,
-+                                           "spec_verify_ct": 6, "completion_token_num": 16}
-+        assert out.spec_info.spec_accept_rate == 10 / 16
-+        assert out.spec_info.spec_accept_length == 16 / 6
-+        assert out.tokens == sample.tokens and out.rollout_log_probs == sample.rollout_log_probs
-+        assert out.loss_mask == sample.loss_mask and out.weight_versions == sample.weight_versions
+-- 
+2.50.1 (Apple Git-155)
+
+
+From b61dbe83ee815412b72c84ed367ffd329d7922d4 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 10:56:12 -0700
+Subject: [PATCH 03/17] Add disaggregated B200 Qwen3.6 OpenEnv GRPO launcher
+
+---
+ docs/models/qwen/qwen3-6-moe.md               |  46 ++++
+ scripts/run_qwen3_6_35b_a3b_posttrainingx.py  | 228 ++++++++++++++++++
+ .../test_qwen36_posttrainingx.py              |  83 +++++++
+ .../launch_scripts/test_py_launch_scripts.py  |   1 +
+ .../execute.txt                               | 135 +++++++++++
+ 5 files changed, 493 insertions(+)
+ create mode 100644 scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+ create mode 100644 tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+ create mode 100644 tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
+
+diff --git a/docs/models/qwen/qwen3-6-moe.md b/docs/models/qwen/qwen3-6-moe.md
+index d8b988d49..784a82f60 100644
+--- a/docs/models/qwen/qwen3-6-moe.md
++++ b/docs/models/qwen/qwen3-6-moe.md
+@@ -2,6 +2,52 @@
+ title: Qwen3.6 MoE
+ description: Launch recipe for Qwen3.6-35B-A3B with MTP training and EAGLE speculative rollout.
+ ---
 +
-     def test_round_trip_overlays_computed_and_keeps_template(self):
-         template = Sample(
-             group_index=7,
-@@ -85,6 +104,9 @@ class TestSamplesWireCodec:
-         assert out.status == Sample.Status.COMPLETED
-         assert out.weight_versions == ["w1", "w2"]
-         assert out.prefix_cache_info.to_dict() == {"cached_tokens": 2, "total_prompt_tokens": 3}
-+        assert out.spec_info.to_dict() == {"spec_accept_token_num": 7, "spec_draft_token_num": 10,
-+                                           "spec_verify_ct": 4, "completion_token_num": 11}
-+        assert out.spec_info.spec_accept_rate == 0.7
-         assert out.rollout_routed_experts.dtype == np.int32
-         assert np.array_equal(out.rollout_routed_experts, np.arange(24, dtype=np.int32).reshape(4, 3, 2))
-         assert out.rollout_indexer_topk is None
-@@ -101,6 +123,7 @@ class TestSamplesWireCodec:
-         assert out.train_metadata == {"loss": "ppo"}
-         # the input template itself is never mutated
-         assert template.tokens == [] and template.metadata == {"task": "t", "lifecycle": "stale"}
-+        assert template.spec_info == Sample.SpecInfo()
- 
-     def test_multi_sample_reply_keeps_per_sample_tensors(self):
-         a = _computed_sample(metadata={"server_only": {"sample": "a"}})
-diff --git a/tests/fast/utils/test_command_utils.py b/tests/fast/utils/test_command_utils.py
-index 1c7727ae12e3ddd396fd43a9a4a4783abfb632e9..91994128e4f28a6e623af5f6544e40ed71374754 100644
---- a/tests/fast/utils/test_command_utils.py
-+++ b/tests/fast/utils/test_command_utils.py
-@@ -31,6 +31,19 @@ def _runtime_env(submit_command):
- 
- 
- class TestExecuteTrainConfig:
-+    def test_external_allocation_can_submit_without_killing_existing_processes(self, commands):
-+        config = command_utils.ExecuteTrainConfig(external_ray=True, cleanup_existing_processes=False)
-+        command_utils.execute_train("--train-backend fsdp", 8, None, config=config)
-+        assert len(commands) == 1
-+        assert "ray job submit" in commands[0]
-+        assert all(word not in commands[0] for word in ("pkill", "ray stop", "ray start"))
++## Disaggregated B200 agentic-RL benchmark
 +
-+    def test_no_cleanup_requires_an_external_cluster_before_any_shell_command(self, commands):
-+        config = command_utils.ExecuteTrainConfig(cleanup_existing_processes=False)
-+        with pytest.raises(ValueError, match="externally managed"):
-+            command_utils.execute_train("--train-backend fsdp", 8, None, config=config)
-+        assert commands == []
++`scripts/run_qwen3_6_35b_a3b_posttrainingx.py` combines this model recipe with
++the fully asynchronous OpenEnv control flow. It requires four eight-GPU B200
++nodes and an external, run-owned Ray cluster. It never starts or kills shared
++Ray, Miles, SGLang, or Redis processes.
 +
-     def test_num_nodes_reads_the_slurm_allocation_when_the_config_is_built(self, monkeypatch):
-         """A plain class-level default would bake in the allocation at import and ignore later changes."""
-         monkeypatch.setenv("SLURM_JOB_NUM_NODES", "8")
++The `--layout` choices are `1t3r`, `2t2r`, and `3t1r`. Each rollout node hosts
++one EP8 engine. The trainer retains TP1/EP8/CP1/PP1/ETP1 and the cookbook MTP,
++optimizer, and recomputation settings. It uses broadcast weight updates at
++interval one, staleness one, and sample-granularity submission. `retract` is
++the initial pause mode. Select `--pause-generation-mode in_place` only after
++the broadcast activation test passes.
++
++This is a benchmark implementation awaiting GPU validation, not a qualified
++performance recipe. Supply pinned checkpoints and clean Terminal-Lego or TMAX
++prompt data. Terminal-Bench 2.1 is reserved for separate offline evaluation.
++The launcher does not install packages, download benchmark tasks, assert
++checkpoint/resume fidelity, or bypass the environment-isolation gate.
++
++```bash
++python scripts/run_qwen3_6_35b_a3b_posttrainingx.py \
++    --hardware B200 --layout 2t2r --execution async \
++    --output-dir /shared/posttrainingx/runs/vultr-b200-slurm \
++    --run-id example --model-dir /shared/posttrainingx/runs/vultr-b200-slurm/example/models \
++    --openenv-env-url http://ENV_CONTROLLER:8003 --num-rollout 400
++```
++
++Use `--execution sync --num-rollout 3` for the optimizer correctness test. The
++site adapter must validate inventory, assets, environment isolation, and
++serving first. `--host-map` points at a JSON object with `schema_version: 1`
++and a `nodes` list. Each node supplies `hostname`, numeric IPv4 `ray_node_ip`,
++`role` (`trainer` or `rollout`), and all eight physical `gpu_uuids`. List trainer
++nodes first, then rollout nodes. Rotate that order to rotate physical roles.
++Ray placement is rejected if a host or physical GPU differs from the map.
++For a resume launch, provide a new `--placement-record-path` so the previous
++placement record remains immutable.
++
++The optimizer budget defaults to 400 steps with saves every 50 steps. This
++does not guarantee a quality improvement. Evaluation budgets and the final
++comparison must be pre-registered independently of Terminal-Bench outcomes.
++Megatron's dense-parameter DP and expert DP are distinct quantities. With TP1,
++dense DP has one rank per trainer GPU, while expert DP equals trainer-node
++count. Global-batch scheduling on the 3T/1R case requires separate runtime and
++gradient validation; this launcher does not silently round or drop samples.
+ ## 1. Model Introduction
+ 
+ [Qwen3.6-35B-A3B](https://github.com/QwenLM/Qwen3) is the sparse MoE branch of
+diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+new file mode 100644
+index 000000000..3cbdef427
+--- /dev/null
++++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+@@ -0,0 +1,228 @@
++"""Qwen3.6-35B-A3B GRPO with local OpenEnv tasks on four B200 nodes.
++
++Requires pinned HF and converted checkpoints, clean training prompt data, a
++validated local OpenEnv endpoint, and a pre-existing run-owned Ray cluster.
++The site adapter owns allocation, image pins, GPU reconciliation, and cleanup.
++Terminal-Bench is evaluation-only and is not downloaded by this launcher.
++
++Args:
++    layout: Whole-node trainer/rollout split: 1t3r, 2t2r, or 3t1r.
++    execution: sync uses train.py for correctness; async uses train_async.py.
++    host_map: JSON placement map, in trainer-first then rollout node order.
++    num_rollout: Optimizer-step budget when the one-step invariant holds.
++
++Example:
++    python scripts/run_qwen3_6_35b_a3b_posttrainingx.py --hardware B200 \
++        --output-dir /shared/posttrainingx/runs/vultr-b200-slurm \
++        --run-id example --layout 2t2r --num-rollout 400
++
++This launcher defines the recipe. It does not assert that environment, resume,
++gradient, placement, or quality gates have passed.
++"""
++
++import shlex
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Literal
++
++import typer
++
++import miles.utils.external_utils.command_utils as U
++
++
++@dataclass
++class ScriptArgs(U.ExecuteTrainConfig):
++    num_nodes: int = 4
++    external_ray: bool = True
++    cleanup_existing_processes: bool = False
++    hardware: Literal["auto", "B200"] = "auto"
++    num_gpus_per_node: int = 8
++    run_id: str = U.create_run_id()
++    layout: Literal["1t3r", "2t2r", "3t1r"] = "2t2r"
++    execution: Literal["sync", "async"] = "async"
++    model_name: str = "Qwen3.6-35B-A3B"
++    megatron_model_type: str = "qwen3.6-35B-A3B"
++    model_dir: str = "/root/models"
++    megatron_path: str = "/root/Megatron-LM"
++    prompt_data: str = ""
++    host_map: str = ""
++    placement_record_path: str = ""
++    load_from: str = ""
++    num_rollout: int = 400
++    save_interval: int = 50
++    rollout_batch_size: int = 8
++    n_samples_per_prompt: int = 8
++    global_batch_size: int = 64
++    seed: int = 1234
++    max_tokens_per_gpu: int = 8192
++    max_seq_len: int = 65536
++    rollout_max_response_len: int = 8192
++    async_max_concurrent_samples: int = 128
++    pause_generation_mode: Literal["retract", "in_place"] = "retract"
++    openenv_env_url: str = "http://127.0.0.1:8003"
++    openenv_max_turns: int = 30
++    openenv_max_rollout_time_seconds: int = 3600
++    openenv_message_timeout_s: int = 1200
++    session_server_port: int = 30000
++    session_server_workers: int = 32
++    sglang_max_running_requests: int = 256
++    enable_mtp: bool = True
++
++    def __post_init__(self):
++        self.hardware = U.resolve_hardware(self)
++        if self.hardware != "B200" or self.num_gpus_per_node != U.NUM_GPUS_OF_HARDWARE[self.hardware]:
++            raise ValueError("This profile requires eight B200 GPUs per node.")
++        if self.num_nodes != 4 or self.layout not in ("1t3r", "2t2r", "3t1r"):
++            raise ValueError("The placement sweep requires exactly four whole nodes.")
++        if self.cleanup_existing_processes or not self.external_ray:
++            raise ValueError("This recipe requires external Ray and disables broad process cleanup.")
++        if self.rollout_batch_size * self.n_samples_per_prompt != self.global_batch_size:
++            raise ValueError("rollout_batch_size * n_samples_per_prompt must equal global_batch_size.")
++        if min(self.num_rollout, self.save_interval, self.global_batch_size, self.n_samples_per_prompt) <= 0:
++            raise ValueError("Step, checkpoint, and batch budgets must be positive.")
++        if self.async_max_concurrent_samples < self.n_samples_per_prompt:
++            raise ValueError("Async concurrency must admit at least one complete GRPO group.")
++        self.prompt_data = self.prompt_data or f"{self.output_dir}/{self.run_id}/data/train.prompts.jsonl"
++        self.host_map = self.host_map or f"{self.output_dir}/{self.run_id}/inventory/role-host-map.json"
++        self.placement_record_path = (
++            self.placement_record_path or f"{self.output_dir}/{self.run_id}/inventory/ray-placement.json"
++        )
++
++    @property
++    def trainer_nodes(self) -> int:
++        return int(self.layout[0])
++
++
++def _checkpoint_args(args: ScriptArgs) -> str:
++    checkpoint = f"{args.output_dir}/{args.run_id}/checkpoints"
++    return (
++        f"--hf-checkpoint {shlex.quote(args.model_dir + '/' + args.model_name)} "
++        f"--ref-load {shlex.quote(args.model_dir + '/' + args.model_name + '_torch_dist')} "
++        f"--load {shlex.quote(args.load_from or checkpoint)} --save {shlex.quote(checkpoint)} "
++        f"--save-interval {args.save_interval} "
++    )
++
++
++def _rollout_args(args: ScriptArgs) -> str:
++    asynchronous = (
++        f"--fully-async --pause-generation-mode {args.pause_generation_mode} "
++        f"--async-max-concurrent-samples {args.async_max_concurrent_samples} --max-weight-staleness 1 "
++        if args.execution == "async"
++        else ""
++    )
++    return (
++        asynchronous + "--rollout-submission-granularity sample "
++        f"--prompt-data {shlex.quote(args.prompt_data)} --input-key prompt --apply-chat-template "
++        f"--num-rollout {args.num_rollout} --rollout-batch-size {args.rollout_batch_size} "
++        f"--n-samples-per-prompt {args.n_samples_per_prompt} --global-batch-size {args.global_batch_size} "
++        f"--num-steps-per-rollout 1 --max-seq-len {args.max_seq_len} "
++        f"--rollout-max-response-len {args.rollout_max_response_len} --rollout-temperature 1 "
++        f"--seed {args.seed} --balance-data "
++    )
++
++
++def _performance_args(args: ScriptArgs) -> str:
++    return (
++        "--tensor-model-parallel-size 1 --sequence-parallel --pipeline-model-parallel-size 1 "
++        "--context-parallel-size 1 --expert-model-parallel-size 8 --expert-tensor-parallel-size 1 "
++        "--recompute-granularity full --recompute-method uniform --recompute-num-layers 1 "
++        f"--use-dynamic-batch-size --max-tokens-per-gpu {args.max_tokens_per_gpu} "
++        "--attention-dropout 0.0 --hidden-dropout 0.0 --accumulate-allreduce-grads-in-fp32 "
++        "--attention-softmax-in-fp32 --attention-backend flash --moe-token-dispatcher-type flex "
++    )
++
++
++def _algorithm_args() -> str:
++    return (
++        "--advantage-estimator grpo --use-kl-loss --kl-loss-coef 0.00 --kl-loss-type low_var_kl "
++        "--entropy-coef 0.00 --eps-clip 0.2 --eps-clip-high 0.28 "
++        "--optimizer adam --lr 1e-6 --lr-decay-style constant --weight-decay 0.1 "
++        "--adam-beta1 0.9 --adam-beta2 0.98 --optimizer-cpu-offload "
++        "--overlap-cpu-optimizer-d2h-h2d --use-precision-aware-optimizer "
++    )
++
++
++def _sglang_args(args: ScriptArgs) -> str:
++    mtp = (
++        "--sglang-speculative-algorithm EAGLE --sglang-speculative-num-steps 2 "
++        "--sglang-speculative-eagle-topk 1 --sglang-speculative-num-draft-tokens 3 "
++        "--sglang-mamba-scheduler-strategy extra_buffer "
++        "--enable-mtp-training --mtp-num-layers 1 --mtp-loss-scaling-factor 0.2 "
++        if args.enable_mtp
++        else ""
++    )
++    return (
++        "--rollout-num-gpus-per-engine 8 --sglang-ep-size 8 --sglang-mem-fraction-static 0.7 "
++        "--sglang-cuda-graph-bs 1 2 4 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128 "
++        f"--sglang-max-running-requests {args.sglang_max_running_requests} " + mtp
++    )
++
++
++def _agent_args(args: ScriptArgs) -> str:
++    return (
++        "--custom-generate-function-path miles.rollout.generate_hub.agentic_tool_call.generate "
++        "--custom-agent-function-path openenv_agent_function.run "
++        "--custom-rm-path openenv_generate.reward_func "
++        "--dynamic-sampling-filter-path miles.rollout.filter_hub.dynamic_sampling_filters.check_no_aborted "
++        "--tito-model qwen36 --use-session-server "
++        f"--session-server-port {args.session_server_port} --session-server-workers {args.session_server_workers} "
++    )
++
++
++def execute(args: ScriptArgs):
++    run_dir = f"{args.output_dir}/{args.run_id}"
++    placement_args = (
++        f"--actor-num-nodes {args.trainer_nodes} --actor-num-gpus-per-node 8 --num-gpus-per-node 8 "
++        f"--rollout-num-gpus {(4 - args.trainer_nodes) * 8} "
++        f"--placement-host-order-file {shlex.quote(args.host_map)} "
++        f"--placement-record-path {shlex.quote(args.placement_record_path)} "
++        "--update-weight-transfer-mode broadcast --update-weights-interval 1 "
++    )
++    evidence_args = (
++        f"--dump-details {shlex.quote(run_dir + '/dump_details')} "
++        "--use-miles-dashboard --dashboard-sglang-scrape-mode direct "
++    )
++    train_args = " ".join(
++        [
++            _checkpoint_args(args),
++            _rollout_args(args),
++            _performance_args(args),
++            _algorithm_args(),
++            _sglang_args(args),
++            _agent_args(args),
++            placement_args,
++            evidence_args,
++            U.get_default_wandb_args(__file__, run_id=args.run_id),
++        ]
++    )
++    openenv_dir = Path(U.repo_base_dir) / "examples/experimental/openenv"
++    extra_env_vars = {
++        "PYTHONPATH": str(openenv_dir),
++        "OPENENV_ENV_URL": args.openenv_env_url,
++        "OPENENV_MAX_TURNS": str(args.openenv_max_turns),
++        "OPENENV_MAX_ROLLOUT_TIME_SECONDS": str(args.openenv_max_rollout_time_seconds),
++        "OPENENV_MESSAGE_TIMEOUT_S": str(args.openenv_message_timeout_s),
++        "AGENT_MODEL_NAME": "model",
++        "SGLANG_ENABLE_SPEC_V2": "1" if args.enable_mtp else "0",
++        "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096",
++        "TORCH_NCCL_DUMP_ON_TIMEOUT": "1",
++        "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": run_dir + "/telemetry/nccl_trace",
++    }
++    U.execute_train(
++        train_args=train_args,
++        config=args,
++        num_gpus_per_node=8,
++        megatron_model_type=args.megatron_model_type,
++        megatron_path=args.megatron_path,
++        extra_env_vars=extra_env_vars,
++        train_script="train_async.py" if args.execution == "async" else "train.py",
++    )
++
++
++@U.dataclass_cli
++def main(args: ScriptArgs):
++    execute(args)
++
++
++if __name__ == "__main__":
++    typer.run(main)
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+new file mode 100644
+index 000000000..cd40a2190
+--- /dev/null
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -0,0 +1,83 @@
++import json
++import shlex
++
++import pytest
++
++from tests.fast.launch_scripts.py_harness import (
++    REPO_ROOT,
++    freeze_environment,
++    import_launch_script,
++    install_command_recorder,
++)
++
++
++def _launch(monkeypatch, **overrides):
++    freeze_environment(monkeypatch, hardware="B200")
++    recording = install_command_recorder(monkeypatch)
++    module = import_launch_script(REPO_ROOT / "scripts/run_qwen3_6_35b_a3b_posttrainingx.py")
++    args = module.ScriptArgs(**overrides)
++    module.execute(args)
++    command = next(c for c in recording.commands if "ray job submit" in c)
++    tokens = shlex.split(command)
++    env = json.loads(next(x.split("=", 1)[1] for x in tokens if x.startswith("--runtime-env-json=")))["env_vars"]
++    return args, recording.commands, tokens, env
++
++
++@pytest.mark.parametrize("layout,trainers,rollout_gpus", [("1t3r", 1, 24), ("2t2r", 2, 16), ("3t1r", 3, 8)])
++def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_services(
++    monkeypatch, layout, trainers, rollout_gpus
++):
++    args, commands, tokens, env = _launch(monkeypatch, layout=layout)
++    value = lambda flag: tokens[tokens.index(flag) + 1]
++    assert value("--actor-num-nodes") == str(trainers)
++    assert value("--rollout-num-gpus") == str(rollout_gpus)
++    assert value("--rollout-num-gpus-per-engine") == value("--sglang-ep-size") == "8"
++    assert value("--tensor-model-parallel-size") == value("--context-parallel-size") == "1"
++    assert value("--pipeline-model-parallel-size") == value("--expert-tensor-parallel-size") == "1"
++    assert value("--expert-model-parallel-size") == "8"
++    assert value("--update-weight-transfer-mode") == "broadcast"
++    assert value("--max-weight-staleness") == value("--update-weights-interval") == "1"
++    assert value("--rollout-submission-granularity") == "sample"
++    assert "--fully-async" in tokens and "--colocate" not in tokens
++    assert any(x.endswith("/train_async.py") for x in tokens)
++    assert value("--tito-model") == "qwen36"
++    assert value("--custom-agent-function-path") == "openenv_agent_function.run"
++    assert value("--sglang-speculative-num-steps") == "2"
++    assert value("--sglang-speculative-num-draft-tokens") == "3"
++    assert value("--mtp-num-layers") == "1" and value("--mtp-loss-scaling-factor") == "0.2"
++    assert int(value("--rollout-batch-size")) * int(value("--n-samples-per-prompt")) == int(
++        value("--global-batch-size")
++    )
++    assert all(term not in "\n".join(commands) for term in ("pkill", "ray stop", "ray start", "DAYTONA"))
++    assert env["SGLANG_ENABLE_SPEC_V2"] == "1"
++    assert env["OPENENV_ENV_URL"] == args.openenv_env_url
++    assert value("--placement-host-order-file") == args.host_map
++
++
++def test_sync_validation_and_mtp_ablation_have_explicit_distinct_commands(monkeypatch):
++    _, _, tokens, env = _launch(monkeypatch, execution="sync", num_rollout=3, enable_mtp=False)
++    assert any(x.endswith("/train.py") for x in tokens)
++    assert "--fully-async" not in tokens and "--async-max-concurrent-samples" not in tokens
++    assert "--enable-mtp-training" not in tokens and "--sglang-speculative-algorithm" not in tokens
++    assert tokens[tokens.index("--num-rollout") + 1] == "3"
++    assert env["SGLANG_ENABLE_SPEC_V2"] == "0"
++
++
++@pytest.mark.parametrize(
++    "overrides",
++    [
++        dict(num_nodes=3),
++        dict(num_gpus_per_node=4),
++        dict(hardware="H200"),
++        dict(global_batch_size=63),
++        dict(cleanup_existing_processes=True),
++        dict(external_ray=False),
++    ],
++)
++def test_invalid_profile_is_rejected_before_any_shell_command(monkeypatch, overrides):
++    freeze_environment(monkeypatch, hardware="B200")
++    recording = install_command_recorder(monkeypatch)
++    module = import_launch_script(REPO_ROOT / "scripts/run_qwen3_6_35b_a3b_posttrainingx.py")
++    with pytest.raises((ValueError, AssertionError)):
++        module.execute(module.ScriptArgs(**overrides))
++    assert recording.commands == []
 diff --git a/tests/manual/launch_scripts/test_py_launch_scripts.py b/tests/manual/launch_scripts/test_py_launch_scripts.py
-index 3d215e2e32dcd13c5f275fd019c8987923766f25..d3565c8fa50671104f189971b786fd2d39777ec1 100644
+index 3d215e2e3..d3565c8fa 100644
 --- a/tests/manual/launch_scripts/test_py_launch_scripts.py
 +++ b/tests/manual/launch_scripts/test_py_launch_scripts.py
 @@ -76,6 +76,7 @@ _HARDWARE_A_RECORDING_REPRESENTS = {
@@ -1499,7 +903,7 @@ index 3d215e2e32dcd13c5f275fd019c8987923766f25..d3565c8fa50671104f189971b786fd2d
  _ENTRYPOINTS_DISABLED_BY_THEIR_OWN_DEFAULTS = {
 diff --git a/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt b/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
 new file mode 100644
-index 0000000000000000000000000000000000000000..bd9f7724d32b7f218cb3fa30af0d2e37dd278a6e
+index 000000000..9d1729257
 --- /dev/null
 +++ b/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
 @@ -0,0 +1,135 @@
@@ -1509,7 +913,7 @@ index 0000000000000000000000000000000000000000..bd9f7724d32b7f218cb3fa30af0d2e37
 +### 1
 +export no_proxy=127.0.0.1 && export PYTHONUNBUFFERED=1 && ray job submit
 +  --address="http://127.0.0.1:8265"
-+  --runtime-env-json='{"env_vars": {"PYTHONUNBUFFERED": "1", "CUDA_DEVICE_MAX_CONNECTIONS": "1", "NCCL_NVLS_ENABLE": "0", "no_proxy": "127.0.0.1,127.0.0.1", "MASTER_ADDR": "127.0.0.1", "PYTHONPATH": "<REPO_ROOT>:/root/Megatron-LM:<REPO_ROOT>/examples/experimental/openenv:/frozen/pythonpath", "OPENENV_ENV_URL": "http://127.0.0.1:8003", "OPENENV_MAX_TURNS": "30", "OPENENV_MAX_ROLLOUT_TIME_SECONDS": "3600", "OPENENV_MESSAGE_TIMEOUT_S": "1200", "AGENT_MODEL_NAME": "model", "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096", "TORCH_NCCL_DUMP_ON_TIMEOUT": "1", "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": "/root/shared_data/260101-000000-000/telemetry/nccl_trace"}}'
++  --runtime-env-json='{"env_vars": {"PYTHONUNBUFFERED": "1", "CUDA_DEVICE_MAX_CONNECTIONS": "1", "NCCL_NVLS_ENABLE": "0", "no_proxy": "127.0.0.1,127.0.0.1", "MASTER_ADDR": "127.0.0.1", "PYTHONPATH": "<REPO_ROOT>:/root/Megatron-LM:<REPO_ROOT>/examples/experimental/openenv:/frozen/pythonpath", "OPENENV_ENV_URL": "http://127.0.0.1:8003", "OPENENV_MAX_TURNS": "30", "OPENENV_MAX_ROLLOUT_TIME_SECONDS": "3600", "OPENENV_MESSAGE_TIMEOUT_S": "1200", "AGENT_MODEL_NAME": "model", "SGLANG_ENABLE_SPEC_V2": "1", "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096", "TORCH_NCCL_DUMP_ON_TIMEOUT": "1", "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": "/root/shared_data/260101-000000-000/telemetry/nccl_trace"}}'
 +  -- python3 <REPO_ROOT>/train_async.py
 +  --spec miles_plugins.models.qwen3_5 get_qwen3_5_spec
 +  --disable-bias-linear
@@ -1638,3 +1042,1562 @@ index 0000000000000000000000000000000000000000..bd9f7724d32b7f218cb3fa30af0d2e37
 +  --wandb-group 260101-000000-000
 +  --wandb-key 'frozen-wandb-api-key'
 +  --disable-wandb-random-suffix 
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 346946ae870be97e9cb6f4e8b7214c7fcf66c041 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 13:31:10 -0700
+Subject: [PATCH 04/17] fix: pin benchmark checkpoint paths and reject
+ incompatible sweep batches
+
+---
+ docs/models/qwen/qwen3-6-moe.md               | 13 +++++++++++--
+ scripts/run_qwen3_6_35b_a3b_posttrainingx.py  | 19 ++++++++++++++++---
+ .../test_qwen36_posttrainingx.py              | 18 +++++++++++++++---
+ .../execute.txt                               |  2 +-
+ 4 files changed, 43 insertions(+), 9 deletions(-)
+
+diff --git a/docs/models/qwen/qwen3-6-moe.md b/docs/models/qwen/qwen3-6-moe.md
+index 784a82f60..3acfd0c57 100644
+--- a/docs/models/qwen/qwen3-6-moe.md
++++ b/docs/models/qwen/qwen3-6-moe.md
+@@ -31,6 +31,10 @@ python scripts/run_qwen3_6_35b_a3b_posttrainingx.py \
+     --openenv-env-url http://ENV_CONTROLLER:8003 --num-rollout 400
+ ```
+ 
++Use `--hf-checkpoint` and `--ref-load` when the pinned HF and converted
++checkpoint directories do not follow the cookbook's default names. These
++options select inputs; they do not download, convert, or validate them.
++
+ Use `--execution sync --num-rollout 3` for the optimizer correctness test. The
+ site adapter must validate inventory, assets, environment isolation, and
+ serving first. `--host-map` points at a JSON object with `schema_version: 1`
+@@ -46,8 +50,13 @@ does not guarantee a quality improvement. Evaluation budgets and the final
+ comparison must be pre-registered independently of Terminal-Bench outcomes.
+ Megatron's dense-parameter DP and expert DP are distinct quantities. With TP1,
+ dense DP has one rank per trainer GPU, while expert DP equals trainer-node
+-count. Global-batch scheduling on the 3T/1R case requires separate runtime and
+-gradient validation; this launcher does not silently round or drop samples.
++count. The 2T/2R reference keeps rollout batch 8, group size 8, and global batch
++64. For the controlled three-layout sweep, use `--rollout-batch-size 12
++--global-batch-size 96` in **every** layout: 96 is divisible by dense DP8, DP16,
++and DP24. The launcher rejects incompatible batches, including the default
++64 with `3t1r`; it never silently rounds or drops samples. Runtime and gradient
++validation must still pass before that sweep is qualified.
++
+ ## 1. Model Introduction
+ 
+ [Qwen3.6-35B-A3B](https://github.com/QwenLM/Qwen3) is the sparse MoE branch of
+diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+index 3cbdef427..d1ed5250f 100644
+--- a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
++++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+@@ -10,6 +10,8 @@ Args:
+     execution: sync uses train.py for correctness; async uses train_async.py.
+     host_map: JSON placement map, in trainer-first then rollout node order.
+     num_rollout: Optimizer-step budget when the one-step invariant holds.
++    hf_checkpoint: Explicit pinned HF directory; defaults to model_dir/model_name.
++    ref_load: Explicit converted reference checkpoint; defaults to the cookbook directory.
+ 
+ Example:
+     python scripts/run_qwen3_6_35b_a3b_posttrainingx.py --hardware B200 \
+@@ -43,6 +45,8 @@ class ScriptArgs(U.ExecuteTrainConfig):
+     model_name: str = "Qwen3.6-35B-A3B"
+     megatron_model_type: str = "qwen3.6-35B-A3B"
+     model_dir: str = "/root/models"
++    hf_checkpoint: str = ""
++    ref_load: str = ""
+     megatron_path: str = "/root/Megatron-LM"
+     prompt_data: str = ""
+     host_map: str = ""
+@@ -78,11 +82,21 @@ class ScriptArgs(U.ExecuteTrainConfig):
+             raise ValueError("This recipe requires external Ray and disables broad process cleanup.")
+         if self.rollout_batch_size * self.n_samples_per_prompt != self.global_batch_size:
+             raise ValueError("rollout_batch_size * n_samples_per_prompt must equal global_batch_size.")
++        # EP8 gives one expert-DP rank per trainer node, but dense-DP spans all
++        # trainer GPUs at TP1/PP1/CP1. Megatron must not silently round the batch.
++        dense_dp = self.trainer_nodes * self.num_gpus_per_node
++        if self.global_batch_size % dense_dp:
++            raise ValueError(
++                f"global_batch_size must be divisible by dense DP {dense_dp}; "
++                "use one common compatible batch across the placement sweep (e.g. 96)."
++            )
+         if min(self.num_rollout, self.save_interval, self.global_batch_size, self.n_samples_per_prompt) <= 0:
+             raise ValueError("Step, checkpoint, and batch budgets must be positive.")
+         if self.async_max_concurrent_samples < self.n_samples_per_prompt:
+             raise ValueError("Async concurrency must admit at least one complete GRPO group.")
+         self.prompt_data = self.prompt_data or f"{self.output_dir}/{self.run_id}/data/train.prompts.jsonl"
++        self.hf_checkpoint = self.hf_checkpoint or f"{self.model_dir}/{self.model_name}"
++        self.ref_load = self.ref_load or f"{self.model_dir}/{self.model_name}_torch_dist"
+         self.host_map = self.host_map or f"{self.output_dir}/{self.run_id}/inventory/role-host-map.json"
+         self.placement_record_path = (
+             self.placement_record_path or f"{self.output_dir}/{self.run_id}/inventory/ray-placement.json"
+@@ -96,8 +110,8 @@ class ScriptArgs(U.ExecuteTrainConfig):
+ def _checkpoint_args(args: ScriptArgs) -> str:
+     checkpoint = f"{args.output_dir}/{args.run_id}/checkpoints"
+     return (
+-        f"--hf-checkpoint {shlex.quote(args.model_dir + '/' + args.model_name)} "
+-        f"--ref-load {shlex.quote(args.model_dir + '/' + args.model_name + '_torch_dist')} "
++        f"--hf-checkpoint {shlex.quote(args.hf_checkpoint)} "
++        f"--ref-load {shlex.quote(args.ref_load)} "
+         f"--load {shlex.quote(args.load_from or checkpoint)} --save {shlex.quote(checkpoint)} "
+         f"--save-interval {args.save_interval} "
+     )
+@@ -203,7 +217,6 @@ def execute(args: ScriptArgs):
+         "OPENENV_MAX_ROLLOUT_TIME_SECONDS": str(args.openenv_max_rollout_time_seconds),
+         "OPENENV_MESSAGE_TIMEOUT_S": str(args.openenv_message_timeout_s),
+         "AGENT_MODEL_NAME": "model",
+-        "SGLANG_ENABLE_SPEC_V2": "1" if args.enable_mtp else "0",
+         "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096",
+         "TORCH_NCCL_DUMP_ON_TIMEOUT": "1",
+         "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": run_dir + "/telemetry/nccl_trace",
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index cd40a2190..3a7190aa3 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -27,7 +27,7 @@ def _launch(monkeypatch, **overrides):
+ def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_services(
+     monkeypatch, layout, trainers, rollout_gpus
+ ):
+-    args, commands, tokens, env = _launch(monkeypatch, layout=layout)
++    args, commands, tokens, env = _launch(monkeypatch, layout=layout, global_batch_size=96, rollout_batch_size=12)
+     value = lambda flag: tokens[tokens.index(flag) + 1]
+     assert value("--actor-num-nodes") == str(trainers)
+     assert value("--rollout-num-gpus") == str(rollout_gpus)
+@@ -49,7 +49,7 @@ def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_service
+         value("--global-batch-size")
+     )
+     assert all(term not in "\n".join(commands) for term in ("pkill", "ray stop", "ray start", "DAYTONA"))
+-    assert env["SGLANG_ENABLE_SPEC_V2"] == "1"
++    assert "SGLANG_ENABLE_SPEC_V2" not in env
+     assert env["OPENENV_ENV_URL"] == args.openenv_env_url
+     assert value("--placement-host-order-file") == args.host_map
+ 
+@@ -60,7 +60,18 @@ def test_sync_validation_and_mtp_ablation_have_explicit_distinct_commands(monkey
+     assert "--fully-async" not in tokens and "--async-max-concurrent-samples" not in tokens
+     assert "--enable-mtp-training" not in tokens and "--sglang-speculative-algorithm" not in tokens
+     assert tokens[tokens.index("--num-rollout") + 1] == "3"
+-    assert env["SGLANG_ENABLE_SPEC_V2"] == "0"
++    assert "SGLANG_ENABLE_SPEC_V2" not in env
++
++
++def test_reference_batch_and_explicit_pinned_paths_are_preserved(monkeypatch):
++    _, _, tokens, _ = _launch(
++        monkeypatch, hf_checkpoint="/shared/pinned model revision", ref_load="/shared/converted-v2"
++    )
++    assert tokens[tokens.index("--global-batch-size") + 1] == "64"
++    assert tokens[tokens.index("--rollout-batch-size") + 1] == "8"
++    assert tokens[tokens.index("--hf-checkpoint") + 1] == "/shared/pinned model revision"
++    assert tokens[tokens.index("--ref-load") + 1] == "/shared/converted-v2"
++    assert tokens.count("--hf-checkpoint") == tokens.count("--ref-load") == 1
+ 
+ 
+ @pytest.mark.parametrize(
+@@ -70,6 +81,7 @@ def test_sync_validation_and_mtp_ablation_have_explicit_distinct_commands(monkey
+         dict(num_gpus_per_node=4),
+         dict(hardware="H200"),
+         dict(global_batch_size=63),
++        dict(layout="3t1r"),  # 64 is not divisible by dense DP24; no implicit rounding.
+         dict(cleanup_existing_processes=True),
+         dict(external_ray=False),
+     ],
+diff --git a/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt b/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
+index 9d1729257..bd9f7724d 100644
+--- a/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
++++ b/tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt
+@@ -4,7 +4,7 @@ nvidia-smi topo -m 2>/dev/null | grep -o 'NV[0-9][0-9]*' | wc -l
+ ### 1
+ export no_proxy=127.0.0.1 && export PYTHONUNBUFFERED=1 && ray job submit
+   --address="http://127.0.0.1:8265"
+-  --runtime-env-json='{"env_vars": {"PYTHONUNBUFFERED": "1", "CUDA_DEVICE_MAX_CONNECTIONS": "1", "NCCL_NVLS_ENABLE": "0", "no_proxy": "127.0.0.1,127.0.0.1", "MASTER_ADDR": "127.0.0.1", "PYTHONPATH": "<REPO_ROOT>:/root/Megatron-LM:<REPO_ROOT>/examples/experimental/openenv:/frozen/pythonpath", "OPENENV_ENV_URL": "http://127.0.0.1:8003", "OPENENV_MAX_TURNS": "30", "OPENENV_MAX_ROLLOUT_TIME_SECONDS": "3600", "OPENENV_MESSAGE_TIMEOUT_S": "1200", "AGENT_MODEL_NAME": "model", "SGLANG_ENABLE_SPEC_V2": "1", "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096", "TORCH_NCCL_DUMP_ON_TIMEOUT": "1", "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": "/root/shared_data/260101-000000-000/telemetry/nccl_trace"}}'
++  --runtime-env-json='{"env_vars": {"PYTHONUNBUFFERED": "1", "CUDA_DEVICE_MAX_CONNECTIONS": "1", "NCCL_NVLS_ENABLE": "0", "no_proxy": "127.0.0.1,127.0.0.1", "MASTER_ADDR": "127.0.0.1", "PYTHONPATH": "<REPO_ROOT>:/root/Megatron-LM:<REPO_ROOT>/examples/experimental/openenv:/frozen/pythonpath", "OPENENV_ENV_URL": "http://127.0.0.1:8003", "OPENENV_MAX_TURNS": "30", "OPENENV_MAX_ROLLOUT_TIME_SECONDS": "3600", "OPENENV_MESSAGE_TIMEOUT_S": "1200", "AGENT_MODEL_NAME": "model", "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096", "TORCH_NCCL_DUMP_ON_TIMEOUT": "1", "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": "/root/shared_data/260101-000000-000/telemetry/nccl_trace"}}'
+   -- python3 <REPO_ROOT>/train_async.py
+   --spec miles_plugins.models.qwen3_5 get_qwen3_5_spec
+   --disable-bias-linear
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 5a2cce03269c729282b634e8ff7e602f96dcf37e Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 14:28:56 -0700
+Subject: [PATCH 05/17] Wire sealed local OpenEnv transport into native Qwen
+ GRPO with fail-closed qualification checks
+
+---
+ .../openenv/posttrainingx_local_agent.py      | 51 ++++++++++++++++++
+ .../openenv/posttrainingx_openenv_client.py   | 52 +++++++++++++++++++
+ scripts/run_qwen3_6_35b_a3b_posttrainingx.py  |  6 +--
+ 3 files changed, 106 insertions(+), 3 deletions(-)
+ create mode 100644 examples/experimental/openenv/posttrainingx_local_agent.py
+ create mode 100644 examples/experimental/openenv/posttrainingx_openenv_client.py
+
+diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
+new file mode 100644
+index 000000000..f31a56a87
+--- /dev/null
++++ b/examples/experimental/openenv/posttrainingx_local_agent.py
+@@ -0,0 +1,51 @@
++"""Clean local-file OpenEnv transport; Miles retains sampling and token tracing.
++
++No Verifiers upgrade, re-tokenization, host shell, or post-grading policy action.
++Operational errors stop this qualification run instead of becoming reward zero.
++"""
++import math
++
++from openenv_agent_function import multi_turn, run_for_training, _shared_run_body
++from posttrainingx_openenv_client import Action, LocalOpenEnvClient
++
++
++async def run_episode(policy, model_name, messages, request_kwargs, metadata):
++    return await multi_turn(
++        {'env': LocalOpenEnvClient, 'action': Action}, policy, model_name,
++        messages, request_kwargs, metadata, run_body=_shared_run_body,
++    )
++
++
++async def run(base_url, prompt, request_kwargs=None, metadata=None, **kwargs):
++    result = await run_for_training(base_url, prompt, request_kwargs, metadata, run_episode)
++    return result if result is not None else {'reward': None, 'exit_status': 'operational_error'}
++
++
++async def reward_func(args, samples, **kwargs):
++    def reward(sample):
++        value = sample.metadata.get('reward')
++        if value not in (0.0, 1.0) or sample.metadata.get('exit_status') not in ('completed', 'timeout'):
++            raise RuntimeError('Local environment returned no valid verdict; stopping rather than fabricating a negative reward.')
++        return float(value)
++    return [reward(s) for s in samples] if isinstance(samples, list) else reward(samples)
++
++
++def validate_group(args, samples, **kwargs):
++    from miles.rollout.filter_hub.base_types import DynamicFilterOutput
++    from miles.utils.types import Sample
++    rows = [s for item in samples for s in (item if isinstance(item, list) else [item])]
++    if len(rows) != args.n_samples_per_prompt or len({s.group_index for s in rows}) != 1:
++        raise RuntimeError('GRPO group cardinality or identity mismatch.')
++    for sample in rows:
++        if sample.status == Sample.Status.ABORTED:
++            raise RuntimeError('Aborted trajectory in synchronous qualification; preserving failure instead of silently retrying.')
++        if not sample.tokens or not all(type(t) is int and t >= 0 for t in sample.tokens):
++            raise RuntimeError('Missing native sampled token IDs.')
++        if (sample.rollout_log_probs is None or len(sample.rollout_log_probs) != sample.response_length
++                or not all(math.isfinite(p) for p in sample.rollout_log_probs)):
++            raise RuntimeError('Native response token/logprob accounting mismatch.')
++        if sample.loss_mask is None or len(sample.loss_mask) != sample.response_length or not any(sample.loss_mask):
++            raise RuntimeError('Missing native response loss mask.')
++        if sample.multimodal_inputs or sample.multimodal_train_inputs:
++            raise RuntimeError('Text-only recipe received multimodal inputs.')
++    return DynamicFilterOutput(keep=True)
+diff --git a/examples/experimental/openenv/posttrainingx_openenv_client.py b/examples/experimental/openenv/posttrainingx_openenv_client.py
+new file mode 100644
+index 000000000..db221511a
+--- /dev/null
++++ b/examples/experimental/openenv/posttrainingx_openenv_client.py
+@@ -0,0 +1,52 @@
++"""Small OpenEnv WS client; no OpenEnv/OpenAI dependency upgrade in GPU image.
++
++Carries only environment actions/observations. Policy sampling, renderer, token
++IDs and logprobs stay in the existing Miles session server and agent loop.
++"""
++import asyncio
++import json
++from types import SimpleNamespace
++from urllib.parse import urlsplit, urlunsplit
++
++
++class Action(SimpleNamespace):
++    pass
++
++
++class LocalOpenEnvClient:
++    def __init__(self, base_url, message_timeout_s=360):
++        url = urlsplit(base_url)
++        if url.scheme not in ('http', 'https') or url.username or url.password or url.query or url.fragment:
++            raise ValueError('Expected a plain configured environment endpoint.')
++        self.url = urlunsplit(('wss' if url.scheme == 'https' else 'ws', url.netloc, url.path.rstrip('/') + '/ws', '', ''))
++        self.timeout = message_timeout_s
++        self.ws = None
++
++    async def __aenter__(self):
++        from websockets.asyncio.client import connect
++        self.ws = await connect(self.url, proxy=None, open_timeout=20, max_size=20*1024**2)
++        return self
++
++    async def __aexit__(self, *exc):
++        if self.ws is not None:
++            try:
++                await self.ws.send(json.dumps({'type': 'close'}))
++            finally:
++                await self.ws.close()
++
++    async def exchange(self, operation, data):
++        await self.ws.send(json.dumps({'type': operation, 'data': data}))
++        reply = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=self.timeout))
++        if reply.get('type') == 'error':
++            error = reply.get('data', {})
++            raise RuntimeError('Environment error: ' + str(error.get('code', 'UNKNOWN')))
++        value = reply['data']
++        observation = SimpleNamespace(**value.get('observation', {}))
++        return SimpleNamespace(observation=observation, reward=value.get('reward'), done=value.get('done'),
++                               metadata=value.get('metadata'))
++
++    async def reset(self, **kwargs):
++        return await self.exchange('reset', kwargs)
++
++    async def step(self, action):
++        return await self.exchange('step', vars(action))
+diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+index d1ed5250f..2c245ec66 100644
+--- a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
++++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+@@ -175,9 +175,9 @@ def _sglang_args(args: ScriptArgs) -> str:
+ def _agent_args(args: ScriptArgs) -> str:
+     return (
+         "--custom-generate-function-path miles.rollout.generate_hub.agentic_tool_call.generate "
+-        "--custom-agent-function-path openenv_agent_function.run "
+-        "--custom-rm-path openenv_generate.reward_func "
+-        "--dynamic-sampling-filter-path miles.rollout.filter_hub.dynamic_sampling_filters.check_no_aborted "
++        "--custom-agent-function-path posttrainingx_local_agent.run "
++        "--custom-rm-path posttrainingx_local_agent.reward_func "
++        "--dynamic-sampling-filter-path posttrainingx_local_agent.validate_group "
+         "--tito-model qwen36 --use-session-server "
+         f"--session-server-port {args.session_server_port} --session-server-workers {args.session_server_workers} "
+     )
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 599d5920a3ea4dcf5ef9f6fd83c14bd2c09615a5 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 14:39:23 -0700
+Subject: [PATCH 06/17] Connect to existing Ray before validating explicit
+ physical host placement
+
+---
+ miles/ray/placement_group.py | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/miles/ray/placement_group.py b/miles/ray/placement_group.py
+index 43f2695df..3f0e7b083 100644
+--- a/miles/ray/placement_group.py
++++ b/miles/ray/placement_group.py
+@@ -113,6 +113,10 @@ def _create_placement_group(
+         if is_rdt or not record_path:
+             raise ValueError("Explicit host placement requires a record path and does not support RDT.")
+         nodes = load_host_map(host_map_path, num_gpus=num_gpus, trainer_gpus=trainer_gpus, gpus_per_node=gpus_per_node)
++        # Unlike placement_group(), the state API does not auto-initialize Ray.
++        # Connect only to the externally managed cluster; never start a new one.
++        if not ray.is_initialized():
++            ray.init(address="auto")
+         bundles = placement_bundles(nodes, ray.nodes(), gpus_per_node=gpus_per_node)
+     pg = placement_group(bundles, strategy="PACK")
+     num_bundles = len(bundles)
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 794b00765d06dbaf1d3fe8710cceff436779a66b Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 14:40:58 -0700
+Subject: [PATCH 07/17] Cover local environment adapter and fail-closed reward
+ wiring in launcher tests
+
+---
+ tests/fast/launch_scripts/test_qwen36_posttrainingx.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index 3a7190aa3..4dfc05bb1 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -41,7 +41,9 @@ def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_service
+     assert "--fully-async" in tokens and "--colocate" not in tokens
+     assert any(x.endswith("/train_async.py") for x in tokens)
+     assert value("--tito-model") == "qwen36"
+-    assert value("--custom-agent-function-path") == "openenv_agent_function.run"
++    assert value("--custom-agent-function-path") == "posttrainingx_local_agent.run"
++    assert value("--custom-rm-path") == "posttrainingx_local_agent.reward_func"
++    assert value("--dynamic-sampling-filter-path") == "posttrainingx_local_agent.validate_group"
+     assert value("--sglang-speculative-num-steps") == "2"
+     assert value("--sglang-speculative-num-draft-tokens") == "3"
+     assert value("--mtp-num-layers") == "1" and value("--mtp-loss-scaling-factor") == "0.2"
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 7d4935ad7c13bb359e31cf84a54036b8d5c919f4 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 14:51:40 -0700
+Subject: [PATCH 08/17] Pin canonical Triton MoE for B200 hot reload and gate
+ initial broadcast on full weight equality
+
+---
+ scripts/run_qwen3_6_35b_a3b_posttrainingx.py         | 12 ++++++++++++
+ .../fast/launch_scripts/test_qwen36_posttrainingx.py |  9 +++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+index 2c245ec66..c48d0639e 100644
+--- a/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
++++ b/scripts/run_qwen3_6_35b_a3b_posttrainingx.py
+@@ -71,6 +71,7 @@ class ScriptArgs(U.ExecuteTrainConfig):
+     session_server_workers: int = 32
+     sglang_max_running_requests: int = 256
+     enable_mtp: bool = True
++    verify_initial_weight_broadcast: bool = False
+ 
+     def __post_init__(self):
+         self.hardware = U.resolve_hardware(self)
+@@ -167,6 +168,10 @@ def _sglang_args(args: ScriptArgs) -> str:
+     )
+     return (
+         "--rollout-num-gpus-per-engine 8 --sglang-ep-size 8 --sglang-mem-fraction-static 0.7 "
++        # B200 auto-selected flashinfer_trtllm in job 137, whose BF16 hot
++        # reload retained packed 4-D weights and rejected the first broadcast.
++        # Pin the canonical-layout backend without changing TP/EP or MTP.
++        "--sglang-moe-runner-backend triton "
+         "--sglang-cuda-graph-bs 1 2 4 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128 "
+         f"--sglang-max-running-requests {args.sglang_max_running_requests} " + mtp
+     )
+@@ -196,6 +201,11 @@ def execute(args: ScriptArgs):
+         f"--dump-details {shlex.quote(run_dir + '/dump_details')} "
+         "--use-miles-dashboard --dashboard-sglang-scrape-mode direct "
+     )
++    if args.verify_initial_weight_broadcast:
++        evidence_args += (
++            "--check-weight-update-equal --check-weight-update-selector all "
++            "--check-weight-update-skip-list visual "
++        )
+     train_args = " ".join(
+         [
+             _checkpoint_args(args),
+@@ -217,6 +227,8 @@ def execute(args: ScriptArgs):
+         "OPENENV_MAX_ROLLOUT_TIME_SECONDS": str(args.openenv_max_rollout_time_seconds),
+         "OPENENV_MESSAGE_TIMEOUT_S": str(args.openenv_message_timeout_s),
+         "AGENT_MODEL_NAME": "model",
++        # Partial bucket reloads must preserve canonical expert row order.
++        "SGLANG_OPT_FUSE_SWIGLU_INTERLEAVED": "0",
+         "TORCH_NCCL_TRACE_BUFFER_SIZE": "4096",
+         "TORCH_NCCL_DUMP_ON_TIMEOUT": "1",
+         "TORCH_NCCL_DEBUG_INFO_TEMP_FILE": run_dir + "/telemetry/nccl_trace",
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index 4dfc05bb1..f5a58d45a 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -32,6 +32,8 @@ def test_async_splits_preserve_ep8_recipe_and_never_start_or_kill_shared_service
+     assert value("--actor-num-nodes") == str(trainers)
+     assert value("--rollout-num-gpus") == str(rollout_gpus)
+     assert value("--rollout-num-gpus-per-engine") == value("--sglang-ep-size") == "8"
++    assert value("--sglang-moe-runner-backend") == "triton"
++    assert env["SGLANG_OPT_FUSE_SWIGLU_INTERLEAVED"] == "0"
+     assert value("--tensor-model-parallel-size") == value("--context-parallel-size") == "1"
+     assert value("--pipeline-model-parallel-size") == value("--expert-tensor-parallel-size") == "1"
+     assert value("--expert-model-parallel-size") == "8"
+@@ -76,6 +78,13 @@ def test_reference_batch_and_explicit_pinned_paths_are_preserved(monkeypatch):
+     assert tokens.count("--hf-checkpoint") == tokens.count("--ref-load") == 1
+ 
+ 
++def test_initial_broadcast_verification_covers_target_and_mtp_but_not_untrained_vision(monkeypatch):
++    _, _, tokens, _ = _launch(monkeypatch, verify_initial_weight_broadcast=True)
++    assert "--check-weight-update-equal" in tokens
++    assert tokens[tokens.index("--check-weight-update-selector") + 1] == "all"
++    assert tokens[tokens.index("--check-weight-update-skip-list") + 1] == "visual"
++
++
+ @pytest.mark.parametrize(
+     "overrides",
+     [
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 1181014c3c78ed290d4e53fbc33ef8d4cdb1949a Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 15:03:51 -0700
+Subject: [PATCH 09/17] Accept Qwen null media placeholders and retain native
+ GRPO group gate evidence
+
+---
+ .../openenv/posttrainingx_local_agent.py      | 77 +++++++++++++++++--
+ .../test_qwen36_posttrainingx.py              | 50 ++++++++++++
+ 2 files changed, 121 insertions(+), 6 deletions(-)
+
+diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
+index f31a56a87..1e0453fcd 100644
+--- a/examples/experimental/openenv/posttrainingx_local_agent.py
++++ b/examples/experimental/openenv/posttrainingx_local_agent.py
+@@ -5,11 +5,11 @@ Operational errors stop this qualification run instead of becoming reward zero.
+ """
+ import math
+ 
+-from openenv_agent_function import multi_turn, run_for_training, _shared_run_body
+-from posttrainingx_openenv_client import Action, LocalOpenEnvClient
+-
+ 
+ async def run_episode(policy, model_name, messages, request_kwargs, metadata):
++    from openenv_agent_function import multi_turn, _shared_run_body
++    from posttrainingx_openenv_client import Action, LocalOpenEnvClient
++
+     return await multi_turn(
+         {'env': LocalOpenEnvClient, 'action': Action}, policy, model_name,
+         messages, request_kwargs, metadata, run_body=_shared_run_body,
+@@ -17,6 +17,8 @@ async def run_episode(policy, model_name, messages, request_kwargs, metadata):
+ 
+ 
+ async def run(base_url, prompt, request_kwargs=None, metadata=None, **kwargs):
++    from openenv_agent_function import run_for_training
++
+     result = await run_for_training(base_url, prompt, request_kwargs, metadata, run_episode)
+     return result if result is not None else {'reward': None, 'exit_status': 'operational_error'}
+ 
+@@ -30,10 +32,9 @@ async def reward_func(args, samples, **kwargs):
+     return [reward(s) for s in samples] if isinstance(samples, list) else reward(samples)
+ 
+ 
+-def validate_group(args, samples, **kwargs):
++def _validate_group(args, rows):
+     from miles.rollout.filter_hub.base_types import DynamicFilterOutput
+     from miles.utils.types import Sample
+-    rows = [s for item in samples for s in (item if isinstance(item, list) else [item])]
+     if len(rows) != args.n_samples_per_prompt or len({s.group_index for s in rows}) != 1:
+         raise RuntimeError('GRPO group cardinality or identity mismatch.')
+     for sample in rows:
+@@ -46,6 +47,70 @@ def validate_group(args, samples, **kwargs):
+             raise RuntimeError('Native response token/logprob accounting mismatch.')
+         if sample.loss_mask is None or len(sample.loss_mask) != sample.response_length or not any(sample.loss_mask):
+             raise RuntimeError('Missing native response loss mask.')
+-        if sample.multimodal_inputs or sample.multimodal_train_inputs:
++        # Qwen's processor returns {"images": None, "videos": None} even for
++        # text-only prompts. Match Miles' native media-presence semantics;
++        # never truth-test media tensors or discard actual media values.
++        if (sample.multimodal_inputs and any(v is not None for v in sample.multimodal_inputs.values())) or sample.multimodal_train_inputs:
+             raise RuntimeError('Text-only recipe received multimodal inputs.')
+     return DynamicFilterOutput(keep=True)
++
++
++def validate_group(args, samples, **kwargs):
++    """Keep native token evidence even when a qualification gate fails."""
++    import datetime
++    import hashlib
++    import json
++    import os
++    from pathlib import Path
++    import shutil
++    import tempfile
++    import uuid
++
++    rows = [s for item in samples for s in (item if isinstance(item, list) else [item])]
++    failure = None
++    try:
++        return _validate_group(args, rows)
++    except Exception as exc:
++        failure = f'{type(exc).__name__}: {exc}'
++        raise
++    finally:
++        if not args.dump_details:
++            raise RuntimeError('Qualification requires a run-owned dump_details directory.')
++        target = Path(args.dump_details) / 'qualification-groups'
++        target.mkdir(parents=True, exist_ok=True)
++        if shutil.disk_usage(target).free < 128 * 1024**2:
++            raise RuntimeError('Insufficient space to preserve native group evidence.')
++
++        def safe(value):
++            if isinstance(value, float) and not math.isfinite(value):
++                return {'nonfinite': str(value)}
++            if isinstance(value, dict):
++                return {str(k): safe(v) for k, v in value.items()}
++            if isinstance(value, (list, tuple)):
++                return [safe(v) for v in value]
++            if value is None or isinstance(value, (str, int, float, bool)):
++                return value
++            return {'unsupported_type': type(value).__name__}
++
++        keys = ('index', 'group_index', 'tokens', 'response_length', 'rollout_log_probs',
++                'loss_mask', 'weight_versions', 'reward', 'prompt', 'response', 'metadata')
++        payload = {'schema_version': 1, 'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
++                   'status': 'fail' if failure else 'ok', 'failure': failure,
++                   'scope': 'Pre-optimizer native sample gate; not proof of gradients or quality improvement.',
++                   'samples': [{**{key: safe(getattr(s, key)) for key in keys}, 'status': s.status.value,
++                                'raw_media_types': {k: None if v is None else type(v).__name__
++                                                    for k, v in (s.multimodal_inputs or {}).items()},
++                                'processed_media_keys': list((s.multimodal_train_inputs or {}).keys())}
++                               for s in rows]}
++        content = json.dumps(payload, sort_keys=True, allow_nan=False).encode()
++        name = 'group-' + uuid.uuid4().hex + '-' + hashlib.sha256(content).hexdigest() + '.json'
++        fd, temporary = tempfile.mkstemp(dir=target, prefix='.group-')
++        try:
++            with os.fdopen(fd, 'wb') as handle:
++                handle.write(content)
++                handle.flush()
++                os.fsync(handle.fileno())
++            os.replace(temporary, target / name)
++        finally:
++            if os.path.exists(temporary):
++                os.unlink(temporary)
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index f5a58d45a..f14baf196 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -1,5 +1,8 @@
+ import json
+ import shlex
++import hashlib
++import importlib.util
++from types import SimpleNamespace
+ 
+ import pytest
+ 
+@@ -11,6 +14,53 @@ from tests.fast.launch_scripts.py_harness import (
+ )
+ 
+ 
++def _local_group(tmp_path):
++    from miles.utils.types import Sample
++    source = REPO_ROOT / 'examples/experimental/openenv/posttrainingx_local_agent.py'
++    spec = importlib.util.spec_from_file_location('local_gate_test', source)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    samples = [Sample(index=i, group_index=0, tokens=[1, 2], response_length=1,
++                      rollout_log_probs=[-0.5], loss_mask=[1], reward=1.0,
++                      multimodal_inputs={'images': None, 'videos': None},
++                      status=Sample.Status.COMPLETED) for i in range(8)]
++    return module, SimpleNamespace(n_samples_per_prompt=8, dump_details=str(tmp_path)), samples
++
++
++def test_local_text_gate_accepts_qwen_null_media_and_preserves_native_ids(tmp_path):
++    module, args, samples = _local_group(tmp_path)
++    assert module.validate_group(args, samples).keep
++    path, = (tmp_path / 'qualification-groups').glob('*.json')
++    data = json.loads(path.read_text())
++    assert data['status'] == 'ok' and len(data['samples']) == 8
++    assert data['samples'][0]['tokens'] == [1, 2]
++    assert data['samples'][0]['raw_media_types'] == {'images': None, 'videos': None}
++    assert hashlib.sha256(path.read_bytes()).hexdigest() in path.name
++
++
++@pytest.mark.parametrize('fault', ['raw_media', 'processed_media', 'nan_logprob', 'wrong_group', 'missing_mask'])
++def test_local_group_failures_keep_evidence_and_do_not_relax_other_gates(tmp_path, fault):
++    module, args, samples = _local_group(tmp_path)
++    first = samples[0]
++    if fault == 'raw_media':
++        first.multimodal_inputs['images'] = object()
++    elif fault == 'processed_media':
++        first.multimodal_train_inputs = {'pixel_values': object()}
++    elif fault == 'nan_logprob':
++        first.rollout_log_probs = [float('nan')]
++    elif fault == 'wrong_group':
++        first.group_index = 1
++    else:
++        first.loss_mask = None
++    with pytest.raises(RuntimeError):
++        module.validate_group(args, samples)
++    path, = (tmp_path / 'qualification-groups').glob('*.json')
++    data = json.loads(path.read_text())
++    assert data['status'] == 'fail' and data['failure']
++    if fault == 'nan_logprob':
++        assert data['samples'][0]['rollout_log_probs'] == [{'nonfinite': 'nan'}]
++
++
+ def _launch(monkeypatch, **overrides):
+     freeze_environment(monkeypatch, hardware="B200")
+     recording = install_command_recorder(monkeypatch)
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 2ad5651a899a39ead41df0ee4e649907e7c534aa Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 15:21:59 -0700
+Subject: [PATCH 10/17] Fail qualification before optimization on strict or
+ missing TITO verification
+
+---
+ .../experimental/openenv/posttrainingx_local_agent.py |  5 +++++
+ .../fast/launch_scripts/test_qwen36_posttrainingx.py  | 11 +++++++++--
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
+index 1e0453fcd..bfdef0f7a 100644
+--- a/examples/experimental/openenv/posttrainingx_local_agent.py
++++ b/examples/experimental/openenv/posttrainingx_local_agent.py
+@@ -47,6 +47,11 @@ def _validate_group(args, rows):
+             raise RuntimeError('Native response token/logprob accounting mismatch.')
+         if sample.loss_mask is None or len(sample.loss_mask) != sample.response_length or not any(sample.loss_mask):
+             raise RuntimeError('Missing native response loss mask.')
++        mismatches = sample.metadata.get('tito_session_mismatch')
++        if not isinstance(mismatches, list):
++            raise RuntimeError('Missing native session-tokenization verification.')
++        if any(m.get('type') != 'assistant_text' for m in mismatches):
++            raise RuntimeError('Strict native session-tokenization mismatch; stop before optimizer execution.')
+         # Qwen's processor returns {"images": None, "videos": None} even for
+         # text-only prompts. Match Miles' native media-presence semantics;
+         # never truth-test media tensors or discard actual media values.
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index f14baf196..47e49d082 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -22,6 +22,7 @@ def _local_group(tmp_path):
+     spec.loader.exec_module(module)
+     samples = [Sample(index=i, group_index=0, tokens=[1, 2], response_length=1,
+                       rollout_log_probs=[-0.5], loss_mask=[1], reward=1.0,
++                      metadata={'tito_session_mismatch': []},
+                       multimodal_inputs={'images': None, 'videos': None},
+                       status=Sample.Status.COMPLETED) for i in range(8)]
+     return module, SimpleNamespace(n_samples_per_prompt=8, dump_details=str(tmp_path)), samples
+@@ -38,7 +39,8 @@ def test_local_text_gate_accepts_qwen_null_media_and_preserves_native_ids(tmp_pa
+     assert hashlib.sha256(path.read_bytes()).hexdigest() in path.name
+ 
+ 
+-@pytest.mark.parametrize('fault', ['raw_media', 'processed_media', 'nan_logprob', 'wrong_group', 'missing_mask'])
++@pytest.mark.parametrize('fault', ['raw_media', 'processed_media', 'nan_logprob', 'wrong_group', 'missing_mask',
++                                  'missing_tito', 'special_token_count', 'special_token_type', 'non_assistant_text'])
+ def test_local_group_failures_keep_evidence_and_do_not_relax_other_gates(tmp_path, fault):
+     module, args, samples = _local_group(tmp_path)
+     first = samples[0]
+@@ -50,8 +52,13 @@ def test_local_group_failures_keep_evidence_and_do_not_relax_other_gates(tmp_pat
+         first.rollout_log_probs = [float('nan')]
+     elif fault == 'wrong_group':
+         first.group_index = 1
+-    else:
++    elif fault == 'missing_mask':
+         first.loss_mask = None
++    elif fault == 'missing_tito':
++        first.metadata.pop('tito_session_mismatch')
++    else:
++        first.status = type(first.status).TRUNCATED
++        first.metadata['tito_session_mismatch'] = [{'type': fault}]
+     with pytest.raises(RuntimeError):
+         module.validate_group(args, samples)
+     path, = (tmp_path / 'qualification-groups').glob('*.json')
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 1e4d5af3f57cf4215e6793b60c4c59aebe1c9881 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 15:25:40 -0700
+Subject: [PATCH 11/17] Verify Qwen length-limited final messages without
+ changing sampled tokens
+
+---
+ .../openenv/posttrainingx_local_agent.py      | 59 ++++++++++++++++++-
+ .../test_qwen36_posttrainingx.py              | 49 +++++++++++++++
+ 2 files changed, 107 insertions(+), 1 deletion(-)
+
+diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
+index bfdef0f7a..49eb9e874 100644
+--- a/examples/experimental/openenv/posttrainingx_local_agent.py
++++ b/examples/experimental/openenv/posttrainingx_local_agent.py
+@@ -3,7 +3,64 @@
+ No Verifiers upgrade, re-tokenization, host shell, or post-grading policy action.
+ Operational errors stop this qualification run instead of becoming reward zero.
+ """
++import hashlib
++import json
+ import math
++from functools import lru_cache
++from pathlib import Path
++
++
++@lru_cache(maxsize=1)
++def _qwen_comparator(model_path, template_path, template_kwargs):
++    # Optional heavy tokenizer imports are deferred until a truncated sample
++    # actually requires canonical replay. The launch recipe fixes these paths.
++    from miles.utils.processing_utils import load_tokenizer
++    from miles.utils.chat_template_utils.tito_tokenizer import Qwen36TITOTokenizer, resolve_fixed_chat_template
++
++    fixed_path, _ = resolve_fixed_chat_template('qwen36')
++    if not template_path or Path(template_path).read_bytes() != Path(fixed_path).read_bytes():
++        raise RuntimeError('Truncation comparison requires the resolved Qwen3.6 fixed renderer.')
++    tokenizer = load_tokenizer(model_path, chat_template_path=template_path, trust_remote_code=True)
++    return Qwen36TITOTokenizer(tokenizer, chat_template_kwargs=json.loads(template_kwargs))
++
++
++def _validate_truncated_tito(args, sample):
++    """Recheck an unfinished final message without inventing a sampled EOS.
++
++    Only the expected canonical sequence loses its single final closer. Native
++    tokens, logprobs, masks, rewards and the original mismatch are never edited.
++    Internal boundaries and non-assistant text must still compare successfully.
++    """
++    if (getattr(args, 'tito_model', None) != 'qwen36'
++            or sample.status.value != 'truncated'
++            or sample.metadata.get('agent_metrics', {}).get('end_reason') != 'length'
++            or {m.get('type') for m in sample.metadata['tito_session_mismatch']} != {'special_token_count'}):
++        raise RuntimeError('Strict native session-tokenization mismatch; unsupported truncation context.')
++    actual = sample.metadata.get('accumulated_token_ids')
++    if actual != sample.tokens:
++        raise RuntimeError('Truncated sample no longer equals native accumulated token IDs.')
++    tito = _qwen_comparator(args.hf_checkpoint, args.chat_template_path,
++                            json.dumps(args.chat_template_kwargs or {}, sort_keys=True))
++    comparator = tito.create_comparator()
++    expected = tito.apply_chat_template(sample.metadata['messages'], add_generation_prompt=False, tokenize=True)
++    replayed = [m.to_dict() for m in comparator.compare_sequences(expected, actual)]
++    if replayed != sample.metadata['tito_session_mismatch']:
++        raise RuntimeError('Canonical replay did not reproduce the native mismatch exactly.')
++    end_id = tito.tokenizer.convert_tokens_to_ids('<|im_end|>')
++    while expected and expected[-1] in tito.trailing_token_ids:
++        expected.pop()
++    if not expected or expected[-1] != end_id or not actual or actual[-1] == end_id:
++        raise RuntimeError('Truncation discrepancy is not an unsampled final closer.')
++    compared = expected[:-1]
++    remaining = [m.to_dict() for m in comparator.compare_sequences(compared, actual)]
++    if any(m['type'] != 'assistant_text' for m in remaining):
++        raise RuntimeError('Strict TITO mismatch remains inside the unfinished message sequence.')
++    return {'contract': 'qwen36_length_limited_final_message_v1',
++            'renderer_sha256': hashlib.sha256(Path(args.chat_template_path).read_bytes()).hexdigest(),
++            'native_ids_sha256': hashlib.sha256(json.dumps(actual).encode()).hexdigest(),
++            'expected_comparison_ids_sha256': hashlib.sha256(json.dumps(compared).encode()).hexdigest(),
++            'omitted_expected_final_token_id': end_id, 'native_sample_changed': False,
++            'remaining_mismatches': remaining}
+ 
+ 
+ async def run_episode(policy, model_name, messages, request_kwargs, metadata):
+@@ -51,7 +108,7 @@ def _validate_group(args, rows):
+         if not isinstance(mismatches, list):
+             raise RuntimeError('Missing native session-tokenization verification.')
+         if any(m.get('type') != 'assistant_text' for m in mismatches):
+-            raise RuntimeError('Strict native session-tokenization mismatch; stop before optimizer execution.')
++            sample.metadata['posttrainingx_tito_comparison'] = _validate_truncated_tito(args, sample)
+         # Qwen's processor returns {"images": None, "videos": None} even for
+         # text-only prompts. Match Miles' native media-presence semantics;
+         # never truth-test media tensors or discard actual media values.
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index 47e49d082..6714ca983 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -2,6 +2,8 @@ import json
+ import shlex
+ import hashlib
+ import importlib.util
++import copy
++import sys
+ from types import SimpleNamespace
+ 
+ import pytest
+@@ -68,6 +70,53 @@ def test_local_group_failures_keep_evidence_and_do_not_relax_other_gates(tmp_pat
+         assert data['samples'][0]['rollout_log_probs'] == [{'nonfinite': 'nan'}]
+ 
+ 
++@pytest.mark.parametrize('fault', [None, 'missing_internal_end', 'changed_system', 'extra_end', 'not_length'])
++def test_unfinished_message_comparison_never_rewrites_samples_or_hides_internal_errors(tmp_path, monkeypatch, fault):
++    # Load the actual dependency-free comparator without importing the HF
++    # package facade; this launcher suite deliberately has no HF environment.
++    source = REPO_ROOT / 'miles/utils/chat_template_utils/token_seq_comparator.py'
++    spec = importlib.util.spec_from_file_location('local_comparator_test', source)
++    comparator_module = importlib.util.module_from_spec(spec)
++    monkeypatch.setitem(sys.modules, spec.name, comparator_module)
++    spec.loader.exec_module(comparator_module)
++    TokenSeqComparator = comparator_module.TokenSeqComparator
++
++    module, args, samples = _local_group(tmp_path)
++    mapping = {1: '<|im_start|>', 2: '<|im_end|>', 3: '\n', 10: 'system\nx', 11: 'assistant\ny', 12: 'corrupted'}
++    tokenizer = SimpleNamespace(all_special_ids=[1, 2], decode=lambda ids, **kwargs: ''.join(mapping[i] for i in ids),
++                                convert_tokens_to_ids=lambda text: 2)
++    comparator = TokenSeqComparator(tokenizer, '<|im_start|>assistant', trim_trailing_ids={3})
++    expected = [1, 10, 2, 3, 1, 11, 2, 3]
++    tito = SimpleNamespace(tokenizer=tokenizer, trailing_token_ids={3}, create_comparator=lambda: comparator,
++                           apply_chat_template=lambda *a, **k: list(expected))
++    monkeypatch.setattr(module, '_qwen_comparator', lambda *a: tito)
++    args.tito_model = 'qwen36'
++    args.hf_checkpoint = '/unused'
++    args.chat_template_path = str(tmp_path / 'template.jinja')
++    args.chat_template_kwargs = {}
++    (tmp_path / 'template.jinja').write_text('fixture')
++    sample = samples[0]
++    sample.status = type(sample.status).TRUNCATED
++    sample.tokens = [1, 10, 2, 3, 1, 11]
++    if fault == 'missing_internal_end':
++        sample.tokens.pop(2)
++    elif fault == 'changed_system':
++        sample.tokens[1] = 12
++    elif fault == 'extra_end':
++        sample.tokens.insert(2, 2)
++    sample.metadata = {'agent_metrics': {'end_reason': 'stop' if fault == 'not_length' else 'length'},
++                       'accumulated_token_ids': list(sample.tokens), 'messages': [],
++                       'tito_session_mismatch': [m.to_dict() for m in comparator.compare_sequences(expected, sample.tokens)]}
++    before = copy.deepcopy(sample.to_dict())
++    if fault:
++        with pytest.raises(RuntimeError):
++            module._validate_truncated_tito(args, sample)
++    else:
++        result = module._validate_truncated_tito(args, sample)
++        assert result['remaining_mismatches'] == [] and result['native_sample_changed'] is False
++    assert sample.to_dict() == before
++
++
+ def _launch(monkeypatch, **overrides):
+     freeze_environment(monkeypatch, hardware="B200")
+     recording = install_command_recorder(monkeypatch)
+-- 
+2.50.1 (Apple Git-155)
+
+
+From c966361e76a67bdbcd42b69f8a20d4f0b72f9c66 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 15:45:06 -0700
+Subject: [PATCH 12/17] Preserve MTP speculative statistics across native
+ sample wire codec
+
+---
+ miles/rollout/session/samples/codec.py           | 5 ++++-
+ tests/fast/rollout/session/test_samples_codec.py | 5 +++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/miles/rollout/session/samples/codec.py b/miles/rollout/session/samples/codec.py
+index 81d9c5a5d..2692a828f 100644
+--- a/miles/rollout/session/samples/codec.py
++++ b/miles/rollout/session/samples/codec.py
+@@ -43,6 +43,7 @@ SAMPLES_VALUE_SPEC: dict[str, ValueSpec] = {
+     "status": ValueSpec("json"),
+     "weight_versions": ValueSpec("json"),
+     "prefix_cache_info": ValueSpec("json"),
++    "spec_info": ValueSpec("json"),
+     "metadata": ValueSpec("json"),
+ }
+ 
+@@ -114,7 +115,7 @@ def encode_samples(
+             if spec.codec == "json":
+                 if field == "status":
+                     value = value.value
+-                elif field == "prefix_cache_info":
++                elif field in ("prefix_cache_info", "spec_info"):
+                     value = value.to_dict()
+                 sample_meta[field] = value
+                 continue
+@@ -180,6 +181,8 @@ def decode_samples_and_merge_input_sample(
+                     value = list(value)
+                 elif field == "prefix_cache_info":
+                     value = Sample.PrefixCacheInfo.from_dict(value)
++                elif field == "spec_info":
++                    value = Sample.SpecInfo.from_dict(value)
+                 elif field == "reward":
+                     # Server reward is authoritative only when assigned; a null
+                     # keeps the driver input's local reward.
+diff --git a/tests/fast/rollout/session/test_samples_codec.py b/tests/fast/rollout/session/test_samples_codec.py
+index 13117d836..31bd736af 100644
+--- a/tests/fast/rollout/session/test_samples_codec.py
++++ b/tests/fast/rollout/session/test_samples_codec.py
+@@ -37,6 +37,7 @@ def _computed_sample(**overrides) -> Sample:
+     s.status = Sample.Status.COMPLETED
+     s.weight_versions = ["w1", "w2"]
+     s.prefix_cache_info = Sample.PrefixCacheInfo.from_dict({"cached_tokens": 2, "total_prompt_tokens": 3})
++    s.spec_info = Sample.SpecInfo(spec_accept_token_num=7, spec_draft_token_num=10, spec_verify_ct=4, completion_token_num=11)
+     s.metadata = {
+         "lifecycle": [{"t0": 1.0, "t1": 2.0, "turn": 1}],
+         "messages": [{"role": "assistant", "content": "done"}],
+@@ -85,6 +86,9 @@ class TestSamplesWireCodec:
+         assert out.status == Sample.Status.COMPLETED
+         assert out.weight_versions == ["w1", "w2"]
+         assert out.prefix_cache_info.to_dict() == {"cached_tokens": 2, "total_prompt_tokens": 3}
++        assert out.spec_info.to_dict() == {"spec_accept_token_num": 7, "spec_draft_token_num": 10,
++                                           "spec_verify_ct": 4, "completion_token_num": 11}
++        assert out.spec_info.spec_accept_rate == 0.7
+         assert out.rollout_routed_experts.dtype == np.int32
+         assert np.array_equal(out.rollout_routed_experts, np.arange(24, dtype=np.int32).reshape(4, 3, 2))
+         assert out.rollout_indexer_topk is None
+@@ -101,6 +105,7 @@ class TestSamplesWireCodec:
+         assert out.train_metadata == {"loss": "ppo"}
+         # the input template itself is never mutated
+         assert template.tokens == [] and template.metadata == {"task": "t", "lifecycle": "stale"}
++        assert template.spec_info == Sample.SpecInfo()
+ 
+     def test_multi_sample_reply_keeps_per_sample_tensors(self):
+         a = _computed_sample(metadata={"server_only": {"sample": "a"}})
+-- 
+2.50.1 (Apple Git-155)
+
+
+From df8cde5bedc0b19603b3f53433b5a00b76e1d687 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 15:45:06 -0700
+Subject: [PATCH 13/17] Use parsed Miles renderer kwargs in truncated Qwen
+ token validation
+
+---
+ .../experimental/openenv/posttrainingx_local_agent.py     | 2 +-
+ tests/fast/launch_scripts/test_qwen36_posttrainingx.py    | 8 ++++++--
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
+index 49eb9e874..8489c46d6 100644
+--- a/examples/experimental/openenv/posttrainingx_local_agent.py
++++ b/examples/experimental/openenv/posttrainingx_local_agent.py
+@@ -40,7 +40,7 @@ def _validate_truncated_tito(args, sample):
+     if actual != sample.tokens:
+         raise RuntimeError('Truncated sample no longer equals native accumulated token IDs.')
+     tito = _qwen_comparator(args.hf_checkpoint, args.chat_template_path,
+-                            json.dumps(args.chat_template_kwargs or {}, sort_keys=True))
++                            json.dumps(args.apply_chat_template_kwargs or {}, sort_keys=True))
+     comparator = tito.create_comparator()
+     expected = tito.apply_chat_template(sample.metadata['messages'], add_generation_prompt=False, tokenize=True)
+     replayed = [m.to_dict() for m in comparator.compare_sequences(expected, actual)]
+diff --git a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+index 6714ca983..50c257fa7 100644
+--- a/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
++++ b/tests/fast/launch_scripts/test_qwen36_posttrainingx.py
+@@ -89,11 +89,15 @@ def test_unfinished_message_comparison_never_rewrites_samples_or_hides_internal_
+     expected = [1, 10, 2, 3, 1, 11, 2, 3]
+     tito = SimpleNamespace(tokenizer=tokenizer, trailing_token_ids={3}, create_comparator=lambda: comparator,
+                            apply_chat_template=lambda *a, **k: list(expected))
+-    monkeypatch.setattr(module, '_qwen_comparator', lambda *a: tito)
++    def configured_comparator(model_path, template_path, template_kwargs):
++        assert json.loads(template_kwargs) == {'preserve_thinking': True}
++        return tito
++    monkeypatch.setattr(module, '_qwen_comparator', configured_comparator)
+     args.tito_model = 'qwen36'
+     args.hf_checkpoint = '/unused'
+     args.chat_template_path = str(tmp_path / 'template.jinja')
+-    args.chat_template_kwargs = {}
++    # Use Miles' actual parsed argument, with no invented compatibility alias.
++    args.apply_chat_template_kwargs = {'preserve_thinking': True}
+     (tmp_path / 'template.jinja').write_text('fixture')
+     sample = samples[0]
+     sample.status = type(sample.status).TRUNCATED
+-- 
+2.50.1 (Apple Git-155)
+
+
+From fd9039be69554336d77eeca67a2dd8d409e0c3d8 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 16:15:14 -0700
+Subject: [PATCH 14/17] Track controller episode identities through local
+ OpenEnv outcomes
+
+---
+ .../openenv/posttrainingx_local_agent.py      | 22 +++++-
+ .../openenv/posttrainingx_openenv_client.py   | 26 ++++++-
+ .../openenv/test_openenv_agent_function.py    | 67 +++++++++++++++++++
+ 3 files changed, 109 insertions(+), 6 deletions(-)
+
+diff --git a/examples/experimental/openenv/posttrainingx_local_agent.py b/examples/experimental/openenv/posttrainingx_local_agent.py
+index 8489c46d6..abcc7e2d4 100644
+--- a/examples/experimental/openenv/posttrainingx_local_agent.py
++++ b/examples/experimental/openenv/posttrainingx_local_agent.py
+@@ -67,17 +67,33 @@ async def run_episode(policy, model_name, messages, request_kwargs, metadata):
+     from openenv_agent_function import multi_turn, _shared_run_body
+     from posttrainingx_openenv_client import Action, LocalOpenEnvClient
+ 
++    attempts = metadata.get('posttrainingx_environment_attempts')
++
++    async def recorded_run_body(env_cls, context, body):
++        async def record_attempt(env):
++            try:
++                return await body(env)
++            finally:
++                if attempts is not None and env.episode_id is not None:
++                    attempts.append(
++                        {'episode_id': env.episode_id, 'task_id': env.task_id})
++        return await _shared_run_body(env_cls, context, record_attempt)
++
+     return await multi_turn(
+         {'env': LocalOpenEnvClient, 'action': Action}, policy, model_name,
+-        messages, request_kwargs, metadata, run_body=_shared_run_body,
++        messages, request_kwargs, metadata, run_body=recorded_run_body,
+     )
+ 
+ 
+ async def run(base_url, prompt, request_kwargs=None, metadata=None, **kwargs):
+     from openenv_agent_function import run_for_training
+ 
+-    result = await run_for_training(base_url, prompt, request_kwargs, metadata, run_episode)
+-    return result if result is not None else {'reward': None, 'exit_status': 'operational_error'}
++    context = dict(metadata or {}, posttrainingx_environment_attempts=[])
++    result = await run_for_training(base_url, prompt, request_kwargs, context, run_episode)
++    result = result if result is not None else {'reward': None, 'exit_status': 'operational_error'}
++    # Controller-generated IDs are accounting metadata, never policy messages.
++    result['posttrainingx_environment_attempts'] = context['posttrainingx_environment_attempts']
++    return result
+ 
+ 
+ async def reward_func(args, samples, **kwargs):
+diff --git a/examples/experimental/openenv/posttrainingx_openenv_client.py b/examples/experimental/openenv/posttrainingx_openenv_client.py
+index db221511a..69a687d3c 100644
+--- a/examples/experimental/openenv/posttrainingx_openenv_client.py
++++ b/examples/experimental/openenv/posttrainingx_openenv_client.py
+@@ -5,6 +5,7 @@ IDs and logprobs stay in the existing Miles session server and agent loop.
+ """
+ import asyncio
+ import json
++import re
+ from types import SimpleNamespace
+ from urllib.parse import urlsplit, urlunsplit
+ 
+@@ -21,6 +22,8 @@ class LocalOpenEnvClient:
+         self.url = urlunsplit(('wss' if url.scheme == 'https' else 'ws', url.netloc, url.path.rstrip('/') + '/ws', '', ''))
+         self.timeout = message_timeout_s
+         self.ws = None
++        self.episode_id = None
++        self.task_id = None
+ 
+     async def __aenter__(self):
+         from websockets.asyncio.client import connect
+@@ -34,19 +37,36 @@ class LocalOpenEnvClient:
+             finally:
+                 await self.ws.close()
+ 
+-    async def exchange(self, operation, data):
++    async def _request(self, operation, data):
+         await self.ws.send(json.dumps({'type': operation, 'data': data}))
+         reply = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=self.timeout))
+         if reply.get('type') == 'error':
+             error = reply.get('data', {})
+             raise RuntimeError('Environment error: ' + str(error.get('code', 'UNKNOWN')))
+-        value = reply['data']
++        expected = 'state' if operation == 'state' else 'observation'
++        if reply.get('type') != expected or not isinstance(reply.get('data'), dict):
++            raise RuntimeError('Unexpected OpenEnv reply type.')
++        return reply['data']
++
++    async def exchange(self, operation, data):
++        value = await self._request(operation, data)
+         observation = SimpleNamespace(**value.get('observation', {}))
+         return SimpleNamespace(observation=observation, reward=value.get('reward'), done=value.get('done'),
+                                metadata=value.get('metadata'))
+ 
+     async def reset(self, **kwargs):
+-        return await self.exchange('reset', kwargs)
++        self.episode_id = self.task_id = None
++        result = await self.exchange('reset', kwargs)
++        state = await self._request('state', {})
++        episode_id = state.get('episode_id')
++        task_id = state.get('task_id')
++        expected_task = kwargs.get('task_id') or kwargs.get('task_name')
++        if (not isinstance(episode_id, str) or not re.fullmatch('[0-9a-f]{32}', episode_id)
++                or not task_id or task_id != getattr(result.observation, 'task_id', None)
++                or (expected_task and task_id != expected_task)):
++            raise RuntimeError('OpenEnv episode/task identity did not reconcile after reset.')
++        self.episode_id, self.task_id = episode_id, task_id
++        return result
+ 
+     async def step(self, action):
+         return await self.exchange('step', vars(action))
+diff --git a/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py b/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py
+index c12e58751..83e3c9ea9 100644
+--- a/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py
++++ b/tests/fast/examples/experimental/openenv/test_openenv_agent_function.py
+@@ -11,9 +11,11 @@ below are shared with it.
+ """
+ 
+ import asyncio
++import copy
+ import types
+ 
+ import openenv_agent_function as oaf
++import pytest
+ 
+ 
+ def run_async(coro):
+@@ -98,6 +100,71 @@ class _NoCommandPolicy(_FakePolicy):
+ _CLASSES = {"env": _FakeEnv, "action": _FakeAction}
+ 
+ 
++@pytest.mark.parametrize("outcome", ["completed", "timeout", "operational_error"])
++def test_local_agent_records_controller_ids_without_policy_leakage(monkeypatch, outcome):
++    import posttrainingx_local_agent as local
++    import posttrainingx_openenv_client as client
++
++    requests, identities, closed = [], [], []
++
++    class RecordingEnv(_FakeEnv):
++        episode_id = task_id = None
++
++        async def reset(self, task_id=None):
++            self.episode_id = f"{len(identities) + 1:032x}"
++            self.task_id = task_id
++            identities.append({"episode_id": self.episode_id, "task_id": self.task_id})
++            return await super().reset(task_id)
++
++    class RecordingPolicy(_FakePolicy):
++        async def _create(self, **kwargs):
++            requests.append(copy.deepcopy(kwargs))
++            if outcome == "timeout":
++                await asyncio.Event().wait()
++            if outcome == "operational_error":
++                raise RuntimeError("Injected policy failure")
++            return await super()._create(**kwargs)
++
++        async def close(self):
++            closed.append(True)
++
++    monkeypatch.setattr(client, "LocalOpenEnvClient", RecordingEnv)
++    monkeypatch.setattr(oaf, "AsyncOpenAI", lambda **kwargs: RecordingPolicy())
++    monkeypatch.setattr(oaf, "resolve_session_url", lambda base_url: base_url)
++    monkeypatch.setattr(oaf, "_MAX_ROLLOUT_TIME_S", 0.02 if outcome == "timeout" else 5)
++    prompt = [{"role": "system", "content": "Follow the task."}]
++    metadata = {"task_id": "task_00000", "posttrainingx_environment_attempts": [{"old": "not reused"}]}
++    original = copy.deepcopy(metadata)
++    first = run_async(local.run("http://unused", prompt, metadata=metadata))
++    second = run_async(local.run("http://unused", prompt, metadata=metadata))
++    assert metadata == original
++    assert first["exit_status"] == second["exit_status"] == outcome
++    assert first["posttrainingx_environment_attempts"] == identities[:1]
++    assert second["posttrainingx_environment_attempts"] == identities[1:]
++    assert first["posttrainingx_environment_attempts"] is not second["posttrainingx_environment_attempts"]
++    assert len(closed) == 2 and len(identities) == 2
++    assert first["reward"] == {"completed": 1.0, "timeout": 0.0, "operational_error": None}[outcome]
++    assert requests
++    for request in requests:
++        assert all(identity["episode_id"] not in str(request) for identity in identities)
++        assert "posttrainingx_environment_attempts" not in str(request)
++
++
++def test_local_direct_episode_does_not_require_a_training_ledger(monkeypatch):
++    import posttrainingx_local_agent as local
++    import posttrainingx_openenv_client as client
++
++    class DirectEnv(_FakeEnv):
++        episode_id = "a" * 32
++        task_id = "task_00000"
++
++    monkeypatch.setattr(client, "LocalOpenEnvClient", DirectEnv)
++    metadata = {"task_id": "task_00000"}
++    reward, metrics = run_async(local.run_episode(_FakePolicy(), "m", [], {}, metadata))
++    assert reward == 1.0 and metrics["turns"] == 2
++    assert metadata == {"task_id": "task_00000"}
++
++
+ # --- episode dispatch ------------------------------------------------------
+ 
+ 
+-- 
+2.50.1 (Apple Git-155)
+
+
+From c3bc234a0a9c198525974e8977fe3344b1c6aa68 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 16:17:30 -0700
+Subject: [PATCH 15/17] Match OpenEnv state requests without forbidden data
+ field
+
+---
+ .../experimental/openenv/posttrainingx_openenv_client.py   | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/examples/experimental/openenv/posttrainingx_openenv_client.py b/examples/experimental/openenv/posttrainingx_openenv_client.py
+index 69a687d3c..a2be80cd2 100644
+--- a/examples/experimental/openenv/posttrainingx_openenv_client.py
++++ b/examples/experimental/openenv/posttrainingx_openenv_client.py
+@@ -38,7 +38,10 @@ class LocalOpenEnvClient:
+                 await self.ws.close()
+ 
+     async def _request(self, operation, data):
+-        await self.ws.send(json.dumps({'type': operation, 'data': data}))
++        message = {'type': operation}
++        if data is not None:
++            message['data'] = data
++        await self.ws.send(json.dumps(message))
+         reply = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=self.timeout))
+         if reply.get('type') == 'error':
+             error = reply.get('data', {})
+@@ -57,7 +60,7 @@ class LocalOpenEnvClient:
+     async def reset(self, **kwargs):
+         self.episode_id = self.task_id = None
+         result = await self.exchange('reset', kwargs)
+-        state = await self._request('state', {})
++        state = await self._request('state', None)
+         episode_id = state.get('episode_id')
+         task_id = state.get('task_id')
+         expected_task = kwargs.get('task_id') or kwargs.get('task_name')
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 977bdee2fa4486349728b3768d504129bfa56848 Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 16:21:29 -0700
+Subject: [PATCH 16/17] Read canonical SGLang speculative draft counters in
+ sample metrics
+
+---
+ miles/utils/types.py                           | 10 ++++++++--
+ .../fast/rollout/session/test_samples_codec.py | 18 ++++++++++++++++++
+ 2 files changed, 26 insertions(+), 2 deletions(-)
+
+diff --git a/miles/utils/types.py b/miles/utils/types.py
+index 149deeaa7..59015a138 100644
+--- a/miles/utils/types.py
++++ b/miles/utils/types.py
+@@ -100,8 +100,14 @@ class Sample:
+             return self.completion_token_num / self.spec_verify_ct if self.spec_verify_ct > 0 else 0.0
+ 
+         def add(self, meta_info: dict):
+-            self.spec_accept_token_num += meta_info.get("spec_accept_token_num", 0)
+-            self.spec_draft_token_num += meta_info.get("spec_draft_token_num", 0)
++            # Current SGLang returns correct/proposed drafts. Prefer that pair
++            # without double counting when a backend also includes old aliases.
++            self.spec_accept_token_num += meta_info.get(
++                "spec_num_correct_drafts", meta_info.get("spec_accept_token_num", 0)
++            )
++            self.spec_draft_token_num += meta_info.get(
++                "spec_num_proposed_drafts", meta_info.get("spec_draft_token_num", 0)
++            )
+             self.spec_verify_ct += meta_info.get("spec_verify_ct", 0)
+             self.completion_token_num += meta_info.get("completion_tokens", 0)
+ 
+diff --git a/tests/fast/rollout/session/test_samples_codec.py b/tests/fast/rollout/session/test_samples_codec.py
+index 31bd736af..e81f6dbd4 100644
+--- a/tests/fast/rollout/session/test_samples_codec.py
++++ b/tests/fast/rollout/session/test_samples_codec.py
+@@ -58,6 +58,24 @@ def _mutated_payload(payload: bytes, mutate) -> bytes:
+ 
+ 
+ class TestSamplesWireCodec:
++    @pytest.mark.parametrize("names", ["canonical", "legacy", "both"])
++    def test_sglang_speculative_metadata_accumulates_and_survives_wire(self, names):
++        sample = _computed_sample(spec_info=Sample.SpecInfo())
++        for accepted, proposed, verified, tokens in [(7, 10, 4, 11), (3, 6, 2, 5)]:
++            metadata = {"spec_verify_ct": verified, "completion_tokens": tokens}
++            if names in ("canonical", "both"):
++                metadata.update(spec_num_correct_drafts=accepted, spec_num_proposed_drafts=proposed)
++            if names in ("legacy", "both"):
++                metadata.update(spec_accept_token_num=accepted, spec_draft_token_num=proposed)
++            sample.spec_info.add(metadata)
++        (out,) = decode_samples_and_merge_input_sample(encode_samples([sample], {}, None), Sample()).samples
++        assert out.spec_info.to_dict() == {"spec_accept_token_num": 10, "spec_draft_token_num": 16,
++                                           "spec_verify_ct": 6, "completion_token_num": 16}
++        assert out.spec_info.spec_accept_rate == 10 / 16
++        assert out.spec_info.spec_accept_length == 16 / 6
++        assert out.tokens == sample.tokens and out.rollout_log_probs == sample.rollout_log_probs
++        assert out.loss_mask == sample.loss_mask and out.weight_versions == sample.weight_versions
++
+     def test_round_trip_overlays_computed_and_keeps_template(self):
+         template = Sample(
+             group_index=7,
+-- 
+2.50.1 (Apple Git-155)
+
+
+From 1411d18f57e445b64e6349bc1061850282f5439b Mon Sep 17 00:00:00 2001
+From: Prathmesh234 <ppbhatt500@gmail.com>
+Date: Wed, 2 Sep 2026 18:46:15 -0700
+Subject: [PATCH 17/17] Add opt-in checksummed persistence for dataset cursor
+ and recycled prompts
+
+---
+ miles/rollout/checkpointed_data_source.py     | 116 ++++++++++++++++++
+ .../rollout/test_checkpointed_data_source.py  |  86 +++++++++++++
+ 2 files changed, 202 insertions(+)
+ create mode 100644 miles/rollout/checkpointed_data_source.py
+ create mode 100644 tests/fast/rollout/test_checkpointed_data_source.py
+
+diff --git a/miles/rollout/checkpointed_data_source.py b/miles/rollout/checkpointed_data_source.py
+new file mode 100644
+index 000000000..328618753
+--- /dev/null
++++ b/miles/rollout/checkpointed_data_source.py
+@@ -0,0 +1,116 @@
++"""Strict opt-in persistence for the dataset cursor and recycled prompt buffer.
++
++This is one component of resume, not a checkpoint of the fully-async producer,
++completed-group queue, optimizer, or broadcast policy version. Those must be
++coordinated by the caller before claiming an end-to-end resumable checkpoint.
++"""
++
++import hashlib
++import io
++import json
++import os
++import shutil
++import tempfile
++from pathlib import Path
++
++import torch
++
++from miles.rollout.data_source import RolloutDataSourceWithBuffer
++from miles.utils.types import Sample
++
++_CURSOR_FIELDS = ("sample_offset", "epoch_id", "sample_group_index", "sample_index", "metadata")
++_SCHEMA_VERSION = 1
++
++
++def _contract(args):
++    path = Path(args.prompt_data)
++    return {
++        "prompt_data_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
++        "n_samples_per_prompt": args.n_samples_per_prompt,
++        "rollout_seed": args.rollout_seed,
++        "rollout_shuffle": args.rollout_shuffle,
++    }
++
++
++def _atomic_bytes(path: Path, content: bytes) -> None:
++    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix="." + path.name)
++    try:
++        with os.fdopen(fd, "wb") as handle:
++            handle.write(content)
++            handle.flush()
++            os.fsync(handle.fileno())
++        # No replacement of an existing snapshot or symlink.
++        os.link(temporary, path)
++        directory_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
++        try:
++            os.fsync(directory_fd)
++        finally:
++            os.close(directory_fd)
++    finally:
++        os.unlink(temporary)
++
++
++class CheckpointedRolloutDataSource(RolloutDataSourceWithBuffer):
++    """Opt in through --data-source-path; refuse legacy or partial restores."""
++
++    def save(self, rollout_id):
++        if not self.args.rollout_global_dataset or rollout_id < 0:
++            raise ValueError("A nonnegative rollout ID and global dataset are required.")
++        directory = Path(self.args.save) / "rollout"
++        directory.mkdir(parents=True, exist_ok=True)
++        if any(path.is_symlink() for path in (directory, *directory.parents)):
++            raise ValueError("Checkpoint paths may not contain symlinks.")
++        if shutil.disk_usage(directory).free < 256 * 1024**2:
++            raise ValueError("Rollout checkpoint requires a 256 MiB free-space reserve.")
++        payload = {"schema_version": _SCHEMA_VERSION, "rollout_id": rollout_id, "contract": _contract(self.args),
++                   "cursor": {key: getattr(self, key) for key in _CURSOR_FIELDS},
++                   "buffer": [[sample.to_dict() for sample in group] for group in self.buffer]}
++        # torch serialization preserves native tensor dtypes and all Sample fields.
++        # Only trusted run-owned bytes are loaded, after checksum verification.
++        stream = io.BytesIO()
++        torch.save(payload, stream)
++        content = stream.getvalue()
++        if shutil.disk_usage(directory).free - len(content) < 256 * 1024**2:
++            raise ValueError("Serialized rollout state would consume the free-space reserve.")
++        path = directory / f"posttrainingx_source_state_{rollout_id}.pt"
++        _atomic_bytes(path, content)
++        manifest = {"schema_version": _SCHEMA_VERSION, "rollout_id": rollout_id,
++                    "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content),
++                    "buffer_groups": len(self.buffer)}
++        _atomic_bytes(path.with_suffix(".json"), (json.dumps(manifest, sort_keys=True) + "\n").encode())
++
++    def load(self, rollout_id=None):
++        if rollout_id == -1:
++            return  # Explicit fresh-model boundary used by create_training_models.
++        if rollout_id is None or rollout_id < 0 or not self.args.load:
++            raise ValueError("Resume requires an explicit checkpoint and rollout ID.")
++        path = Path(self.args.load) / "rollout" / f"posttrainingx_source_state_{rollout_id}.pt"
++        manifest_path = path.with_suffix(".json")
++        if any(p.is_symlink() for p in (path, manifest_path, *path.parents)):
++            raise ValueError("Linked rollout checkpoints are not accepted.")
++        manifest = json.loads(manifest_path.read_text())
++        content = path.read_bytes()
++        if (manifest["sha256"] != hashlib.sha256(content).hexdigest() or manifest["bytes"] != len(content)
++                or manifest["schema_version"] != _SCHEMA_VERSION or manifest["rollout_id"] != rollout_id):
++            raise ValueError("Rollout checkpoint manifest or payload checksum differs.")
++        state = torch.load(io.BytesIO(content), map_location="cpu", weights_only=False)
++        if (state["schema_version"] != _SCHEMA_VERSION or state["rollout_id"] != rollout_id
++                or state["contract"] != _contract(self.args)):
++            raise ValueError("Rollout checkpoint identity or dataset contract differs.")
++        cursor = state["cursor"]
++        if set(cursor) != set(_CURSOR_FIELDS) or any(
++            type(cursor[key]) is not int or cursor[key] < 0 for key in _CURSOR_FIELDS if key != "metadata"
++        ):
++            raise ValueError("Rollout cursor schema or counters are invalid.")
++        buffer = [[Sample.from_dict(row) for row in group] for group in state["buffer"]]
++        if manifest["buffer_groups"] != len(buffer) or any(
++            len(group) != self.args.n_samples_per_prompt for group in buffer
++        ):
++            raise ValueError("Recycled prompt group cardinality differs.")
++        # Mutate only after the complete payload has validated. Failed restore
++        # must not leave partially updated counters or silently empty a buffer.
++        if self.args.rollout_shuffle:
++            self.dataset.shuffle(cursor["epoch_id"])
++        for key, value in cursor.items():
++            setattr(self, key, value)
++        self.buffer = buffer
+diff --git a/tests/fast/rollout/test_checkpointed_data_source.py b/tests/fast/rollout/test_checkpointed_data_source.py
+new file mode 100644
+index 000000000..fd2174310
+--- /dev/null
++++ b/tests/fast/rollout/test_checkpointed_data_source.py
+@@ -0,0 +1,86 @@
++"""Actual Sample and data-source round trips; no models, tokenizers, or GPUs."""
++from types import SimpleNamespace
++
++import pytest
++import torch
++
++from miles.rollout.checkpointed_data_source import CheckpointedRolloutDataSource
++from miles.rollout.data_source import pop_first
++from miles.utils.types import Sample
++
++
++def source(tmp_path):
++    prompt = tmp_path / "prompts.jsonl"
++    if not prompt.exists():
++        prompt.write_text('{"prompt":"fixture"}\n')
++    result = object.__new__(CheckpointedRolloutDataSource)
++    result.args = SimpleNamespace(rollout_global_dataset=True, rollout_shuffle=False, rollout_seed=17,
++        prompt_data=str(prompt), n_samples_per_prompt=2, save=str(tmp_path), load=str(tmp_path))
++    result.sample_offset, result.epoch_id = 3, 2
++    result.sample_group_index, result.sample_index = 6, 12
++    result.metadata = {"fixture": ["ordered", 7]}
++    result.buffer_filter = pop_first
++    result.dataset = None
++    result.buffer = [[Sample(index=i, group_index=5, tokens=[11, 22], response_length=1,
++        rollout_log_probs=[-0.25], loss_mask=[1], reward=float(i % 2), weight_versions=[3],
++        metadata={"posttrainingx_environment_attempts": [{"episode_id": f"e{i}"}],
++                  "tensor_fixture": torch.tensor([i], dtype=torch.int64)}) for i in (10, 11)]]
++    return result
++
++
++def test_cursor_buffer_native_fields_and_next_consumption_survive(tmp_path):
++    original = source(tmp_path)
++    original.save(4)
++    restored = source(tmp_path)
++    restored.sample_offset, restored.sample_index, restored.buffer = 0, 0, []
++    restored.load(4)
++    assert (restored.sample_offset, restored.epoch_id, restored.sample_group_index, restored.sample_index) == (3, 2, 6, 12)
++    assert restored.metadata == original.metadata
++    assert restored.get_buffer_length() == 1
++    for before, after in zip(original.get_samples(1)[0], restored.get_samples(1)[0], strict=True):
++        left, right = before.to_dict(), after.to_dict()
++        lt, rt = left["metadata"].pop("tensor_fixture"), right["metadata"].pop("tensor_fixture")
++        assert lt.dtype == rt.dtype == torch.int64 and torch.equal(lt, rt)
++        assert left == right
++    assert original.get_buffer_length() == restored.get_buffer_length() == 0
++
++
++@pytest.mark.parametrize("mutation", ["missing_manifest", "corrupt_payload", "changed_tasks", "changed_seed"])
++def test_restore_rejects_corruption_and_contract_drift_without_mutation(tmp_path, mutation):
++    original = source(tmp_path)
++    original.save(4)
++    restored = source(tmp_path)
++    restored.sample_index = 99
++    path = tmp_path / "rollout/posttrainingx_source_state_4.pt"
++    if mutation == "missing_manifest":
++        path.with_suffix(".json").unlink()
++    elif mutation == "corrupt_payload":
++        path.write_bytes(path.read_bytes() + b"corrupt")
++    elif mutation == "changed_tasks":
++        (tmp_path / "prompts.jsonl").write_text("changed order\n")
++    else:
++        restored.args.rollout_seed += 1
++    with pytest.raises((ValueError, FileNotFoundError)):
++        restored.load(4)
++    assert restored.sample_index == 99 and restored.get_buffer_length() == 1
++
++
++def test_explicit_fresh_start_and_duplicate_snapshot_guard(tmp_path):
++    original = source(tmp_path)
++    original.load(-1)
++    original.save(4)
++    with pytest.raises(FileExistsError):
++        original.save(4)
++    with pytest.raises(FileNotFoundError):
++        original.load(3)
++    with pytest.raises(ValueError):
++        original.load(None)
++
++
++def test_empty_buffer_is_explicitly_restored(tmp_path):
++    original = source(tmp_path)
++    original.buffer = []
++    original.save(4)
++    restored = source(tmp_path)
++    restored.load(4)
++    assert restored.buffer == []
+-- 
+2.50.1 (Apple Git-155)
+
