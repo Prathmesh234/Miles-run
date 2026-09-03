@@ -1,6 +1,6 @@
 # Job 154 — telemetry summary
 
-**Telemetry gate: OK** · Slurm: FAILED (1:0) · 3,657,250 source records · 0 collector errors.
+**Telemetry gate: FAIL** · Slurm: FAILED (1:0) · 3,657,250 source records · 0 collector errors.
 
 Observed window: 2026-09-03T01:37:27.105571Z to 2026-09-03T01:54:13.305656Z (1006.2 s).
 
@@ -19,6 +19,17 @@ GPU columns pool observed GPU samples. NVLink sums 18 links per GPU tick; IB is 
 
 ## Failures and coverage
 
+- Slurm allocation FAILED (1:0); the allocation is not qualified.
+- telemetry/sync-grpo-v10/gpu-nodes-0/nvidia-smi.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-0/nvlink.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-0/infiniband.jsonl: 15.2224s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-0/cpu-memory-numa.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-0/lustre.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-1/nvidia-smi.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-1/nvlink.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-1/infiniband.jsonl: 15.477s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-1/cpu-memory-numa.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.
+- telemetry/sync-grpo-v10/gpu-nodes-1/lustre.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.
 No collector-error records observed; this alone does not establish complete coverage.
 
 Invalid intervals among summarized counters: **630** (per-series intervals, not independent outages). Missing/reset/>5 s intervals are excluded, never zero-filled.
@@ -64,3 +75,15 @@ Raw evidence root: `/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-
 Formatting reference: ClusterMAX `fed871df5321d42706c98701522cc3ccd55898d5`, `bench/README.md` and `bench/result_summary.py`; private source and provider report were not copied.
 
 Full host fabric/storage counters are not process-exclusive. Clock synchronization below the sampling interval is unproven. Percentiles describe the observed workload, not hardware capacity. The original ClusterMAX saturation results are not like-for-like comparisons.
+
+## Training context
+
+Observed optimizer updates: **3**. These are log receipts, not proof of complete resume fidelity or held-out quality.
+
+| Step | UTC | Train reward | Grad norm | Trainer time (s) | Weight update (s) |
+|---:|---|---:|---:|---:|---:|
+| 0 | 2026-09-03T01:49:46.722Z | 0.75 | 0.7532 | 139.9 | 5.793 |
+| 1 | 2026-09-03T01:51:29.021Z | 0.8125 | 0.8895 | 21.37 | 3.009 |
+| 2 | 2026-09-03T01:52:52.246Z | 0.6875 | 0.9264 | 9.82 | 3.326 |
+
+Training reward is not held-out Terminal-Bench accuracy. MTP acceptance rate is omitted because this summary does not independently validate that field.

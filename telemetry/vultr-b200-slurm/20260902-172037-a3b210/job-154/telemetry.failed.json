@@ -1,6 +1,8 @@
 {
   "duration_s": 1006.2,
   "ended_at": "2026-09-03T01:54:13.305656Z",
+  "exit_code": 1,
+  "failure_summary": "Slurm allocation FAILED (1:0); the allocation is not qualified.; telemetry/sync-grpo-v10/gpu-nodes-0/nvidia-smi.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-0/nvlink.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-0/infiniband.jsonl: 15.2224s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-0/cpu-memory-numa.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-0/lustre.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-1/nvidia-smi.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-1/nvlink.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-1/infiniband.jsonl: 15.477s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-1/cpu-memory-numa.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.; telemetry/sync-grpo-v10/gpu-nodes-1/lustre.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.",
   "log_relpath": "telemetry/sync-grpo-v10/gpu-nodes-0/nvidia-smi.jsonl",
   "log_sha256": "9dcda919adb1480c9b224701c604384da88abcf55afb9a7714119fcf9861e65c",
   "metadata": {
@@ -578,6 +580,19 @@
         "node": "gpu-nodes-3",
         "unit": "GB/s"
       }
+    ],
+    "gate_findings": [
+      "Slurm allocation FAILED (1:0); the allocation is not qualified.",
+      "telemetry/sync-grpo-v10/gpu-nodes-0/nvidia-smi.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-0/nvlink.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-0/infiniband.jsonl: 15.2224s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-0/cpu-memory-numa.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-0/lustre.jsonl: 15.2238s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-1/nvidia-smi.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-1/nvlink.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-1/infiniband.jsonl: 15.477s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-1/cpu-memory-numa.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit.",
+      "telemetry/sync-grpo-v10/gpu-nodes-1/lustre.jsonl: 15.4795s sampling gap exceeds the 12s heartbeat limit."
     ],
     "gpu_summary": [
       {
@@ -1206,6 +1221,7 @@
         "unchanged_nonzero_series": 8
       }
     ],
+    "heartbeat_limit_s": 12,
     "inventory_values": [
       {
         "entities": 1,
@@ -1412,7 +1428,7 @@
     "slurm_job_id": 154,
     "slurm_state": "FAILED",
     "statistics_helper_sha256": "9501dba7351812f8c5e8df85e0454ec0e0bd5789a006836dd49936674f3b6b6e",
-    "summary_code_sha256": "5638222771a6ff51f39719e8dd5af12be96008104fc268bd461ca35d9a70b39b",
+    "summary_code_sha256": "d07122844ea716ef637c25bf3ebaffb6409048217a0d536ab0cef5cee93648e6",
     "timeline_window_s": 60,
     "topology": [
       {
@@ -1440,7 +1456,38 @@
         "role": "rollout"
       }
     ],
-    "training": null
+    "training": {
+      "log_sha256": "7e9a21cb632f066c1791d865d9df26f6d058dfe9b7e90dc6cb61c1d7cf3f992a",
+      "observation_path": "tests/02-sync-grpo-v10-optimizer-observation-a1/result.json",
+      "observation_sha256": "83c07a8853a6845f306a3d28d02167c66d98c50dd5275438bb5a9d19daf11c1b",
+      "source_log": "training/sync-grpo-v10/logs/gpu-nodes-0/miles.out",
+      "steps": [
+        {
+          "grad_norm": 0.7531793117523193,
+          "step": 0,
+          "time": "2026-09-03T01:49:46.722Z",
+          "train_reward": 0.75,
+          "train_time_s": 139.92478942871094,
+          "weight_update_s": 5.7932658195495605
+        },
+        {
+          "grad_norm": 0.8894577622413635,
+          "step": 1,
+          "time": "2026-09-03T01:51:29.021Z",
+          "train_reward": 0.8125,
+          "train_time_s": 21.369273900985718,
+          "weight_update_s": 3.008732795715332
+        },
+        {
+          "grad_norm": 0.9264193773269653,
+          "step": 2,
+          "time": "2026-09-03T01:52:52.246Z",
+          "train_reward": 0.6875,
+          "train_time_s": 9.819665670394897,
+          "weight_update_s": 3.325615882873535
+        }
+      ]
+    }
   },
   "results": [
     {
@@ -2891,5 +2938,6 @@
   "runner": "telemetry-summary",
   "schema_version": 1,
   "started_at": "2026-09-03T01:37:27.105571Z",
-  "status": "ok"
+  "status": "fail",
+  "timeout": false
 }
