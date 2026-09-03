@@ -1,8 +1,8 @@
 # Job 173 — telemetry summary
 
-**Telemetry gate: PARTIAL** · Slurm: RUNNING (0:0) · 56,348 source records · 0 collector errors.
+**Telemetry gate: FAIL** · Slurm: FAILED (1:0) · 1,141,504 source records · 0 collector errors.
 
-Observed window: 2026-09-03T04:23:37.358091Z to 2026-09-03T04:24:04.934147Z (27.6 s).
+Observed window: 2026-09-03T04:23:37.358091Z to 2026-09-03T04:28:55.079764Z (317.7 s).
 
 Exploratory synchronous qualification; includes startup, JIT, checkpoints and shutdown. No controlled async split comparison or held-out quality claim.
 
@@ -12,38 +12,15 @@ GPU columns pool observed GPU samples. NVLink sums 18 links per GPU tick; IB is 
 
 | Node | Role | GPUs/rails | GPU util mean / p95 (%) | HBM max (GiB/GPU) | Power max (W/GPU) | NVLink Tx mean (GB/s/GPU) | IB Tx mean (GB/s/rail) | Lustre write max (GB/s/client) |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| gpu-nodes-0 | trainer | 8/8 | 0 / 0 | 0.721 | 198 | 0 | 1.08e-08 | 0.00175 |
-| gpu-nodes-1 | trainer | 8/8 | 0 / 0 | 0.721 | 202 | 0 | 0 | 0.00162 |
-| gpu-nodes-2 | trainer | 8/8 | 0 / 0 | 0.721 | 201 | 0 | 0 | 0.00159 |
-| gpu-nodes-3 | trainer | 8/8 | 0 / 0 | 0.721 | 202 | 0 | 7.72e-09 | 0.0016 |
+| gpu-nodes-0 | trainer | 8/8 | 3.72 / 7 | 57.4 | 264 | 0.00018 | 2.29e-05 | 0.0222 |
+| gpu-nodes-1 | trainer | 8/8 | 3.87 / 7.05 | 57.4 | 267 | 0.000181 | 2.29e-05 | 0.0221 |
+| gpu-nodes-2 | trainer | 8/8 | 3.85 / 6 | 57.4 | 261 | 0.000179 | 2.27e-05 | 0.0275 |
+| gpu-nodes-3 | trainer | 8/8 | 5.1 / 13 | 57.4 | 271 | 0.00018 | 2.29e-05 | 0.0382 |
 
 ## Failures and coverage
 
+- Slurm allocation FAILED (1:0); the allocation is not qualified.
 No collector-error records observed; this alone does not establish complete coverage.
-- telemetry/resume-replay-v2/gpu-nodes-0/nvidia-smi.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-0/nvlink.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-0/infiniband.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-0/cpu-memory-numa.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-0/lustre.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-1/nvidia-smi.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-1/nvlink.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-1/infiniband.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-1/cpu-memory-numa.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-1/lustre.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-2/nvidia-smi.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-2/nvlink.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-2/infiniband.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-2/cpu-memory-numa.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-2/lustre.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-3/nvidia-smi.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-3/nvlink.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-3/infiniband.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-3/cpu-memory-numa.jsonl: **partial**.
-- telemetry/resume-replay-v2/gpu-nodes-3/lustre.jsonl: **partial**.
-- telemetry/lustre-resume-replay-v2/gpu-nodes-0/lustre.jsonl: **partial**.
-- telemetry/lustre-resume-replay-v2/gpu-nodes-1/lustre.jsonl: **partial**.
-- telemetry/lustre-resume-replay-v2/gpu-nodes-2/lustre.jsonl: **partial**.
-- telemetry/lustre-resume-replay-v2/gpu-nodes-3/lustre.jsonl: **partial**.
 
 Invalid intervals among summarized counters: **0** (per-series intervals, not independent outages). Missing/reset/>5 s intervals are excluded, never zero-filled.
 
@@ -62,18 +39,18 @@ Lowest/highest time-mean within each node; descriptive differences, not hardware
 
 | Node | Metric | Lowest entity : mean | Highest entity : mean | Across-entity CV |
 |---|---|---|---|---:|
-| gpu-nodes-0 | gpu_utilization (%) | 042b468a: 0 | ec52f3ef: 0 | — |
-| gpu-nodes-0 | ib_rail_tx (GB/s) | mlx5_1/1: 0 | mlx5_0/1: 8.63e-08 | 2.65 |
-| gpu-nodes-0 | nvlink_link_tx (GB/s) | 042b468a/link-0: 0 | ec52f3ef/link-9: 0 | — |
-| gpu-nodes-1 | gpu_utilization (%) | 0606304d: 0 | f2fbb0d1: 0 | — |
-| gpu-nodes-1 | ib_rail_tx (GB/s) | mlx5_0/1: 0 | mlx5_9/1: 0 | — |
-| gpu-nodes-1 | nvlink_link_tx (GB/s) | 0606304d/link-0: 0 | f2fbb0d1/link-9: 0 | — |
-| gpu-nodes-2 | gpu_utilization (%) | 01f65707: 0 | f453c594: 0 | — |
-| gpu-nodes-2 | ib_rail_tx (GB/s) | mlx5_0/1: 0 | mlx5_9/1: 0 | — |
-| gpu-nodes-2 | nvlink_link_tx (GB/s) | 01f65707/link-0: 0 | f453c594/link-9: 0 | — |
-| gpu-nodes-3 | gpu_utilization (%) | 11d63c84: 0 | 7471b575: 0 | — |
-| gpu-nodes-3 | ib_rail_tx (GB/s) | mlx5_1/1: 0 | mlx5_0/1: 6.18e-08 | 2.65 |
-| gpu-nodes-3 | nvlink_link_tx (GB/s) | 11d63c84/link-0: 0 | 7471b575/link-9: 0 | — |
+| gpu-nodes-0 | gpu_utilization (%) | 042b468a: 2.15 | 05b02219: 5.79 | 0.274 |
+| gpu-nodes-0 | ib_rail_tx (GB/s) | mlx5_4/1: 2.02e-05 | mlx5_1/1: 2.33e-05 | 0.045 |
+| gpu-nodes-0 | nvlink_link_tx (GB/s) | 2941c934/link-10: 9.85e-06 | 2941c934/link-7: 1.01e-05 | 0.00809 |
+| gpu-nodes-1 | gpu_utilization (%) | 15fdcc49: 2.69 | f2fbb0d1: 5.28 | 0.201 |
+| gpu-nodes-1 | ib_rail_tx (GB/s) | mlx5_4/1: 2.02e-05 | mlx5_1/1: 2.34e-05 | 0.0451 |
+| gpu-nodes-1 | nvlink_link_tx (GB/s) | d1b19d48/link-10: 9.88e-06 | 1bc17818/link-8: 1.02e-05 | 0.00778 |
+| gpu-nodes-2 | gpu_utilization (%) | 86218e11: 1.95 | 7872c739: 4.84 | 0.215 |
+| gpu-nodes-2 | ib_rail_tx (GB/s) | mlx5_4/1: 2e-05 | mlx5_1/1: 2.32e-05 | 0.0448 |
+| gpu-nodes-2 | nvlink_link_tx (GB/s) | 983d90f7/link-10: 9.79e-06 | e00780e1/link-8: 1.01e-05 | 0.00819 |
+| gpu-nodes-3 | gpu_utilization (%) | 138eab1f: 3.74 | 11d63c84: 6.23 | 0.176 |
+| gpu-nodes-3 | ib_rail_tx (GB/s) | mlx5_4/1: 2.01e-05 | mlx5_1/1: 2.33e-05 | 0.0452 |
+| gpu-nodes-3 | nvlink_link_tx (GB/s) | 138eab1f/link-10: 9.85e-06 | 11d63c84/link-8: 1.02e-05 | 0.00835 |
 
 ## What is retained
 
