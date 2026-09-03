@@ -37,7 +37,7 @@ def server_command(model, mtp, precision='bf16'):
         '--decode-log-interval', '1']
     if precision == 'mxfp8':
         command += ['--moe-runner-backend', 'flashinfer_trtllm_routed',
-                    '--fp8-gemm-backend', 'flashinfer_trtllm']
+                    '--fp8-gemm-backend', 'triton']
     if mtp:
         command += ['--speculative-algorithm', 'EAGLE', '--speculative-num-steps', '2',
                     '--speculative-eagle-topk', '1', '--speculative-num-draft-tokens', '3',

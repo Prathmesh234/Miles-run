@@ -116,6 +116,20 @@ def render(data):
                   f"{row['telemetry_streams']} finalized infrastructure streams, {row['collector_errors']} collector errors.", '',
                   'This reduces inference-weight storage, not the full optimizer checkpoint. No training speed or held-out quality claim.', '',
                   f"Checkpoint: `{row['checkpoint']}`. Audit: `{row['evidence']}`.", '']
+    if 'packaging' in data:
+        row = data['packaging']
+        lines += ['## Packaging intervention', '',
+                  'Job 149 failed before readiness because the candidate lacked processor configs. '
+                  'The pinned SGLang still initializes a processor for this model when requests are text-only; '
+                  'its standalone language-model-only flag does not support Qwen3.6.', '',
+                  f"A new package, `{row['destination']}`, restores the two hash-pinned processor configs. "
+                  f"It hard-links {row['hardlinked_weight_shards']} unchanged shards; no requantization or original-package overwrite. "
+                  f"All {row['checksummed_files']} files passed the independent serialized audit.", '',
+                  f"New checksum-manifest SHA256: `{row['checksums_sha256']}`.", '']
+    if data.get('serving_attempts'):
+        lines += ['## EP8 serving attempts', '', '| Job | State | Finding |', '|---|---|---|']
+        lines += [f"| {row['job_id']} | {row['status']} | {row['finding']} |" for row in data['serving_attempts']]
+        lines += ['', 'Failures remain in the evidence bundle; no optimizer steps were enabled by these attempts.', '']
     return '\n'.join(lines)
 
 

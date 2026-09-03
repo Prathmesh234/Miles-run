@@ -70,6 +70,16 @@
     "telemetry_streams": 6
   },
   "model_type": "qwen3_5_moe",
+  "packaging": {
+    "checksummed_files": 40,
+    "checksums_sha256": "fe4744bd4d45aa296199e77835ce0959bb61e88ed39ee038ebff1f6664848eed",
+    "destination": "models/qwen3.6-35b-a3b-mxfp8-v2",
+    "hardlinked_weight_shards": 26,
+    "processor_sha256": {
+      "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "video_preprocessor_config.json": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+    }
+  },
   "packed_expert_payload_bytes": 66035122176,
   "packed_expert_payload_fraction": 0.9183835089486705,
   "packed_expert_tensor_count": 82,
@@ -96,6 +106,18 @@
   "reproducer": ".venv-launch-tests/bin/python scripts/stage_model_conversion.py \\\n  --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \\\n  --kubeconfig /path/to/kubeconfig --format mxfp8-probe --attempt 1",
   "schema_version": 1,
   "scope": "Exact stock selection logic replayed on real headers. No weights read, quantized, replaced, or trained.",
+  "serving_attempts": [
+    {
+      "finding": "Missing processor configs. New v2 package restores them without changing weights.",
+      "job_id": 149,
+      "status": "failed before readiness"
+    },
+    {
+      "finding": "FlashInfer TRT-LLM dense scale shuffle rejects TP8 shape [2048,2]. Next attempt uses documented Triton dense MXFP8, preserving EP8 routed MoE and all weights.",
+      "job_id": 150,
+      "status": "failed before readiness"
+    }
+  ],
   "source_sha256": {
     "docs/advanced/low-precision.md": "a6c2174621a1d3f553ca38acdac0fe5a65b45e5b9dc2c2967555ddc7d306305b",
     "miles_plugins/models/qwen3_5.py": "de034529c9a80a34046b71a3079600899b92ac69074bb212612c1fb7fa47e10b",

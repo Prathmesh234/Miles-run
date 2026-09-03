@@ -76,6 +76,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(command[command.index('--tp-size') + 1], '8')
         self.assertIn('--speculative-algorithm', command)
         self.assertEqual(command[command.index('--moe-runner-backend') + 1], 'flashinfer_trtllm_routed')
+        self.assertEqual(command[command.index('--fp8-gemm-backend') + 1], 'triton')
         with tempfile.TemporaryDirectory() as temporary:
             run = Run.create(Path(temporary) / 'run', {})
             code = Path(temporary) / 'code'; code.mkdir()

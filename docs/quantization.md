@@ -74,3 +74,20 @@ Tensor payload: **39.50 GB**, from 71.90 GB. All 64,106 serialized tensors passe
 This reduces inference-weight storage, not the full optimizer checkpoint. No training speed or held-out quality claim.
 
 Checkpoint: `/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210/models/qwen3.6-35b-a3b-mxfp8-v1`. Audit: `tests/02-mxfp8-serialized-checkpoint-audit-v1/result.json`.
+
+## Packaging intervention
+
+Job 149 failed before readiness because the candidate lacked processor configs. The pinned SGLang still initializes a processor for this model when requests are text-only; its standalone language-model-only flag does not support Qwen3.6.
+
+A new package, `models/qwen3.6-35b-a3b-mxfp8-v2`, restores the two hash-pinned processor configs. It hard-links 26 unchanged shards; no requantization or original-package overwrite. All 40 files passed the independent serialized audit.
+
+New checksum-manifest SHA256: `fe4744bd4d45aa296199e77835ce0959bb61e88ed39ee038ebff1f6664848eed`.
+
+## EP8 serving attempts
+
+| Job | State | Finding |
+|---|---|---|
+| 149 | failed before readiness | Missing processor configs. New v2 package restores them without changing weights. |
+| 150 | failed before readiness | FlashInfer TRT-LLM dense scale shuffle rejects TP8 shape [2048,2]. Next attempt uses documented Triton dense MXFP8, preserving EP8 routed MoE and all weights. |
+
+Failures remain in the evidence bundle; no optimizer steps were enabled by these attempts.
