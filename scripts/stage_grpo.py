@@ -53,7 +53,8 @@ def main():
     ap.add_argument('--steps', type=int, choices=range(2, 6), default=3)
     ap.add_argument('--nvml-attempt', type=int, default=7)
     ap.add_argument('--tito-attempt', type=int, default=4)
-    ap.add_argument('--native-test-attempt', type=int, default=4)
+    ap.add_argument('--native-test-attempt', type=int, default=5)
+    ap.add_argument('--native-test-audit-attempt', type=int, default=2)
     a = ap.parse_args()
     repo = Path(__file__).resolve().parents[1]
     miles = repo / 'vendor/miles'
@@ -76,7 +77,7 @@ def main():
         if hashlib.sha256(qualified).hexdigest() != sha256(repo / 'scripts' / name):
             phase.finish('fail', failure_summary='Collector differs from the load-qualified revision: ' + name, refresh=False)
             return 1
-    journal_gate = run.root / f'tests/02-rollout-journal-native-audit-v{a.native_test_attempt}-a1/result.json'
+    journal_gate = run.root / f'tests/02-rollout-journal-native-audit-v{a.native_test_attempt}-a{a.native_test_audit_attempt}/result.json'
     journal_audit = json.loads(journal_gate.read_text())
     journal_proof = journal_audit['result']
     changed_since_tests = subprocess.check_output(['git', '-C', str(miles), 'diff', '--name-only', journal_proof['miles_revision'], miles_sha], text=True).splitlines()
@@ -85,7 +86,7 @@ def main():
                'tests/snapshots/launch_scripts/py/scripts/run_qwen3_6_35b_a3b_posttrainingx.py/execute.txt'}
     from stage_rollout_journal_tests import TESTS as required_native_tests
     if (journal_audit['findings'] or journal_proof['exit_code'] != 0
-            or journal_proof['counts'] != dict(tests=96, failures=0, errors=0, skipped=0)
+            or journal_proof['counts'] != dict(tests=101, failures=0, errors=0, skipped=0)
             or journal_proof['test_paths'] != required_native_tests
             or not set(changed_since_tests) <= allowed):
         phase.finish('fail', failure_summary='Native journal/cleanup candidate differs from the tested core or CPU tests failed.', refresh=False)
