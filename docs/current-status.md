@@ -4,11 +4,11 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job154: 3; job143: 3 historical validation updates. Neither qualifies the measured benchmark.**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **161**, 32 GPUs, 2T/2R, 2 requested steps. Bounded validation of native trajectory journal and per-API NVML timing, not the final hill climb. Retain both requested checkpoints; preserve the12s telemetry gate.
+Latest training allocation: Slurm **161**, 32 GPUs, 2T/2R, 2 requested steps. Two-step 32-GPU synchronous validation. Native tensor and all48-episode accounting audits passed. NVML field calls blocked during teardown; no async, full resume, or held-out quality claim.
 
-**Allocation status: RUNNING; startup observed, optimizer execution not yet confirmed**
+**Allocation status: FAILED 1:0 after two optimizer updates and two save receipts; NVML teardown telemetry gate failed**
 
-Status snapshot: `2026-09-03T02:37:14.470203Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T02:55:55.188710Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -31,17 +31,17 @@ Status snapshot: `2026-09-03T02:37:14.470203Z`; inspect Slurm for live state.
 - Optional quantization: jobs 147/148 passed expert MXFP8 byte checks and full conversion (71.904 GB to39.502 GB tensor payload). Metadata-only repackaging preserved weights. Serving149/150/151 failed before readiness; no quantized optimizer step or speedup/quality claim.
 - Batch compatibility: pinned Megatron calculator rejects global64 at denseDP24 and accepts96 across DP8/16/24. Stage4 stays64; Stage5 common96 requires actual trainer validation. CollectiveX/DeepEP V2 sources are pinned, but the Miles image has the incompatible legacy API; no CollectiveX performance result.
 - Evidence/retention: authorized pruning removed 1,989,034,824,640 bytes of older dummy checkpoint payloads while retaining latest checkpoint and metadata. No S3 archive configured. Public telemetry keeps four dense files per job, not raw chunks; job 154 summarizes3,657,250 records in 156,009 bytes and explicitly fails its coverage gate.
-- Tests: root evidence suite 66 passed; updated targeted launcher/snapshot checks 31 passed. Pinned CPU journal/scheduler/cursor tests passed 54/54 in job160. macOS broad launcher attempt failed (382 passed, 31 failed, 122 errors, including absent /proc); prior pinned Linux baseline remains 597 passed/12 failures/4 errors. No whole-suite green claim.
+- Tests: root evidence suite 67 passed; updated targeted launcher/snapshot checks 31 passed. Pinned CPU journal/scheduler/cursor tests passed 54/54 in job160. macOS broad launcher attempt failed (382 passed, 31 failed, 122 errors, including absent /proc); prior pinned Linux baseline remains 597 passed/12 failures/4 errors. No whole-suite green claim.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven. | Instrument the actual trainer/Ray lifecycle; memory-only, EP8 NCCL, and fragmented-allocation teardown controls156/157/158 passed without reproducing154. Keep the 12s deadline and the failed training coverage state. |
+| Full infrastructure telemetry | Job161 failed at teardown after two updates: node0 NVML field query14.425s; node1 memory3.057s plus field9.016s. Collector ticks14.876/13.296s exceeded12s. API timing proves driver-call blocking, not underlying hardware cause. | Preserve failure; distinguish trainer resource/communicator teardown from GPU hardware using a targeted run-owned diagnostic or explicitly tested graceful cleanup. Never raise the12s threshold or omit teardown. |
 | Broad launcher suite | 31 targeted current launcher/snapshot tests passed after refreshing an outdated snapshot of existing runtime choices; broad macOS run has platform/dependency failures. Prior pinned Linux run597passed/12failures/4errors. | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
-| GRPO, async and resume fidelity | Job154: 48 tensor samples passed; 32 of80 episodes remain unjoined. Job160: 54 native journal/cancellation/scheduler/cursor tests passed. Exact TITO replay preserves32 samples and rejects7 negative controls. Journal now explicitly selectable; full runtime accounting remains unqualified. | Validate the durable sample/controller journal during real model execution, then qualify full-state resume and asynchronous accounting. Native CPU tests do not establish those gates. |
+| GRPO, async and resume fidelity | Job161: all32 native samples passed trainer tensor checks; all48 environment episodes joined,32 selected and16 explicitly discarded, zero unresolved. Native saved-state replay shows default scheduler32->48 after loading; explicit checkpoint-scheduler flag preserves32. Full resume/async state unqualified. | Preserve the completed journal audit; qualify full-state resume with frozen native trajectories, restored policy version/cursor/buffer, scheduler and RNG, then asynchronous accounting. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |

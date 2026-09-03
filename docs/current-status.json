@@ -1,15 +1,5 @@
 {
-  "active_submission": {
-    "evidence": "tests/02-sync-grpo-submission-v12/submission.json",
-    "gpus": 32,
-    "layout": "2T/2R",
-    "miles_sha": "1a6303b6204d853c5d812bb92be1319a28028d39",
-    "root_sha": "b472c3e359e839f75fe62188c31a113efbb2408d",
-    "scope": "Bounded validation of native trajectory journal and per-API NVML timing, not the final hill climb. Retain both requested checkpoints; preserve the12s telemetry gate.",
-    "slurm_job_id": "161",
-    "status": "RUNNING; startup observed, optimizer execution not yet confirmed",
-    "steps_requested": 2
-  },
+  "active_submission": null,
   "blocked_or_unvalidated": [
     {
       "gate": "Hidden-test isolation",
@@ -18,8 +8,8 @@
     },
     {
       "gate": "Full infrastructure telemetry",
-      "smallest_next_step": "Instrument the actual trainer/Ray lifecycle; memory-only, EP8 NCCL, and fragmented-allocation teardown controls156/157/158 passed without reproducing154. Keep the 12s deadline and the failed training coverage state.",
-      "state": "Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven."
+      "smallest_next_step": "Preserve failure; distinguish trainer resource/communicator teardown from GPU hardware using a targeted run-owned diagnostic or explicitly tested graceful cleanup. Never raise the12s threshold or omit teardown.",
+      "state": "Job161 failed at teardown after two updates: node0 NVML field query14.425s; node1 memory3.057s plus field9.016s. Collector ticks14.876/13.296s exceeded12s. API timing proves driver-call blocking, not underlying hardware cause."
     },
     {
       "gate": "Broad launcher suite",
@@ -33,8 +23,8 @@
     },
     {
       "gate": "GRPO, async and resume fidelity",
-      "smallest_next_step": "Validate the durable sample/controller journal during real model execution, then qualify full-state resume and asynchronous accounting. Native CPU tests do not establish those gates.",
-      "state": "Job154: 48 tensor samples passed; 32 of80 episodes remain unjoined. Job160: 54 native journal/cancellation/scheduler/cursor tests passed. Exact TITO replay preserves32 samples and rejects7 negative controls. Journal now explicitly selectable; full runtime accounting remains unqualified."
+      "smallest_next_step": "Preserve the completed journal audit; qualify full-state resume with frozen native trajectories, restored policy version/cursor/buffer, scheduler and RNG, then asynchronous accounting.",
+      "state": "Job161: all32 native samples passed trainer tensor checks; all48 environment episodes joined,32 selected and16 explicitly discarded, zero unresolved. Native saved-state replay shows default scheduler32->48 after loading; explicit checkpoint-scheduler flag preserves32. Full resume/async state unqualified."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -87,7 +77,7 @@
     "Optional quantization: jobs 147/148 passed expert MXFP8 byte checks and full conversion (71.904 GB to39.502 GB tensor payload). Metadata-only repackaging preserved weights. Serving149/150/151 failed before readiness; no quantized optimizer step or speedup/quality claim.",
     "Batch compatibility: pinned Megatron calculator rejects global64 at denseDP24 and accepts96 across DP8/16/24. Stage4 stays64; Stage5 common96 requires actual trainer validation. CollectiveX/DeepEP V2 sources are pinned, but the Miles image has the incompatible legacy API; no CollectiveX performance result.",
     "Evidence/retention: authorized pruning removed 1,989,034,824,640 bytes of older dummy checkpoint payloads while retaining latest checkpoint and metadata. No S3 archive configured. Public telemetry keeps four dense files per job, not raw chunks; job 154 summarizes3,657,250 records in 156,009 bytes and explicitly fails its coverage gate.",
-    "Tests: root evidence suite 66 passed; updated targeted launcher/snapshot checks 31 passed. Pinned CPU journal/scheduler/cursor tests passed 54/54 in job160. macOS broad launcher attempt failed (382 passed, 31 failed, 122 errors, including absent /proc); prior pinned Linux baseline remains 597 passed/12 failures/4 errors. No whole-suite green claim."
+    "Tests: root evidence suite 67 passed; updated targeted launcher/snapshot checks 31 passed. Pinned CPU journal/scheduler/cursor tests passed 54/54 in job160. macOS broad launcher attempt failed (382 passed, 31 failed, 122 errors, including absent /proc); prior pinned Linux baseline remains 597 passed/12 failures/4 errors. No whole-suite green claim."
   ],
   "failed_slurm_jobs": [
     {
@@ -157,6 +147,10 @@
     {
       "job_id": 159,
       "reason": "CPU-only journal test collection failed importing Transformer Engine without libcuda.so.1. Run-local NVIDIA_VISIBLE_DEVICES=none exposes driver libraries, not GPUs; unchanged native tests passed54/54 in160."
+    },
+    {
+      "job_id": 161,
+      "reason": "Both optimizer steps and saves completed, but trainer-node telemetry ticks14.876/13.296s failed the12s deadline during teardown. NVML per-call evidence identifies a14.425s field query on node0 and9.016s field plus3.057s memory queries on node1. Accounting48/48 and tensors32/32 passed; overallrun remains failed."
     }
   ],
   "heldout_quality_measured": false,
@@ -179,15 +173,15 @@
     157
   ],
   "last_training_submission": {
+    "evidence": "tests/02-sync-grpo-submission-v12/submission.json",
     "gpus": 32,
-    "layout": "2t2r",
-    "miles_sha": "977bdee2fa4486349728b3768d504129bfa56848",
-    "optimizer_steps_requested": 3,
-    "root_sha": "c40a73d604d0c2e7f61a68748f21a92de923a9a5",
-    "scope": "Four-node BF16 synchronous validation completed three updates. Tensor audit passed for all 48 trained samples. Native telemetry stalled for 15.22/15.48s on trainer nodes during teardown; 32 of 80 controller episodes lack native sample joins. Not async, resume, or held-out quality qualification.",
-    "slurm_job_id": "154",
-    "status": "FAILED, Slurm exit 1:0; three optimizer updates and three saves verified",
-    "steps_requested": 3
+    "layout": "2T/2R",
+    "miles_sha": "1a6303b6204d853c5d812bb92be1319a28028d39",
+    "root_sha": "b472c3e359e839f75fe62188c31a113efbb2408d",
+    "scope": "Two-step 32-GPU synchronous validation. Native tensor and all48-episode accounting audits passed. NVML field calls blocked during teardown; no async, full resume, or held-out quality claim.",
+    "slurm_job_id": "161",
+    "status": "FAILED 1:0 after two optimizer updates and two save receipts; NVML teardown telemetry gate failed",
+    "steps_requested": 2
   },
   "model_trajectories_started": true,
   "optimizer_steps_verified": "Job154: 3; job143: 3 historical validation updates. Neither qualifies the measured benchmark.",
@@ -200,5 +194,5 @@
   "status_consolidation": "Superseded test counts, repeated milestones and intermediate source hashes removed from this current-status digest. Exact historical records remain in immutable phase evidence, patches/manifest.json and Git history; failed_slurm_jobs retained.",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-03T02:37:14.470203Z"
+  "updated_at": "2026-09-03T02:55:55.188710Z"
 }
