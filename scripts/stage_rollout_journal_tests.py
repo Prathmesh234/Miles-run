@@ -19,6 +19,7 @@ TESTS = ['tests/fast/rollout/inference_rollout/test_lifecycle_attempt.py',
          'tests/fast/rollout/test_fully_async_rollout.py',
          'tests/fast/rollout/test_checkpointed_data_source.py',
          'tests/fast/utils/test_tensor_backper.py',
+         'tests/fast/utils/test_arguments.py::TestPinnedBackupCleanupValidation',
          'tests/fast/ray/test_actor_group_shared_ppo.py',
          'tests/fast/backends/megatron_utils/test_shared_ppo_lifecycle.py']
 PROBE = '''import importlib.metadata,json,os,sys,torch
