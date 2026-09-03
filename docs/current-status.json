@@ -1,5 +1,15 @@
 {
-  "active_submission": null,
+  "active_submission": {
+    "gpus": 32,
+    "layout": "2t2r",
+    "miles_sha": "977bdee2fa4486349728b3768d504129bfa56848",
+    "optimizer_steps_requested": 3,
+    "root_sha": "c40a73d604d0c2e7f61a68748f21a92de923a9a5",
+    "scope": "Four-node BF16 synchronous revalidation with load-qualified persistent NVML, fail-closed telemetry supervision, episode-ID protocol and corrected MTP counters. Not the final quality or async run.",
+    "slurm_job_id": "154",
+    "status": "RUNNING; optimizer execution not yet verified",
+    "steps_requested": 3
+  },
   "blocked_or_unvalidated": [
     {
       "gate": "Hidden-test isolation",
@@ -8,8 +18,8 @@
     },
     {
       "gate": "Full infrastructure telemetry",
-      "smallest_next_step": "Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps.",
-      "state": "Job 143 has 12 native command timeouts on trainer nodes; rollout-node native streams have no errors. Separate run-owned DCGM probe 144 returned eight real identities and 24 numeric samples without modifying the shared daemon."
+      "smallest_next_step": "Audit all finalized job154 streams and actual checkpoint-load gaps. Do not infer full telemetry eligibility from the short collector qualification.",
+      "state": "Job153 zero-error NVML/IB/CPU qualification passed on four nodes under node-local all-reduce. Historical job143 twelve CLI timeouts remain failed. Job154 is testing persistent collection through actual training/checkpoint writes; continuous DCGM remains incomplete."
     },
     {
       "gate": "Broad launcher suite",
@@ -116,7 +126,9 @@
     "Job147: B200 MXFP8 kernel/export probe passed24 byte-exact expert weight/scale comparisons, including MTP; five cases including zero control. Six finalized native/host-Lustre streams, zero collector errors.",
     "Job148: full candidate conversion completed in105.07s; tensor payload39,502,417,632 bytes from71,903,645,408. Independent audit verified64,106 serialized tensors,796 byte-exact higher-precision tensors,26 frozen input hashes and tokenizer identity. No model quality or optimizer claim.",
     "Candidate packagingv2 restores two pinned processor configs without changing or copying26 weight payloads. Forty file checksums and the full serialized tensor audit passed. Both packages and original failures retained.",
-    "Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged."
+    "Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged.",
+    "Job153 passed persistent NVML qualification on all32 GPUs during node-local all-reduce: zero collector errors,288 NVLink counter identities per node, CLI bracket checks passed, worst sample gap1.523s. Job152 import-loader failure preserved and fixed in separate commit.",
+    "Current root regression suite:60passed. Exact pinned NVML binding imports successfully; actual training/checkpoint-load telemetry remains under test in job154."
   ],
   "failed_slurm_jobs": [
     {
@@ -174,6 +186,10 @@
     {
       "job_id": 151,
       "reason": "Triton-selected MXFP8 dense path reached CUTLASS with K64 below its required128. Quantized serving/training remains blocked; no topology or assertion bypass."
+    },
+    {
+      "job_id": 152,
+      "reason": "Pinned NVML import loader omitted sys.modules registration. Qualification stopped before load/optimizer; separate fixed job153 passed."
     }
   ],
   "heldout_quality_measured": false,
@@ -213,5 +229,5 @@
   "state": "synchronous_validation_completed_async_benchmark_unqualified",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-03T01:24:08.680037Z"
+  "updated_at": "2026-09-03T01:38:24.260328Z"
 }

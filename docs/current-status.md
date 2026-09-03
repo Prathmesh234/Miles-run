@@ -4,8 +4,8 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job 143: 3; prior failed job 139: 2 historical updates, excluded from the clean benchmark**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **143**, 32 GPUs, 2t2r, 3 requested steps. Three synchronous optimizer updates and three checkpoint saves completed. All 48 trained samples passed native token/logprob/mask and GRPO tensor audits. Collector timeouts, exact environment accounting, resume and quality gates remain open.
-Status snapshot: `2026-09-03T01:24:08.680037Z`; inspect Slurm for live state.
+Latest training allocation: Slurm **154**, 32 GPUs, 2t2r, 3 requested steps. Four-node BF16 synchronous revalidation with load-qualified persistent NVML, fail-closed telemetry supervision, episode-ID protocol and corrected MTP counters. Not the final quality or async run.
+Status snapshot: `2026-09-03T01:38:24.260328Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -68,13 +68,15 @@ Status snapshot: `2026-09-03T01:24:08.680037Z`; inspect Slurm for live state.
 - Job148: full candidate conversion completed in105.07s; tensor payload39,502,417,632 bytes from71,903,645,408. Independent audit verified64,106 serialized tensors,796 byte-exact higher-precision tensors,26 frozen input hashes and tokenizer identity. No model quality or optimizer claim.
 - Candidate packagingv2 restores two pinned processor configs without changing or copying26 weight payloads. Forty file checksums and the full serialized tensor audit passed. Both packages and original failures retained.
 - Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged.
+- Job153 passed persistent NVML qualification on all32 GPUs during node-local all-reduce: zero collector errors,288 NVLink counter identities per node, CLI bracket checks passed, worst sample gap1.523s. Job152 import-loader failure preserved and fixed in separate commit.
+- Current root regression suite:60passed. Exact pinned NVML binding imports successfully; actual training/checkpoint-load telemetry remains under test in job154.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Job 143 has 12 native command timeouts on trainer nodes; rollout-node native streams have no errors. Separate run-owned DCGM probe 144 returned eight real identities and 24 numeric samples without modifying the shared daemon. | Diagnose collection timeouts and verify end-to-end coverage before measured async runs. DCGM remains incomplete; do not zero-fill gaps. |
+| Full infrastructure telemetry | Job153 zero-error NVML/IB/CPU qualification passed on four nodes under node-local all-reduce. Historical job143 twelve CLI timeouts remain failed. Job154 is testing persistent collection through actual training/checkpoint writes; continuous DCGM remains incomplete. | Audit all finalized job154 streams and actual checkpoint-load gaps. Do not infer full telemetry eligibility from the short collector qualification. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
 | GRPO, async and resume fidelity | Job 143 completed three updates and saves; all 48 trained sample tensors audited. Eighty controller episodes versus 48 trained samples require an exact lifecycle join. New episode-ID adapter passed unit and live protocol tests, not yet model-driven accounting. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
