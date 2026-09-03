@@ -94,7 +94,7 @@ def render(data):
     if 'qualification' in data:
         lines += ['## Qualification', ''] + ['- ' + item for item in data['qualification']]
         lines += ['', '## Reproduce the bounded GPU probe', '', '```sh', data['reproducer'], '```', '']
-        lines += ['## Provenance', ''] + [f'- {key}: `{value}`' for key, value in data['provenance'].items()]
+        lines += ['## Provenance', ''] + [f'- {key}: `{value}`' for key, value in sorted(data['provenance'].items())]
         lines += ['', f"[Pinned Miles low-precision documentation]({data['documentation_url']})", '']
     if 'gpu_probe' in data:
         probe = data['gpu_probe']

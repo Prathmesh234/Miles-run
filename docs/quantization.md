@@ -43,6 +43,7 @@ This failure applies to the stock conversion recipe, not to B200 low-precision c
 
 ## Provenance
 
+- conversion_miles_sha: `b61dbe83ee815412b72c84ed367ffd329d7922d4`
 - header_evidence: `tests/02-quantization-model-header-preflight-v1/model-header-inventory.json`
 - image_digest: `sha256:59a11219eae0defc6594ec678fafe4e897c16904263223f79968cd3e0209a502`
 - installed_loader_sources: `tests/02-qwen-quantization-sglang-source-v3/manifest.json`
@@ -51,7 +52,6 @@ This failure applies to the stock conversion recipe, not to B200 low-precision c
 - model_revision: `995ad96eacd98c81ed38be0c5b274b04031597b0`
 - run_id: `20260902-172037-a3b210`
 - stock_audit: `tests/02-quantization-recipe-audit-v1/result.json`
-- conversion_miles_sha: `b61dbe83ee815412b72c84ed367ffd329d7922d4`
 
 [Pinned Miles low-precision documentation](https://github.com/radixark/miles/blob/0709889b2848f293b5575d50aa3340fa4de5a20d/docs/advanced/low-precision.md)
 

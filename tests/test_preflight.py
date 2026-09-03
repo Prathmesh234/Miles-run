@@ -178,7 +178,7 @@ class EvidenceTests(unittest.TestCase):
             configuration(converted)
 
     def test_quantization_audit_uses_actual_stock_selectors_and_model_layout(self):
-        from audit_quantization_recipe import audit, selectors
+        from audit_quantization_recipe import audit, selectors, render
 
         miles = Path(__file__).resolve().parents[1] / 'vendor/miles'
         config = json.dumps({'text_config': {'num_hidden_layers': 40}}).encode()
@@ -200,6 +200,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(report['converters'][0]['non_2d_selected'][0]['shape'],[8192,1,4])
         self.assertTrue(any('top-level num_hidden_layers' in p for p in report['converters'][1]['problems']))
         self.assertTrue(all(row['status']=='blocked_stock_recipe' for row in report['converters']))
+        report.update(qualification=[], reproducer='example', provenance={'z': 'last', 'a': 'first'}, documentation_url='https://example.test')
+        self.assertEqual(render(report), render(json.loads(json.dumps(report, sort_keys=True))))
         with self.assertRaisesRegex(ValueError,'Configuration differs'):
             audit(inventory,b'{}',miles)
 
