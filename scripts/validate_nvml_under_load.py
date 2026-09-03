@@ -21,6 +21,11 @@ from telemetry_health import assert_healthy, require_healthy
 
 TEARDOWN_PROBE = '''import json,os,time,torch
 rank=int(os.environ['LOCAL_RANK']);torch.cuda.set_device(rank)
+if os.environ.get('PTX_PROBE_NCCL')=='1':
+ import torch.distributed as dist
+ dist.init_process_group(backend='nccl',device_id=torch.device('cuda',rank))
+ control=torch.ones(1024,device='cuda')
+ dist.all_reduce(control);assert torch.all(control==8).item()
 free,total=torch.cuda.mem_get_info()
 assert free >= 96*1024**3, 'Require 96 GiB free HBM before bounded 64 GiB allocation'
 print(json.dumps({'event':'before_allocate','rank':rank,'monotonic_s':time.monotonic(),
@@ -35,7 +40,7 @@ print(json.dumps({'event':'exit_with_live_context','rank':rank,'monotonic_s':tim
 '''
 
 
-def teardown_command(run, code, label, host):
+def teardown_command(run, code, label, host, profile):
     from enroot_run_config import prepare
     runtime = run.root / 'images' / label / host
     runtime.mkdir(parents=True, exist_ok=False)
@@ -43,6 +48,8 @@ def teardown_command(run, code, label, host):
     env['NVIDIA_VISIBLE_DEVICES'] = 'all'
     command = ['enroot', 'start', '--pid', '--ipc', '--rw',
         '--env', 'NVIDIA_VISIBLE_DEVICES=all', '--env', 'OMP_NUM_THREADS=1',
+        '--env', 'PTX_PROBE_NCCL=' + ('1' if profile == 'nccl-context-teardown' else '0'),
+        '--env', 'NCCL_NVLS_ENABLE=0', '--env', 'NCCL_DEBUG=INFO',
         '--env', 'PYTHONDONTWRITEBYTECODE=1',
         '--mount', str(code) + ':/ptx:none:bind,ro,x-create=dir',
         str(run.root / 'images/enroot-import-v2/miles-amd64.sqsh'),
@@ -55,7 +62,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--attempt', type=int, required=True)
-    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown'], default='all-reduce')
+    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown', 'nccl-context-teardown'], default='all-reduce')
     args = ap.parse_args()
     run = allocated_run(args.run_dir)
     host, job = socket.gethostname(), os.environ['SLURM_JOB_ID']
@@ -84,8 +91,8 @@ def main():
             if collector.poll() is not None or time.monotonic() > deadline:
                 raise RuntimeError('Collector did not become ready.')
             time.sleep(0.25)
-        if args.load_profile == 'context-teardown':
-            command, env = teardown_command(run, code, label, host)
+        if args.load_profile != 'all-reduce':
+            command, env = teardown_command(run, code, label, host, args.load_profile)
             load = spawn(command, 'load', env)
         else:
             load = spawn(['/usr/local/bin/all_reduce_perf', '-b', '512M', '-e', '512M', '-g', '8',
