@@ -43,6 +43,31 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_candidate_repackage_preserves_parent_and_links_only_weight_payloads(self):
+        from repackage_qwen_candidate import repackage
+
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Run.create(Path(temporary) / 'run', {})
+            parent, source, target = [run.root / 'models' / name for name in ('parent', 'source', 'candidate')]
+            parent.mkdir(parents=True); source.mkdir()
+            (parent / 'model.safetensors').write_bytes(b'unchanged-weight-fixture')
+            (parent / 'config.json').write_text('{}')
+            frozen = {}
+            for name in ('preprocessor_config.json', 'video_preprocessor_config.json'):
+                (source / name).write_text('{"fixture":true}')
+                frozen[name] = sha256(source / name)
+            (parent / 'checksums.sha256').write_text(''.join(sha256(parent / name) + '  ' + name + '\n'
+                for name in ('model.safetensors', 'config.json')))
+            checksum = sha256(parent / 'checksums.sha256')
+            (parent / 'CONVERSION_COMPLETE.json').write_text(json.dumps({'checksums_sha256': checksum}))
+            result = repackage(run.root, source, parent, target, checksum, frozen)
+            self.assertEqual(result['hardlinked_weight_shards'], 1)
+            self.assertEqual((parent / 'model.safetensors').stat().st_ino, (target / 'model.safetensors').stat().st_ino)
+            self.assertEqual(sha256(parent / 'checksums.sha256'), checksum)
+            self.assertEqual(sha256(target / 'preprocessor_config.json'), frozen['preprocessor_config.json'])
+            with self.assertRaisesRegex(ValueError, 'Destination exists'):
+                repackage(run.root, source, parent, target, checksum, frozen)
+
     def test_mxfp8_serving_keeps_ep8_mtp_and_requires_checksum_pin(self):
         from run_qwen_serving_validation import model_path
 

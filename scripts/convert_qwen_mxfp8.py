@@ -23,7 +23,8 @@ QUANTIZED = re.compile(
     r'^(?:model\.language_model\.layers\.\d+|mtp\.layers\.\d+)\.'
     r'(?:mlp\.(?:experts\.\d+|shared_expert)\.(?:gate|up|down)_proj|self_attn\.(?:q|k|v|o)_proj)\.weight$')
 METADATA_FILES = ('config.json', 'tokenizer.json', 'tokenizer_config.json', 'generation_config.json',
-                  'special_tokens_map.json', 'added_tokens.json', 'vocab.json', 'merges.txt', 'chat_template.jinja')
+                  'special_tokens_map.json', 'added_tokens.json', 'vocab.json', 'merges.txt', 'chat_template.jinja',
+                  'preprocessor_config.json', 'video_preprocessor_config.json')
 
 
 def precision(name, shape, dtype):
