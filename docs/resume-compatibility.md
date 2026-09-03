@@ -33,7 +33,7 @@ This reproduces the native scheduler plus the pinned Miles post-load branch, not
 
 ## Frozen-input replay
 
-Status: **gpu_replay_failed_before_model_initialization**. Native CPU job **170**; GPU job **171**, 32 GPUs, 2 independent trainer replicas.
+Status: **instrumented_gpu_replay_running**. Native CPU job **172**; GPU job **173**, 32 GPUs, 2 independent trainer replicas.
 
 Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. All32 ranks must pass reload before either replica steps. Original inputs mounted read-only; no new checkpoint payload.
 
@@ -51,7 +51,7 @@ Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. 
 | Native ckpt_step0 is treated as false in source | Isolated read-only load view with zero-step tracker; no original checkpoint metadata edited. |
 | Checkpoint file stat differed inside container; external stat matches all four worker pods. | Exact-mount CPU check matches all32 payload identities; cause unknown. Retain expected/observed stat values on any future mismatch; no comparison relaxation or checkpoint changes. |
 
-CPU proof: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-audit-v3-a2/result.json`. Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v1/submission.json`.
+CPU proof: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-test-v4/result.json`. Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v2/submission.json`.
 
 ## Remaining requirements
 

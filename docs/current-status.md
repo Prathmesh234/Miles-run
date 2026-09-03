@@ -4,11 +4,11 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job167:2; job161:2; jobs154/143:3 each. These are validation updates, not a completed measured benchmark.**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **167**, 32 GPUs, 2T/2R, 2 requested steps. 2 optimizer updates,2 saves,32 tensor-audited samples,48 accounted episodes,16 host-release receipts; native telemetry and periodic actor-placement audits passed. Not full resume, asynchronous qualification or held-out quality.
+Latest training allocation: Slurm **173**, 32 GPUs, two independent 16-GPU trainer replicas, 1 requested steps. Instrumented replay after preserved171 input-identity failure. Exact original input identities retained; all32 ranks must pass reload before either replica steps. No new trajectories or checkpoint payload writes.
 
-**Allocation status: COMPLETED 0:0; synchronous component validation passed**
+**Allocation status: RUNNING; reload and update not yet verified**
 
-Status snapshot: `2026-09-03T04:22:37.834478Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T04:24:23.377632Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -20,8 +20,8 @@ Status snapshot: `2026-09-03T04:22:37.834478Z`; inspect Slurm for live state.
 - Untouched evaluation:89 TB2.1 task IDs pinned at7131e4 and excluded from training. Separate Python3.12/Verifiers0.3.1/Harbor0.21 image142 built; no TB evaluation executed. Strict online Miles/Verifiers dependency conflicts remain blocked.
 - Synchronous reference167 completed two updates/two saves on32 GPUs. All32 trainer samples and48 episodes reconcile:16 unused discards,zero unresolved. See docs/grpo-validation-job167.md; no held-out quality claim.
 - Job167 native telemetry:24 finalized streams/3,378,085 records,zero collector errors,maxGPU sample gap3.338s. All16 trainers released423,352,733,696 pinned bytes;166 Ray snapshots verified whole-node actor placement. Full metric coverage and async qualification remain open.
-- Current tests:76 root audit/report tests;101 pinned native Miles journal/parser/cleanup tests in166;32 targeted launcher checks. Historical broad suites had platform/dependency failures and are not reported green.
-- Checkpoint probe170 passed native CPU loader/comparison and corruption controls with exact replay imports. Fixture writer uses native MCore formatting plus Torch synchronous CPU I/O; no full-model or optimizer restore claim yet.
+- Current tests:77 root audit/report tests;101 pinned native Miles journal/parser/cleanup tests in166;32 targeted launcher checks. Historical broad suites had platform/dependency failures and are not reported green.
+- Checkpoint probe172 passed native CPU loader/comparison and corruption controls with exact replay imports. Fixture writer uses native MCore formatting plus Torch synchronous CPU I/O; no full-model or optimizer restore claim yet.
 - Optional MXFP8 conversion148 reduced tensor payload71.904GB to39.502GB, but serving149–151 failed before readiness. No quantized optimizer step or speedup claim; BF16 remains the baseline.
 - Retention removed only authorized superseded dummy checkpoint payloads and preserved metadata. Six full training checkpoints remain after167; no S3 archive configured. Public telemetry uses four dense files per job; full-resolution evidence stays outside Git.
 - Job171 failure bundle exported307 files; all eight pre/post-allocation inventory checks passed. Final dense telemetry records256,407 samples,zero collector errors, and correctly labels the job failed; no optimizer execution.
@@ -32,9 +32,9 @@ Status snapshot: `2026-09-03T04:22:37.834478Z`; inspect Slurm for live state.
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
 | Full infrastructure telemetry | Job167 passed the native synchronous telemetry/cleanup gate without relaxed thresholds:0 errors,maxGPU gap3.338s versus earlier roughly15s. Full DCGM/XID/throttle,complete RL pipeline/SGLang coverage and asynchronous qualification remain open. | Preserve job167 as the passing synchronous reference; qualify remaining metric families and fully asynchronous overlap/accounting before the measured sweep. |
-| Broad launcher suite | 76 root audit/report tests and32 targeted launcher tests passed; pinned cleanup/parser components101 passed. Broad macOS/native suites retain documented failures; no full-suite pass. | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
+| Broad launcher suite | 77 root audit/report tests and32 targeted launcher tests passed; pinned cleanup/parser components101 passed. Broad macOS/native suites retain documented failures; no full-suite pass. | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
-| GRPO, async and resume fidelity | Native CPU replay fixture170 passed. GPU replay171 stopped before model initialization due to a frozen-input identity mismatch; zero optimizer updates. Original failure retained; full resume remains unqualified. | Audit the frozen-input replay without relaxing equality. Then qualify policy version, data source and quiesced async accounting at checkpoint boundaries. |
+| GRPO, async and resume fidelity | Native CPU probe172 passed. Instrumented GPU replay173 is running after preserved171 input-identity failure. Exact original inputs retained; complete model and async resume remain unqualified. | Audit the frozen-input replay without relaxing equality. Then qualify policy version, data source and quiesced async accounting at checkpoint boundaries. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
