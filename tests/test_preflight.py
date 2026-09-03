@@ -43,6 +43,23 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_episode_join_requires_native_ids_rewards_and_unique_trainer_membership(self):
+        from audit_local_episodes import join_episode_ids
+        episodes = [dict(episode_id='e1', task_id='task', category='graded', reward=1.0, event_span_s=3)]
+        samples = [dict(index=7, group_index=1, reward=1.0, metadata=dict(task_id='task',
+            posttrainingx_environment_attempts=[dict(episode_id='e1', task_id='task')]))]
+        result = join_episode_ids(episodes, samples, [7])
+        self.assertEqual(result['findings'], [])
+        self.assertEqual(result['counts']['joined_episodes'], 1)
+        with self.assertRaisesRegex(ValueError, 'more than one'):
+            join_episode_ids(episodes, samples, [7, 7])
+        samples[0]['reward'] = 0.0
+        self.assertIn('canonical reward differs', join_episode_ids(episodes, samples, [7])['findings'][0])
+        missing = join_episode_ids(episodes, [], [7])
+        self.assertEqual(missing['unjoined_episode_ids'], ['e1'])
+        self.assertEqual(missing['missing_trainer_sample_ids'], [7])
+        self.assertEqual(missing['counts']['retry_attempts'], 0)
+
     def test_pinned_binding_import_registers_module_before_defining_exports(self):
         from telemetry_nvml import load_binding
         with tempfile.TemporaryDirectory() as temporary:
