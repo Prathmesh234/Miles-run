@@ -4,6 +4,54 @@ import inspect
 import json
 
 from evidence import Run, atomic, metric
+from audit_trajectory_journal import read_journal
+
+
+def audit_host_cleanup(events, trainer_hosts, job):
+    """Reconcile every trainer's immutable normal-exit host-release receipts."""
+    import collections
+    import math
+
+    rows = [e for e in events if e['event'].startswith('training_host_cleanup_')]
+    by_rank = collections.defaultdict(list)
+    findings, completed = [], []
+    for row in rows:
+        rank = row.get('rank')
+        if type(rank) is not int or not 0 <= rank < 8 * len(trainer_hosts):
+            findings.append('Invalid trainer rank in host-cleanup journal.')
+            continue
+        by_rank[rank].append(row)
+    if set(by_rank) != set(range(8 * len(trainer_hosts))):
+        findings.append('Host-cleanup journal does not cover every trainer rank.')
+    for rank, pair in sorted(by_rank.items()):
+        kinds = collections.Counter(e['event'] for e in pair)
+        if kinds != {'training_host_cleanup_started': 1, 'training_host_cleanup_completed': 1}:
+            findings.append(f'Rank {rank}: missing, repeated or failed host cleanup.')
+            continue
+        start = next(e for e in pair if e['event'].endswith('_started'))
+        end = next(e for e in pair if e['event'].endswith('_completed'))
+        if (any(start.get(k) != end.get(k) for k in ('hostname', 'pid', 'slurm_job_id', 'policy_version'))
+                or str(end.get('slurm_job_id')) != str(job) or end.get('hostname') not in trainer_hosts
+                or type(end.get('policy_version')) is not int or end['policy_version'] < 0):
+            findings.append(f'Rank {rank}: host cleanup identity mismatch.')
+        duration, size = end.get('duration_s'), end.get('tensor_bytes')
+        if (not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration < 0
+                or end['monotonic_s'] - start['monotonic_s'] < duration
+                or type(size) is not int or size <= 0):
+            findings.append(f'Rank {rank}: invalid release duration or tensor size.')
+        else:
+            for key in ('active_bytes.current', 'allocated_bytes.current'):
+                before, after = end.get('before', {}).get(key), end.get('after', {}).get(key)
+                if (type(before) is not int or type(after) is not int or after < 0
+                        or before - after < size):
+                    findings.append(f'Rank {rank}: incomplete release of {key}.')
+        completed.append(end)
+    if collections.Counter(e['hostname'] for e in completed) != {host: 8 for host in trainer_hosts}:
+        findings.append('Host cleanup does not contain eight completions per trainer node.')
+    if len({e.get('policy_version') for e in completed}) != 1:
+        findings.append('Final cleanup policy versions do not converge.')
+    return dict(findings=sorted(set(findings)), completed=completed,
+                scope='Pinned backup allocation release only; not optimizer/resume or full telemetry qualification.')
 
 
 def audit_remote(root, attempt, job):
@@ -45,6 +93,15 @@ def audit_remote(root, attempt, job):
     config = json.loads(config_path.read_text())
     record(config_path)
     data['provenance'] = {key: config[key] for key in ('root_sha', 'miles_sha', 'layout', 'task_ids', 'optimizer_steps_requested')}
+    if config.get('release_pinned_backups_on_exit'):
+        try:
+            events, hashes = read_journal(root, train)
+            hosts = [n['hostname'] for n in config['host_map']['nodes'] if n['role'] == 'trainer']
+            data['host_cleanup'] = audit_host_cleanup(events, hosts, job)
+            data['host_cleanup']['journal_sha256'] = hashes
+            findings.extend(data['host_cleanup']['findings'])
+        except ValueError as exc:
+            findings.append('Host cleanup evidence failed: ' + str(exc))
     for name in ('driver.finished.json', 'training-command.json', 'ray-placement.json'):
         path = train / name
         if path.is_file():
@@ -130,7 +187,7 @@ def main():
     run = Run(args.run_dir)
     phase = run.phase(f'02-sync-grpo-result-audit-v{args.attempt}')
     remote = '/shared/posttrainingx/runs/vultr-b200-slurm/' + run.root.name
-    program = inspect.getsource(audit_remote) + '\nimport json,sys\nprint(json.dumps(audit_remote(sys.argv[1], int(sys.argv[2]), sys.argv[3])))\n'
+    program = '\n'.join(inspect.getsource(fn) for fn in (read_journal, audit_host_cleanup, audit_remote)) + '\nimport json,sys\nprint(json.dumps(audit_remote(sys.argv[1], int(sys.argv[2]), sys.argv[3])))\n'
     rc, out, _ = phase.command(['kubectl', '--kubeconfig', args.kubeconfig, '-n', 'slurm', 'exec',
         'slurm-worker-gpu-nodes-0', '--', 'python3', '-c', program, remote, str(args.attempt), str(args.job_id)], timeout=300)
     data = json.loads(out) if not rc else {'findings': ['Read-only terminal audit failed; inspect retained stderr.']}

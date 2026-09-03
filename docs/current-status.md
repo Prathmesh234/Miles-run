@@ -4,11 +4,11 @@ Generated from `docs/current-status.json`.
 
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job161: 2; job154: 3; job143: 3 historical validation updates. None qualifies the measured benchmark.**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **165**, 32 GPUs, 2T/2R, 2 requested steps. Failed startup, not infrastructure performance or model quality.
+Latest training allocation: Slurm **167**, 32 GPUs, 2T/2R, 2 requested steps. Corrected full-trainer cleanup validation; not the long hill climb. Four collectors active and Ray placement observer started.
 
-**Allocation status: FAILED before model initialization; zero optimizer steps**
+**Allocation status: RUNNING; no optimizer receipt yet at03:36:12Z**
 
-Status snapshot: `2026-09-03T03:34:04.782693Z`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T03:36:36.341960Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 

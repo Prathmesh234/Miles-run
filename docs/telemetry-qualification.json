@@ -14,11 +14,39 @@
         15.479490234982222
       ],
       "job_id": 154,
-      "next_step": "Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.",
+      "next_step": "Verify the corrected full-trainer job167, including16 rank-complete host-release receipts, exact trajectory accounting and unchanged telemetry deadlines.",
       "scope": "Neither memory-only nor EP8 NCCL context teardown control reproduces this training-runtime stall. Original failed training gate remains failed."
     },
+    "full_trainer_candidate": {
+      "jobs": [
+        {
+          "job_id": 164,
+          "outcome": "96 passed",
+          "scope": "Pinned CPU journal and cleanup components"
+        },
+        {
+          "job_id": 165,
+          "outcome": "Failed before model initialization: cleanup argument-order error; zero optimizer steps",
+          "scope": "32-GPU 2T/2R full trainer"
+        },
+        {
+          "job_id": 166,
+          "outcome": "101 passed; independent terminal/JUnit audit passed",
+          "scope": "Pinned CPU components plus real argument validation"
+        },
+        {
+          "job_id": 167,
+          "outcome": "Running; optimizer and cleanup execution not yet verified",
+          "scope": "32-GPU 2T/2R corrected full trainer"
+        }
+      ],
+      "miles_sha": "3db148a3fec7afb87a8c6275027ae274a7122a19",
+      "native_test_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-rollout-journal-native-audit-v5-a2/result.json",
+      "native_test_sha256": "3cab2b435015a99f12d4d37980861785273c004dd3b6bbd3a15930a02a04405d",
+      "summary": "Opt-in normal-exit cleanup releases only actor/reference pinned backups after saves and broadcasts. Initial integration exposed an argument-order bug, corrected in a separate commit. Original telemetry thresholds remain unchanged."
+    },
     "job_id": 153,
-    "local_tests": "71 passed on Python3.12.11; adds rank-complete release auditing and corrupted/missing evidence controls. Earlier fixture failures retained.",
+    "local_tests": "73 root tests passed, including missing/duplicate/rank/host/policy/allocator corruption rejection. Native101 passed; local native-argument attempt lacked SGLang and remains a recorded collection failure.",
     "next_control": null,
     "nodes": [
       {

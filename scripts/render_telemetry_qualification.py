@@ -37,6 +37,14 @@ def render(data):
             lines.append(f"| {row['hostname']} | {row['ordinary_exit_max_gap_s']:.3f} | "
                 f"{row['explicit_release_max_gap_s']:.3f} | {stats['min']:.3f} / {stats['max']:.3f} | {stats['n']} |")
         lines += ['', contrast['next_step'], '']
+    if meta.get('full_trainer_candidate'):
+        candidate = meta['full_trainer_candidate']
+        lines += ['## Full-trainer candidate', '', candidate['summary'], '',
+                  f"Miles revision: `{candidate['miles_sha']}`.", '',
+                  '| Job | Scope | Outcome |', '|---|---|---|']
+        for row in candidate['jobs']:
+            lines.append(f"| {row['job_id']} | {row['scope']} | {row['outcome']} |")
+        lines += ['', 'These are distinct attempts; passing unit tests does not qualify full-load telemetry.', '']
     lines += ['## Evidence', '', f"- Initial control: `{meta['evidence']}`."]
     lines += [f"- Job {row['job_id']}: `{row['evidence']}`; SHA256 `{row['sha256']}`." for row in meta['subsequent_controls']]
     lines += ['', 'Full per-node results, source pins and prior failures remain in `telemetry-qualification.json` and the linked raw bundles.', '']

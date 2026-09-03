@@ -21,7 +21,7 @@ A control result does not repair the failed training gate or, by itself, prove a
 
 Read-only NVML; no resets. Parent rejects collector errors, missing/stale host-local heartbeat (>12s), wrong node/job identity. Unique node-owned stop markers; final CLI parity and Lustre finalization required.
 
-Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.
+Verify the corrected full-trainer job167, including16 rank-complete host-release receipts, exact trajectory accounting and unchanged telemetry deadlines.
 
 ## Pinned-host release control
 
@@ -35,6 +35,21 @@ One matched four-node control per condition. Job162 failed the3s sampling criter
 | gpu-nodes-3 | 7.481 | 1.818 | 3.151 / 4.719 | 8 |
 
 Smallest next change: an opt-in normal-exit Miles cleanup that releases actor/reference pinned backups after all training, saves and broadcasts finish. Keep CUDA/NCCL teardown and telemetry collection intact; validate in the full trainer before enabling the long run.
+
+## Full-trainer candidate
+
+Opt-in normal-exit cleanup releases only actor/reference pinned backups after saves and broadcasts. Initial integration exposed an argument-order bug, corrected in a separate commit. Original telemetry thresholds remain unchanged.
+
+Miles revision: `3db148a3fec7afb87a8c6275027ae274a7122a19`.
+
+| Job | Scope | Outcome |
+|---|---|---|
+| 164 | Pinned CPU journal and cleanup components | 96 passed |
+| 165 | 32-GPU 2T/2R full trainer | Failed before model initialization: cleanup argument-order error; zero optimizer steps |
+| 166 | Pinned CPU components plus real argument validation | 101 passed; independent terminal/JUnit audit passed |
+| 167 | 32-GPU 2T/2R corrected full trainer | Running; optimizer and cleanup execution not yet verified |
+
+These are distinct attempts; passing unit tests does not qualify full-load telemetry.
 
 ## Evidence
 

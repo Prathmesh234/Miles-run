@@ -43,6 +43,29 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_full_trainer_host_cleanup_requires_identity_coverage_and_allocator_release(self):
+        import copy
+        from audit_grpo_attempt import audit_host_cleanup
+        events = []
+        for rank in range(16):
+            common = dict(rank=rank, hostname='trainer-' + str(rank // 8), pid=100+rank,
+                          slurm_job_id='167', policy_version=2)
+            events.append(dict(common, event='training_host_cleanup_started', monotonic_s=10.0))
+            events.append(dict(common, event='training_host_cleanup_completed', monotonic_s=12.0,
+                duration_s=1.0, tensor_bytes=1024,
+                before={'active_bytes.current': 2048, 'allocated_bytes.current': 4096},
+                after={'active_bytes.current': 1024, 'allocated_bytes.current': 1024}))
+        hosts = ['trainer-0', 'trainer-1']
+        self.assertFalse(audit_host_cleanup(events, hosts, '167')['findings'])
+        for changed in (events[:-2], events + [events[-1]]):
+            self.assertTrue(audit_host_cleanup(changed, hosts, '167')['findings'])
+        for key, value in [('policy_version', 3), ('hostname', 'wrong'), ('slurm_job_id', '168'),
+                           ('duration_s', float('nan')), ('tensor_bytes', 0),
+                           ('after', {'active_bytes.current': 2048, 'allocated_bytes.current': 4096})]:
+            changed = copy.deepcopy(events)
+            changed[-1][key] = value
+            self.assertTrue(audit_host_cleanup(changed, hosts, '167')['findings'], key)
+
     def test_ray_placement_capture_excludes_runtime_secrets_and_rejects_partial_state(self):
         from collect_ray_placements import placements
         row = dict(actor_id='a', node_id='n', state='ALIVE', class_name='Trainer',
