@@ -439,6 +439,12 @@ class EvidenceTests(unittest.TestCase):
         data = parse_log(first + '\n' + duplicate)
         self.assertEqual(len(data['steps']), 1)
         self.assertEqual(data['steps'][0]['time'], '2026-09-02T22:57:57.204Z')
+        delayed = parse_log(first + '\n' + duplicate.replace('57.204', '57.205'))['steps'][0]
+        self.assertEqual(delayed['receipt_times'], ['2026-09-02T22:57:57.204Z', '2026-09-02T22:57:57.205Z'])
+        with self.assertRaisesRegex(ValueError, 'Conflicting'):
+            parse_log(first + '\n' + duplicate.replace('57.204', '58.204'))
+        with self.assertRaisesRegex(ValueError, 'Conflicting'):
+            parse_log(first + '\n' + duplicate.replace('rank0', 'rank1'))
         rollout = "[2026-09-02 22:55:01.707 rollout_manager] metrics.py:89 - perf 0: {'rollout/episode_raw_reward': 0.5}"
         trainer = "[2026-09-02 22:57:57.480 actor_cell0_rank0] train_metric_utils.py:56 - perf 0: {'perf/train_time': 175.4}"
         performance = parse_log('\n'.join([first, rollout, trainer]))['performance']

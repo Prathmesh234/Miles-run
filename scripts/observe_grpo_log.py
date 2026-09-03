@@ -1,6 +1,7 @@
 """Extract deduplicated training and checkpoint receipts from a completed log."""
 import argparse
 import ast
+import datetime as dt
 import json
 import re
 
@@ -22,10 +23,23 @@ def parse_log(text):
             if found[1] == 'step' and 'train/grad_norm' in values:
                 if values.get('train/step') != number:
                     raise ValueError('Training metric step does not match its log index.')
-                row = {'time': time, 'step': number, 'metrics': values}
-                if number in steps and steps[number] != row:
-                    raise ValueError('Conflicting duplicate optimizer metric receipt.')
-                steps[number] = row
+                origin = re.search(r' ([a-z0-9_]+)\]\s+(\w+\.py):\d+ - step ', line)
+                actor, emitter = origin.groups() if origin else (None, None)
+                row = {'time': time, 'step': number, 'metrics': values, 'actor': actor,
+                       'receipt_times': [time], 'emitters': [emitter]}
+                if number in steps:
+                    previous = steps[number]
+                    gap = abs((dt.datetime.fromisoformat(time.replace('Z', '+00:00')) -
+                               dt.datetime.fromisoformat(previous['time'].replace('Z', '+00:00'))).total_seconds())
+                    same_call = (gap <= 0.1 and set(previous['emitters'] + [emitter]) == {'log_utils.py', 'model.py'})
+                    if (previous['metrics'] != values or previous['actor'] != actor
+                            or (time not in previous['receipt_times'] and not same_call)):
+                        raise ValueError('Conflicting duplicate optimizer metric receipt.')
+                    previous['receipt_times'] = sorted(set(previous['receipt_times'] + [time]))
+                    previous['emitters'] = sorted(set(previous['emitters'] + [emitter]), key=str)
+                    previous['time'] = previous['receipt_times'][0]
+                else:
+                    steps[number] = row
             elif found[1] == 'perf':
                 role = 'rollout' if 'rollout_manager]' in line else 'trainer' if 'actor_cell' in line else None
                 if role is None:
@@ -75,7 +89,7 @@ def main():
             log_sha256=sha256(source),
             qualification_status='optimizer_receipts_verified_full_benchmark_not_qualified',
             limitations=['Metric receipts are not independent optimizer-state or gradient verification.',
-                         'Native telemetry timeouts, full trajectory accounting, resume and held-out quality remain unresolved.'],
+                         'Full telemetry qualification, trajectory accounting, resume and held-out quality require their separate audits.'],
             scope='Deduplicated optimizer/performance/checkpoint log receipts; not an async or quality result.')
         atomic(phase.path / 'result.json', data)
         atomic(run.root / f'rl/optimizer-steps-job{args.job_id}.jsonl',
