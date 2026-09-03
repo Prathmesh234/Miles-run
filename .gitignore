@@ -1,23 +1,30 @@
-vendor/
-runs/
-.venv*/
-__pycache__/
-*.pyc
-.env*
-CURRENT_RUN
-# Never publish access material or checkpoint payloads, even outside runs/.
+# Local access configuration and secrets are never run evidence.
+.env
+.env.*
+.kube/
+*kubeconfig*
 *.pem
 *.key
-*.p12
-*.pfx
-*.distcp
+
+# Python and platform caches.
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+
+# Large/binary artifacts remain in the local and cluster archives.
+*.tar
+*.tar.gz
+*.tgz
+*.pt
+*.pth
 *.safetensors
-kubeconfig
-vke-config
-.kube/
-.aws/
-# Publish reviewed summaries, never raw telemetry dumps or download caches.
-telemetry/**/chunks/
-telemetry/**/*.jsonl
-telemetry/**/*.gz
-telemetry/**/*.zip
+*.distcp
+checkpoints/
+/converted-model/
+tensorboard/
+tensorboard_log/
+
+# Upstream repositories are pinned, not vendored.
+/miles/
+/sglang-source/

@@ -1,211 +1,75 @@
-# Miles-run
+# Miles / Megatron Terminal-Lego run — job 190
 
-PostTrainingX infrastructure and Miles GRPO qualification on Vultr B200.
-The complete objective uses four nodes and 32 B200 GPUs. Infrastructure evidence,
-exact accounting, training correctness, and held-out quality are independent gates.
-Completion of a process does not establish benchmark success.
+Completed **3 September 2026** on **32 NVIDIA B200 GPUs**. This repository now contains the completed Miles experiment, its comparison with Prime-RL job 181, reproducibility scripts, and infrastructure evidence. It replaces the previous job-177 working tree; older work remains in Git history.
 
-The clean training corpus must be a pinned Terminal-Lego or TMAX subset. Terminal
-Bench 2.1 is evaluation-only. No oracle, solution, grader, credential, or hidden
-test may enter the policy context or training corpus. The online runtime uses
-Miles OpenEnv with task containers on Vultr, following the operator's local-runtime
-steering. The async flow still derives from the GLM-5.2 OpenEnv reference.
-A separate Python 3.12 environment owns offline
-Verifiers/Harbor evaluation. Strict Verifiers online compatibility remains blocked
-until its token, logprob, grouping, renderer, reward, trace, and gradient tests pass.
+## Results
 
-## Safety
+| Item | Result |
+| --- | --- |
+| Slurm job | **190 — COMPLETED, exit 0:0** |
+| Training | **Two optimizer updates**, 16 accepted traces each |
+| Model | Qwen3.6-35B-A3B, original base weights |
+| Backends | Miles + Megatron trainer + SGLang inference |
+| Allocation | Four nodes, 14m34s, 7.77 allocated GPU-hours |
+| Final checkpoint | `runs/job-190/checkpoints/iter_0000001` — zero-based ID, after update two |
+| Second trainer update | 19.01s; baseline approximately 19.40s with different timer boundaries |
+| Inference-ready → checkpoint | Miles 7m39.65s; baseline 5m41s |
+| Original run | Preserved; final source/config hash audit passed |
 
-All initial cluster inspection is read-only. Cluster configuration, firmware,
-devices, and shared data are not changed. Allocations specify `gpu-nodes` and own
-whole 8-GPU nodes. Persistent campaign evidence, task data, and checkpoints belong
-to the unique directory under `/shared/posttrainingx/runs/vultr-b200-slurm/<run-id>/`.
-Run-owned diagnostic containers also use private writable layers; normal image
-caches live in the container runtime's storage. Shared user data is not cleaned up.
-A failed gate is preserved and stops dependent execution. Any fix needs an
-explicit intervention entry and, when the user requires it, operator approval.
+This is a **two-update functionality/performance smoke test**, not a model-quality result or a controlled backend speedup benchmark. Precision, kernels, rollout scheduling and generated trajectories differ. Failed setup attempts and final shutdown warnings are documented, not omitted.
 
-The environment controller is trusted and may use a Docker socket. Policy task
-containers must receive no Docker socket, host namespaces, GPU devices, cluster
-credentials, shared checkpoint tree, or hidden evaluation assets. The controller
-and grader remain outside the policy container. Test isolation and cleanup after
-a crash must pass before model trajectories or optimizer steps. The selected
-mode is `TB2_MODE=docker`. OpenEnv's `TB2_MODE=local`, which directly executes
-in the server process, is not the selected architecture.
+## Start here
 
-## Evidence
+- **[Comparison report](COMPARISON.md):** workload, timing, rewards, memory, failed attempts, caveats and checkpoint checks.
+- **[Infrastructure report](INFRASTRUCTURE.md):** GPU/CPU/NUMA topology, IB/RDMA, storage, resource constraints, software versions and telemetry coverage.
+- **[Final status](STATUS.md)** and **[machine-readable results](comparison-results.json)**.
+- **[Configuration and deviations](comparison-spec.json)**, including exact model, dataset and source revisions.
+- **[Checkpoint verification](evidence-job-190/job-190/checkpoint-verification.json)** and **[baseline preservation audit](baseline-preservation-after-job-190.json)**.
 
-`scripts/evidence.py` writes atomic JSON, reports generated from that JSON, raw
-logs, command records, a sweep summary, and a SHA-256 inventory. It does not
-fabricate metrics for stages that have not executed. The complete raw bundle
-remains outside Git in `runs/` and on shared storage. Reviewed, normalized
-infrastructure telemetry is also published under `telemetry/` as described below.
+## Repository contents
 
-## Planned stages
+| Location | Contents |
+| --- | --- |
+| Root `*.py`, `run.sbatch`, `sglang.yaml` | Campaign launch, adapters, precision patch, telemetry, analysis and validation scripts |
+| `evidence-job-190/job-190/source/` | Frozen launch-time source, distinct from later analysis additions |
+| `evidence-job-190/job-190/analysis-source/` | Frozen post-run analysis scripts |
+| `evidence-job-190/job-190/` | Training/harness logs, exact argv, resolved arguments, timelines, accepted traces and all 56 episode records |
+| `evidence-job-190/job-190/infra/` | NCCL/Ray logs, GPU/host time series, local PMA/RDMA counters, before/after snapshots, runtime constraints and precision-patch provenance |
+| `infra-preflight/` | Hardware snapshots before the experiment |
+| `baseline-*.json`, `baseline-metrics.jsonl` | Baseline metrics, task schedule and preservation evidence |
+| `publication-inputs/` | Pinned image digest, base-model conversion provenance and recorded adapter-test result |
+| `publication-manifest.json` | SHA-256 and size of every copied file, exclusions and previous repository commit |
 
-1. Freeze source, model, package, image, environment, and hardware provenance.
-2. Reconcile GPU UUIDs, Kubernetes resources, Slurm GRES, storage, and telemetry.
-3. Validate environment isolation, offline evaluation, serving/MTP, and synchronous GRPO with resume.
-4. Measure CollectiveX and inference-only concurrency before freezing settings.
-5. Prove fully asynchronous overlap and accounting with the 2T/2R reference.
-6. Sweep 1T/3R, 2T/2R, and 3T/1R with physical role rotation and fixed settings.
-7. Run the selected placement longer and evaluate fixed checkpoints on untouched TB2.1.
+Published evidence is approximately **167 MB of uncompressed text**. Checkpoint/model weights, Docker images, archives, caches, binary rollout dumps and TensorBoard event files are not committed. The complete local/cluster archive retains those run artifacts. The reports were written against that complete archive, so references to TensorBoard and binary debug dumps describe retained evidence, not files included here.
 
-The final benchmark requires one warmup and three measured repetitions per layout.
-Any shorter execution is labeled exploratory. The final report must attribute
-failures to infrastructure, Miles, model recipe, environment, or configuration.
+Infrastructure files intentionally include observed private network addresses, node names, device identifiers and filesystem paths. They do **not** include a kubeconfig or access credentials. This is a public evidence repository, not an access mechanism.
 
-The proposed longer run uses 400 optimizer steps, separate from the 2–5-step
-correctness test. Its evaluation protocol and unresolved resource budget are
-recorded in [docs/quality-protocol.md](docs/quality-protocol.md).
+## Reproduction scope
 
-## Implementation and current evidence
+These scripts preserve the actual campaign and its environment-specific paths. They are **not a portable one-command installer**. A fresh environment must supply the pinned base-model files, task images, original harness and the four-node Slurm/Docker infrastructure. Large inputs and the original baseline source are referenced by revision/path, not vendored into this repository.
 
-The committed Miles implementation and exact base/patched revisions are recorded
-in [patches/manifest.json](patches/manifest.json). The cumulative patch includes
-the separate local Miles commits listed in that manifest and replays onto the pinned upstream base with an
-identical final source tree. The launcher
-supports all three whole-node layouts and requires an external, explicitly mapped
-Ray cluster. CPU tests do not prove placement or training correctness on GPUs.
+The recorded campaign root is:
 
-[The compatibility report](docs/compatibility.md) separates the blocked strict
-online combination from OpenEnv online training and separately locked offline
-evaluation. [The current status](docs/current-status.md) lists the failed and
-unvalidated gates. Earlier four-node synchronous attempts completed optimizer
-updates and passed native sample audits, but failed telemetry qualification.
-The current attempt and its test evidence are recorded in the status report;
-this is not a completed asynchronous benchmark. No held-out
-Terminal-Bench quality result or full resume equivalence has been established.
-
-## Repository contents and source setup
-
-This repository contains the project source, tests, documentation, version locks,
-and patches. Private ClusterMAX sources, kubeconfigs and credentials, virtual
-environments, model/checkpoint binaries, raw task data, and unrestricted run evidence
-are not published. Normalized telemetry snapshots are the explicit exception.
-Raw evidence remains in the run directory on shared storage. Older
-dummy-run checkpoint payloads were pruned with explicit operator authorization;
-explicitly selected full checkpoints and the older metadata/logs were retained.
-
-Reconstruct the exact public Miles source tree from the pinned base and patch:
-
-```sh
-git clone https://github.com/radixark/miles.git vendor/miles
-git -C vendor/miles checkout --detach 0709889b2848f293b5575d50aa3340fa4de5a20d
-git -C vendor/miles am ../../patches/miles-posttrainingx.patch
+```text
+/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030
 ```
 
-Apply the mailbox series in order; it contains dependent patches to the same files.
-The reconstructed tree hash must match `source_tree_sha1` in the patch manifest.
-Replayed commit IDs can differ because Git records the local committer identity
-and time; the manifest preserves the exact original revisions used on the cluster.
-The local launcher is then available at
-`vendor/miles/scripts/run_qwen3_6_35b_a3b_posttrainingx.py`. The OpenEnv patch and
-its exact revisions are recorded separately in `locks/openenv-patches.json`.
-Third-party source retains its upstream license. Do not force upgrades into the
-training environment to resolve the separate offline evaluator's dependencies.
+The execution sequence was:
 
-To resolve the documented dependency combinations without installing them:
+1. Inventory and preserve the baseline; pin the model, dataset, harness, renderer and Miles revisions in `comparison-spec.json`.
+2. Stage the pinned Miles image in separate `fuse-overlayfs` Docker daemons; keep the original task-image daemon unchanged. See `isolated_docker.py` and `preflight_image.py`.
+3. Supply the pinned Miles checkout at the campaign's `miles/`, scripts at `code/`, and the pinned image digest at `image-digest.json`. The original model is mounted read-only. `remote.py` requires your own local kubeconfig configuration.
+4. Run the adapter fidelity checks in the original pinned harness environment. They require original accepted-episode fixtures and the job-189 errored-group fixture, which are retained on cluster but not all bundled here. The successful recorded result is in [adapter-test-result.json](publication-inputs/preflight/harness-test-v2/adapter-test-result.json).
+5. Submit `run.sbatch` to the four assigned nodes. `coordinator.py` creates a **new job-ID directory**, snapshots its source, applies and validates the job-local precision patch, validates arguments, converts or reuses original base weights, starts the harness and Ray, runs two updates, and stops only job-scoped processes.
+6. Supplement the built-in two-second collector with `capture_rdma.py`, `capture_metrics.py` and `runtime_constraints.py`, as recorded in the evidence. These additional collectors were started separately; `run.sbatch` alone does not reproduce their collection start times.
+7. Extract metrics, verify checkpoint storage ranges and sample tensors, audit baseline preservation, and compare the measured work using the included analysis scripts.
 
-```sh
-python3 scripts/check_compatibility.py --run-dir /absolute/path/to/a/fresh/run
-```
+**Submitting this workload reserves 32 GPUs.** No new training job was launched to publish this repository. Do not rerun against an existing job directory or use the trained baseline checkpoint as the initial model.
 
-To render the retained native telemetry into statistics and a plot:
+## Validation and limitations
 
-```sh
-.venv-analysis/bin/python scripts/summarize_native.py --run-dir /absolute/path/to/run
-```
+The completed run passed 32 exact IPO value/gradient fixtures, real TrainClient stop/length mapping, all 32 baseline trace conversions, native errored-group admission/credit tests, five GPU precision shapes and CUDA-graph replay. The final checkpoint passed metadata/range checks and three actual CPU tensor reads. **A full distributed checkpoint-resume test was not performed.**
 
-The latter requires the finalized native telemetry to be present locally. It
-refuses to replace an existing report phase; diagnostic reruns must retain their
-own phase identity. Dependency freezes for CPU checks and analysis are separate
-from the pinned GPU image and the offline evaluator lock.
+Publication checks verify copied-file hashes, frozen source manifests, Python syntax, JSON/JSONL parsing and README links. These checks do not rerun GPU training or replace the recorded fidelity tests. Credential-pattern screening found no credentials after reviewing the SGLang `IP:port@DP-rank` URL notation; pattern-based screening is not an exhaustive security guarantee.
 
-## Periodic telemetry publication
-
-`scripts/stage_grpo.py` starts a run-owned local publisher after a successful
-training submission. It snapshots, commits, and pushes new normalized metric
-records approximately every five minutes, plus a final snapshot when Slurm reports
-the job terminal. The watcher is bounded to 100 minutes; extend `--max-seconds`
-explicitly for longer jobs or queue waits. The workstation must stay awake with
-cluster and GitHub access. This is not a cluster-side scheduled service.
-
-Publication includes GPU, NVLink, InfiniBand, CPU/memory/NUMA, and Lustre JSONL
-streams for all four nodes. Missing streams and collector errors remain explicit;
-no measurements are replaced with zero. Other collectors, RL traces, and raw
-process logs are not automatically exported by this allowlisted publisher.
-Credentials, task transcripts, hidden tests, and checkpoints are excluded.
-
-Snapshots live at `telemetry/vultr-b200-slurm/<run-id>/job-<id>/` as four small,
-human-readable files: a generated `README.md`, a ClusterMAX-style
-`telemetry.values.json` (or `.failed.json`, `.partial.json`, `.skipped.json`),
-`timeline.csv`, and `checksums.sha256`. **No raw JSONL, chunk trees, or giant
-compressed archives are committed.**
-
-The summary keeps node-level distributions, concise per-GPU measurements,
-GPU/rail/link extremes, every collector error time, health-counter exceptions,
-and source paths/checksums. Constant inventory values are written once; repeated
-zero ECC/IB counters collapse to observed-series counts. The minute-level CSV
-retains sample counts and min/mean/p95/max envelopes, not millions of repeated
-samples. Means are sample-weighted; invalid counter intervals and missing samples
-are not replaced with zero. IB rates stay per rail instead of summing clocks that
-were sampled at different times. Full-resolution raw data, lifetime Lustre
-statistics, and detailed per-link distributions remain in the run evidence.
-
-The presentation follows ClusterMAX's compact topology-aware tables and explicit
-failure/caveat conventions, without copying private source or internal provider
-reports into this public repository. Each periodic update replaces the same small
-summary files. Download/resume caches remain under the ignored `runs/` directory.
-A successful publication does not imply that the telemetry or training passed.
-
-To backfill a job, or restart its watcher with `--watch`:
-
-```sh
-python3 scripts/publish_telemetry.py \
-  --run-dir /absolute/path/to/run \
-  --kubeconfig /absolute/path/to/vultr-kubeconfig \
-  --stream-label sync-grpo-v9 --job-id 143 --push
-```
-
-Only the job's telemetry directory is staged. Pre-staged unrelated changes,
-changed source boundaries, unreviewed schemas, and credential-like contents cause
-an explicit failure. Watcher logs and its startup receipt remain under
-`runs/.../provenance/telemetry-publisher-job-<id>/`. Inspect those logs after a
-publication failure; do not infer that a spawned watcher has successfully pushed.
-
-## Native four-node preflight entrypoint
-
-Commit the code, then run the following command from this workspace:
-
-```sh
-python3 scripts/submit_native_preflight.py \
-  --run-dir /absolute/path/to/the/current/run \
-  --kubeconfig /absolute/path/to/vultr-kubeconfig
-```
-
-The submitter requires an empty queue, rechecks Kubernetes GPU capacity, creates
-a new run directory on the workers' Lustre mount, and refuses to overwrite an
-existing staged directory. It submits one exclusive 15-minute allocation in
-`gpu-nodes` with all four nodes and eight GPUs per node. It does not use Pyxis,
-change GPU visibility, or modify cluster configuration.
-
-Inside the allocation, the controller records start and end inventory, runs
-one-second native collectors, tests all-reduce on each node and across all four,
-and writes and verifies a 256 MiB fio file per node. Every file belongs to the
-current run. Failed gates stop remaining load phases and retain raw evidence.
-The native all-reduce uses one MPI process with eight GPUs per node. These
-measurements do not replace the full collective suite, model-checkpoint tests,
-CollectiveX, or the role-layout benchmark.
-
-Submission is not completion. Inspect the returned Slurm job ID and its phase
-results before proceeding. An ambiguous submission must be reconciled with
-`squeue` and `sacct`, not repeated. The latest local environment gate passed ten
-CPU-only checks in job 146; that result does not qualify the full task corpus or
-replace model-driven and asynchronous accounting tests.
-
-Run the local parser and evidence checks with:
-
-```sh
-python3.12 -m unittest discover -s tests -v
-```
+See [third-party notices](THIRD_PARTY_NOTICES.md) for the retained SGLang/vLLM source snapshots.
