@@ -18,7 +18,21 @@
       "scope": "Neither memory-only nor EP8 NCCL context teardown control reproduces this training-runtime stall. Original failed training gate remains failed."
     },
     "job_id": 153,
-    "local_tests": "67 passed; includes call-latency missing-GPU, wrong-identity, nonfinite and >12s failure controls.",
+    "local_tests": "69 passed on Python3.12.11. The new command-builder fixture initially invoked Linux Enroot setup on macOS; corrected fixture and failed attempt preserved.",
+    "next_control": {
+      "bounded_workload": "Four whole nodes, eight ranks per node. Per rank:64GiB GPU memory in4096x16MiB chunks plus24GiB pinned host memory in3072x8MiB chunks and node-local EP8 NCCL. Require96GiB free HBM and320GiB host/cgroup-available memory. Five-minute allocation; telemetry includes ordinary exit plus15s afterward. No model/checkpoint changes or optimizer steps.",
+      "hypothesis": "Job161 enables --use-kl-loss even with coefficient0; Miles allocates pinned actor/reference backups. Test whether pinned host-buffer release can reproduce NVML blocking absent from prior GPU-only controls. This is a hypothesis, not an attribution.",
+      "interpretation": "Preserve any failed gate. A pass only rules out this bounded pattern; a stall motivates a separate explicit cleanup control. Keep the12s deadline and all teardown samples. Full trainer/Ray lifecycle remains a separate gate.",
+      "profile": "pinned-host-nccl-teardown",
+      "source_evidence": {
+        "backup": "miles/utils/tensor_backper.py",
+        "command": "training/sync-grpo-v12/logs/gpu-nodes-0/miles.out",
+        "init": "miles/backends/megatron_utils/actor.py",
+        "miles": "1a6303b6204d853c5d812bb92be1319a28028d39"
+      },
+      "status": "planned; no GPU outcome yet",
+      "tests": "tests/00-pinned-host-diagnostic-tests-v2"
+    },
     "nodes": [
       {
         "cli_bracket_passed": true,

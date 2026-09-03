@@ -1,6 +1,6 @@
 # GPU telemetry qualification
 
-**Collector controls passed; training telemetry remains unqualified.**
+**Training telemetry remains unqualified; individual control results are below.**
 
 Collector qualification around node-local all-reduce only. Actual training/checkpoint load, continuous DCGM and full required telemetry remain unqualified.
 
@@ -13,13 +13,21 @@ Collector qualification around node-local all-reduce only. Actual training/check
 
 Job 154 had trainer-node gaps of 15.224 s / 15.479 s.
 
-None of these short controls reproduces that training-runtime stall. Passing them does not repair the failed training gate or prove a hardware cause.
+A control result does not repair the failed training gate or, by itself, prove a hardware cause.
 
 ## Contract and next test
 
 Read-only NVML; no resets. Parent rejects collector errors, missing/stale host-local heartbeat (>12s), wrong node/job identity. Unique node-owned stop markers; final CLI parity and Lustre finalization required.
 
 Exercise the actual trainer allocation/communicator lifecycle with per-API timing; do not relax the 12s deadline or infer hardware fault.
+
+**planned; no GPU outcome yet — pinned-host-nccl-teardown**
+
+Job161 enables --use-kl-loss even with coefficient0; Miles allocates pinned actor/reference backups. Test whether pinned host-buffer release can reproduce NVML blocking absent from prior GPU-only controls. This is a hypothesis, not an attribution.
+
+Four whole nodes, eight ranks per node. Per rank:64GiB GPU memory in4096x16MiB chunks plus24GiB pinned host memory in3072x8MiB chunks and node-local EP8 NCCL. Require96GiB free HBM and320GiB host/cgroup-available memory. Five-minute allocation; telemetry includes ordinary exit plus15s afterward. No model/checkpoint changes or optimizer steps.
+
+Preserve any failed gate. A pass only rules out this bounded pattern; a stall motivates a separate explicit cleanup control. Keep the12s deadline and all teardown samples. Full trainer/Ray lifecycle remains a separate gate.
 
 ## Evidence
 

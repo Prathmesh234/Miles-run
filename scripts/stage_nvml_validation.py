@@ -8,7 +8,7 @@ import subprocess
 from evidence import Run, atomic, sha256
 from submit_native_preflight import BOOTSTRAP, batches, entry
 from telemetry_nvml import BINDING_SHA256
-from validate_nvml_under_load import TEARDOWN_PROBE
+from validate_nvml_under_load import LOAD_PROFILES
 
 
 def main():
@@ -16,7 +16,7 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, required=True)
-    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown', 'nccl-context-teardown', 'fragmented-nccl-teardown'], default='all-reduce')
+    ap.add_argument('--load-profile', choices=LOAD_PROFILES, default='all-reduce')
     a = ap.parse_args()
     repo = Path(__file__).resolve().parents[1]
     if subprocess.check_output(['git', '-C', str(repo), 'status', '--porcelain'], text=True).strip():
@@ -45,11 +45,10 @@ def main():
         raise ValueError('NVML binding differs from the pinned image.')
     names = ['evidence.py', 'infra_node.py', 'infra_controller.py', 'fabric_probe.py',
              'telemetry_native.py', 'telemetry_nvml.py', 'telemetry_health.py', 'validate_nvml_under_load.py',
-             'enroot_run_config.py']
+             'enroot_run_config.py', 'teardown_probe.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     files[prefix + 'pynvml.py'] = entry(binding.read_bytes())
     files[prefix + 'source-revision.txt'] = entry((revision + '\n').encode())
-    files[prefix + 'teardown_probe.py'] = entry(TEARDOWN_PROBE.encode())
     command = ['srun', '--kill-on-bad-exit=0', '--nodes=4', '--ntasks=4', '--ntasks-per-node=1',
         '--gpus-per-node=8', 'python3', remote + '/' + prefix + 'validate_nvml_under_load.py',
         '--run-dir', remote, '--attempt', str(a.attempt), '--load-profile', a.load_profile]

@@ -43,6 +43,40 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_teardown_probe_respects_host_and_cgroup_memory_reserves(self):
+        from teardown_probe import available_host_bytes, host_allocation_guard
+        gib = 1024**3
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            info = f'MemAvailable: {1024 * 1024**2} kB\n'
+            self.assertEqual(available_host_bytes(info, root), 1024 * gib)
+            (root / 'memory.max').write_text(str(512 * gib))
+            (root / 'memory.current').write_text(str(64 * gib))
+            available = available_host_bytes(info, root)
+            self.assertEqual(available, 448 * gib)
+            self.assertEqual(host_allocation_guard(available, 24 * gib, 8), 320 * gib)
+            with self.assertRaisesRegex(RuntimeError, 'Host memory reserve'):
+                host_allocation_guard(319 * gib, 24 * gib, 8)
+            (root / 'memory.max').write_text('max')
+            self.assertEqual(available_host_bytes(info, root), 1024 * gib)
+
+    def test_pinned_teardown_profile_is_opt_in_and_keeps_whole_node(self):
+        from types import SimpleNamespace
+        from validate_nvml_under_load import teardown_command
+        with tempfile.TemporaryDirectory() as temporary, patch('enroot_run_config.prepare', return_value={}):
+            run = SimpleNamespace(root=Path(temporary))
+            code = Path(temporary)
+            pinned, _ = teardown_command(run, code, 'pinned', 'node', 'pinned-host-nccl-teardown')
+            old, _ = teardown_command(run, code, 'control', 'node', 'fragmented-nccl-teardown')
+            self.assertIn('PTX_PROBE_PINNED_GIB=24', pinned)
+            self.assertIn('PTX_PROBE_PINNED_GIB=0', old)
+            for command in [pinned, old]:
+                self.assertIn('PTX_PROBE_NCCL=1', command)
+                self.assertIn('PTX_PROBE_CHUNK_MIB=16', command)
+                self.assertIn('--nproc-per-node=8', command)
+            with self.assertRaisesRegex(ValueError, 'Unknown teardown'):
+                teardown_command(run, code, 'invalid', 'node', 'typo')
+
     def test_nvml_call_audit_keeps_stalls_errors_and_rejects_missing_gpu_or_invalid_timing(self):
         from audit_nvml_calls import analyze_calls
         rows = [dict(time='2026-09-03T00:00:00Z', monotonic_s=1.0, hostname='node',

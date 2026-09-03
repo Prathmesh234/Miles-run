@@ -8,7 +8,7 @@ from evidence import atomic
 def render(data):
     meta = data['metadata']
     lines = ['# GPU telemetry qualification', '',
-        '**Collector controls passed; training telemetry remains unqualified.**', '',
+        '**Training telemetry remains unqualified; individual control results are below.**', '',
         meta['scope'], '',
         '| Job | Workload | Maximum GPU sample gap (s) | Result |',
         '|---|---|---:|---|',
@@ -20,9 +20,14 @@ def render(data):
     failed = meta['failed_training_validation']
     lines += ['', f"Job {failed['job_id']} had trainer-node gaps of " +
         ' / '.join(f'{gap:.3f} s' for gap in failed['gaps_s']) + '.', '',
-        'None of these short controls reproduces that training-runtime stall. Passing them does not repair the failed training gate or prove a hardware cause.', '',
+        'A control result does not repair the failed training gate or, by itself, prove a hardware cause.', '',
         '## Contract and next test', '', meta['runtime_contract'], '', failed['next_step'], '',
-        '## Evidence', '', f"- Initial control: `{meta['evidence']}`."]
+    ]
+    if meta.get('next_control'):
+        control = meta['next_control']
+        lines += [f"**{control['status']} — {control['profile']}**", '', control['hypothesis'], '',
+                  control['bounded_workload'], '', control['interpretation'], '']
+    lines += ['## Evidence', '', f"- Initial control: `{meta['evidence']}`."]
     lines += [f"- Job {row['job_id']}: `{row['evidence']}`; SHA256 `{row['sha256']}`." for row in meta['subsequent_controls']]
     lines += ['', 'Full per-node results, source pins and prior failures remain in `telemetry-qualification.json` and the linked raw bundles.', '']
     return '\n'.join(lines)
