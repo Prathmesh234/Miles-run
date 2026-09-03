@@ -14,6 +14,7 @@ def render(data):
     if current:
         lines += ['', f"Latest training allocation: Slurm **{current['slurm_job_id']}**, {current['gpus']} GPUs, "
                   f"{current['layout']}, {current['steps_requested']} requested steps. {current['scope']}",
+                  '', f"**Allocation status: {current['status']}**", '',
                   f"Status snapshot: `{data.get('updated_at', 'unknown')}`; inspect Slurm for live state."]
     lines += ['', '## Historical milestones (later gates supersede earlier limits)', '']
     lines.extend('- ' + item for item in data['completed'])

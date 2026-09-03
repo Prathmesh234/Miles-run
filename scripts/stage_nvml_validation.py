@@ -8,6 +8,7 @@ import subprocess
 from evidence import Run, atomic, sha256
 from submit_native_preflight import BOOTSTRAP, batches, entry
 from telemetry_nvml import BINDING_SHA256
+from validate_nvml_under_load import TEARDOWN_PROBE
 
 
 def main():
@@ -15,6 +16,7 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, required=True)
+    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown'], default='all-reduce')
     a = ap.parse_args()
     repo = Path(__file__).resolve().parents[1]
     if subprocess.check_output(['git', '-C', str(repo), 'status', '--porcelain'], text=True).strip():
@@ -42,13 +44,15 @@ def main():
     if sha256(binding) != BINDING_SHA256:
         raise ValueError('NVML binding differs from the pinned image.')
     names = ['evidence.py', 'infra_node.py', 'infra_controller.py', 'fabric_probe.py',
-             'telemetry_native.py', 'telemetry_nvml.py', 'telemetry_health.py', 'validate_nvml_under_load.py']
+             'telemetry_native.py', 'telemetry_nvml.py', 'telemetry_health.py', 'validate_nvml_under_load.py',
+             'enroot_run_config.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     files[prefix + 'pynvml.py'] = entry(binding.read_bytes())
     files[prefix + 'source-revision.txt'] = entry((revision + '\n').encode())
+    files[prefix + 'teardown_probe.py'] = entry(TEARDOWN_PROBE.encode())
     command = ['srun', '--kill-on-bad-exit=0', '--nodes=4', '--ntasks=4', '--ntasks-per-node=1',
         '--gpus-per-node=8', 'python3', remote + '/' + prefix + 'validate_nvml_under_load.py',
-        '--run-dir', remote, '--attempt', str(a.attempt)]
+        '--run-dir', remote, '--attempt', str(a.attempt), '--load-profile', a.load_profile]
     files[prefix + 'submit.sbatch'] = entry(('#!/bin/bash\nset -euo pipefail\nexec ' + shlex.join(command) + '\n').encode())
     for payload in batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=128*1024):
         rc, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], stdin=payload, timeout=45)
@@ -62,7 +66,7 @@ def main():
         '--error=' + remote + '/provenance/' + label + '-%j.err', remote + '/' + prefix + 'submit.sbatch'], timeout=45)
     job = out.strip().split(';')[0]
     okay = not rc and job.isdigit()
-    receipt = dict(slurm_job_id=job, source_sha=revision, gpus=32,
+    receipt = dict(slurm_job_id=job, source_sha=revision, gpus=32, load_profile=a.load_profile,
         scope='Collector qualification submission only; zero optimizer steps.')
     atomic(phase.path / 'submission.json', receipt)
     phase.finish('ok' if okay else 'fail', metadata=receipt, refresh=False,

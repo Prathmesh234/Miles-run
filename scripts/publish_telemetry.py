@@ -233,7 +233,9 @@ def publish(args):
         # Capture final flushes that may have occurred after the concurrent read.
         streams = [fetch_source(base_command, program, remote, row['path'], row, cache, args.job_id)
                    for row in streams]
-    if (manifest_path.exists()
+    # Terminal refreshes must re-evaluate coverage gates and newly completed
+    # optimizer audits, even when all source chunks were already cached.
+    if (not terminal and manifest_path.exists()
             and old.get('published_manifest_sha256') == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
             and old.get('streams') == streams
             and old.get('slurm_state') == jobs[0][1] and old.get('slurm_exit_code') == jobs[0][2]):

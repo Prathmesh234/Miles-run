@@ -40,22 +40,23 @@ def field_records(values, uuid, expected_links=18):
     return rows
 
 
-def gpu_snapshot(nvml, handle, uuid):
-    utilization = nvml.nvmlDeviceGetUtilizationRates(handle)
-    memory = nvml.nvmlDeviceGetMemoryInfo(handle)
+def gpu_snapshot(nvml, handle, uuid, invoke=None):
+    invoke = invoke or (lambda function, *args: function(*args))
+    utilization = invoke(nvml.nvmlDeviceGetUtilizationRates, handle)
+    memory = invoke(nvml.nvmlDeviceGetMemoryInfo, handle)
     values = [
         ('utilization.gpu', utilization.gpu, '%'),
         ('utilization.memory', utilization.memory, '%'),
         ('memory.total', memory.total / 1024**2, 'MiB'),
         ('memory.free', memory.free / 1024**2, 'MiB'),
         ('memory.used', memory.used / 1024**2, 'MiB'),
-        ('temperature.gpu', nvml.nvmlDeviceGetTemperature(handle, nvml.NVML_TEMPERATURE_GPU), 'degC'),
-        ('power.draw', nvml.nvmlDeviceGetPowerUsage(handle) / 1000, 'W'),
-        ('clocks.current.sm', nvml.nvmlDeviceGetClockInfo(handle, nvml.NVML_CLOCK_SM), 'MHz'),
-        ('clocks.current.memory', nvml.nvmlDeviceGetClockInfo(handle, nvml.NVML_CLOCK_MEM), 'MHz'),
-        ('ecc.errors.corrected.volatile.total', nvml.nvmlDeviceGetTotalEccErrors(
+        ('temperature.gpu', invoke(nvml.nvmlDeviceGetTemperature, handle, nvml.NVML_TEMPERATURE_GPU), 'degC'),
+        ('power.draw', invoke(nvml.nvmlDeviceGetPowerUsage, handle) / 1000, 'W'),
+        ('clocks.current.sm', invoke(nvml.nvmlDeviceGetClockInfo, handle, nvml.NVML_CLOCK_SM), 'MHz'),
+        ('clocks.current.memory', invoke(nvml.nvmlDeviceGetClockInfo, handle, nvml.NVML_CLOCK_MEM), 'MHz'),
+        ('ecc.errors.corrected.volatile.total', invoke(nvml.nvmlDeviceGetTotalEccErrors,
             handle, nvml.NVML_MEMORY_ERROR_TYPE_CORRECTED, nvml.NVML_VOLATILE_ECC), 'count'),
-        ('ecc.errors.uncorrected.volatile.total', nvml.nvmlDeviceGetTotalEccErrors(
+        ('ecc.errors.uncorrected.volatile.total', invoke(nvml.nvmlDeviceGetTotalEccErrors,
             handle, nvml.NVML_MEMORY_ERROR_TYPE_UNCORRECTED, nvml.NVML_VOLATILE_ECC), 'count'),
     ]
     return [dict(gpu_uuid=uuid, metric=name, value=value, unit=unit) for name, value, unit in values]
@@ -119,9 +120,11 @@ class NVMLSampler:
 
     def sample(self, common):
         for handle, uuid in zip(self.handles, self.uuids):
-            for row in gpu_snapshot(self.nvml, handle, uuid):
+            def invoke(function, *args):
+                return self.timed_call(common, uuid, function, *args)
+            for row in gpu_snapshot(self.nvml, handle, uuid, invoke):
                 self.streams.write('nvidia-smi', dict(common, source='persistent-nvml', **row))
-            fields = self.nvml.nvmlDeviceGetFieldValues(handle,
+            fields = invoke(self.nvml.nvmlDeviceGetFieldValues, handle,
                 [(field, link) for field in (138, 139) for link in range(18)])
             for row in field_records(fields, uuid):
                 self.streams.write('nvlink', dict(common, source='persistent-nvml', **row))
@@ -131,6 +134,19 @@ class NVMLSampler:
                 if row['value'] < self.counters.get(key, self.before[key]):
                     raise ValueError('NVLink counter reset or disagreement with CLI reference: ' + str(key))
                 self.counters[key] = row['value']
+
+    def timed_call(self, common, uuid, function, *args):
+        started, stamp = time.monotonic(), utcnow()
+        error = None
+        try:
+            return function(*args)
+        except Exception as exc:
+            error = type(exc).__name__ + ': ' + str(exc)
+            raise
+        finally:
+            self.streams.write('nvml-api', dict(common, time=stamp, monotonic_s=started,
+                source='persistent-nvml', gpu_uuid=uuid, api=function.__name__,
+                metric='nvml_api_duration', value=time.monotonic() - started, unit='s', error=error))
 
     def finish(self):
         after = self.reference('after')

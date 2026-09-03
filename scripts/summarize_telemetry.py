@@ -274,6 +274,8 @@ def render(data):
             f"{val(h,'gpu_utilization')} / {val(h,'gpu_utilization','p95')} | {val(h,'gpu_hbm_used','max')} | "
             f"{val(h,'gpu_power','max')} | {val(h,'nvlink_gpu_tx')} | {val(h,'ib_rail_tx')} | {val(h,'lustre_client_write','max')} |")
     lines += ['', '## Failures and coverage', '']
+    for finding in meta.get('gate_findings', []):
+        lines.append('- ' + finding)
     for event in meta['collector_errors']:
         lines.append(f"- **{event['node']} / {event['source']}**: {event['count']} × {event['reason']}; UTC " + ', '.join(t[11:].rstrip('Z') for t in event['times']) + '.')
     if not meta['collector_errors']:
@@ -344,6 +346,24 @@ def training_context(run, job_id):
         'source_log': data['source_log'], 'log_sha256': data['log_sha256']}
 
 
+def assess_gate(coverage, errors, state, exit_code):
+    terminal = state.split()[0] in {'COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT', 'NODE_FAIL', 'OUT_OF_MEMORY'}
+    findings = []
+    if errors:
+        findings.append(f'{errors} collector-error records.')
+    if terminal and (state != 'COMPLETED' or exit_code != '0:0'):
+        findings.append(f'Slurm allocation {state} ({exit_code}); the allocation is not qualified.')
+    for row in coverage:
+        gap = row['max_observed_interval_s']
+        if gap is not None and gap > 12:
+            findings.append(f"{row['path']}: {gap:.6g}s sampling gap exceeds the 12s heartbeat limit.")
+        if terminal and (row['state'] != 'complete' or gap is None):
+            findings.append(row['path'] + ': finalized, multi-sample coverage is missing.')
+    if terminal and not coverage:
+        findings.append('No telemetry streams observed for terminal allocation.')
+    return ('fail' if findings else 'ok' if terminal else 'partial'), findings
+
+
 def build_summary(run, cache, streams, job_id, state, exit_code):
     data = summarize_sources(cache, streams)
     timeline = data.pop('timeline')
@@ -353,10 +373,11 @@ def build_summary(run, cache, streams, job_id, state, exit_code):
     duration = (dt.datetime.fromisoformat(end.replace('Z','+00:00')) - dt.datetime.fromisoformat(start.replace('Z','+00:00'))).total_seconds() if times else 0
     errors = sum(row['count'] for row in data['collector_errors'])
     complete = all(row['state'] == 'complete' for row in data['coverage'])
-    status = 'skip' if not times else 'fail' if errors else 'ok' if complete else 'partial'
+    status, findings = assess_gate(data['coverage'], errors, state, exit_code)
     metadata = dict(data, run_id=run.name, slurm_job_id=job_id, slurm_state=state,
         slurm_exit_code=exit_code, raw_records=sum(row['records'] for row in data['coverage']),
         collector_error_count=errors, all_streams_finalized=complete, clustermax_reference_sha=CMAX_SHA,
+        gate_findings=findings, heartbeat_limit_s=12,
         summary_code_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         statistics_helper_sha256=hashlib.sha256(Path(__file__).with_name('summarize_native.py').read_bytes()).hexdigest(),
         raw_evidence_root='/shared/posttrainingx/runs/vultr-b200-slurm/' + run.name,
@@ -367,9 +388,9 @@ def build_summary(run, cache, streams, job_id, state, exit_code):
         'started_at': start, 'ended_at': end, 'duration_s': rounded(duration),
         'metadata': metadata, 'results': results,
         'log_relpath': source['path'] if source else None, 'log_sha256': source['sha256'] if source else None}
-    if errors:
+    if status == 'fail':
         result.update(exit_code=1, timeout=any(row['reason'] == 'timeout' for row in data['collector_errors']),
-                      failure_summary=f'{errors} collector errors; completed Slurm job is not telemetry-qualified.')
+                      failure_summary='; '.join(findings))
     if status == 'skip':
         result['reason'] = 'no_normalized_telemetry_observed'
     return result, timeline_csv(timeline)

@@ -117,6 +117,53 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(error['metric'], 'collector_error')
         self.assertIsNone(error['value'])
 
+    def test_heartbeat_reads_clock_after_file_and_preserves_supervisor_error(self):
+        from telemetry_health import heartbeat, assert_healthy, require_healthy
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            heartbeat(root, 'node', '1', 3, 0, 100.01)
+            order = []
+            original = Path.read_text
+            def read(path, *args, **kwargs):
+                order.append('read')
+                return original(path, *args, **kwargs)
+            def clock():
+                order.append('clock')
+                return 100.02
+            with patch.object(Path, 'read_text', read), patch('telemetry_health.time.monotonic', clock):
+                self.assertTrue(assert_healthy(root, 'node', '1'))
+            self.assertEqual(order, ['read', 'clock'])
+            with self.assertRaisesRegex(RuntimeError, 'limit_s=12'):
+                require_healthy(root, 'node', '1', 113)
+            path = root / 'supervisor-error.jsonl'
+            before = path.read_bytes()
+            row = json.loads(before)
+            self.assertEqual(row['metric'], 'collector_error')
+            self.assertIsNone(row['value'])
+            self.assertIn(str(root), row['error'])
+            with self.assertRaises(RuntimeError):
+                require_healthy(root, 'node', '1', 114)
+            self.assertEqual(before, path.read_bytes())
+
+    def test_nvml_api_timing_preserves_return_and_error(self):
+        from telemetry_nvml import NVMLSampler
+        from telemetry_native import Streams
+        with tempfile.TemporaryDirectory() as temporary:
+            sampler = NVMLSampler.__new__(NVMLSampler)
+            sampler.streams = Streams(Path(temporary))
+            def success(value): return value
+            def failure(): raise ValueError('fixture')
+            with patch('telemetry_nvml.time.monotonic', side_effect=[1, 15.5, 20, 20.2]):
+                self.assertEqual(sampler.timed_call({}, 'GPU-test', success, 7), 7)
+                with self.assertRaisesRegex(ValueError, 'fixture'):
+                    sampler.timed_call({}, 'GPU-test', failure)
+            sampler.streams.close()
+            rows = [json.loads(line) for line in (Path(temporary) / 'nvml-api.jsonl').read_text().splitlines()]
+            self.assertEqual(rows[0]['value'], 14.5)
+            self.assertEqual(rows[0]['api'], 'success')
+            self.assertIsNone(rows[0]['error'])
+            self.assertEqual(rows[1]['error'], 'ValueError: fixture')
+
     def test_stream_error_is_durable_and_visible_to_publication(self):
         from telemetry_native import Streams
         from telemetry_health import assert_healthy
@@ -330,6 +377,21 @@ class EvidenceTests(unittest.TestCase):
                 validate_rows((json.dumps(bad) + '\n').encode(), 'gpu-nodes-0', 143)
         with self.assertRaisesRegex(ValueError, 'inside a JSONL'):
             validate_rows(raw[:-1], 'gpu-nodes-0', 143)
+
+    def test_public_gate_rejects_gaps_and_failed_allocations_without_error_rows(self):
+        from summarize_telemetry import assess_gate
+        coverage = [dict(path='gpu.jsonl', state='complete', max_observed_interval_s=1.2)]
+        self.assertEqual(assess_gate(coverage, 0, 'COMPLETED', '0:0'), ('ok', []))
+        self.assertEqual(assess_gate(coverage, 0, 'RUNNING', '0:0'), ('partial', []))
+        status, findings = assess_gate(coverage, 0, 'FAILED', '1:0')
+        self.assertEqual(status, 'fail')
+        self.assertIn('Slurm', findings[0])
+        coverage[0]['max_observed_interval_s'] = 15.48
+        status, findings = assess_gate(coverage, 0, 'COMPLETED', '0:0')
+        self.assertEqual(status, 'fail')
+        self.assertIn('15.48s', findings[0])
+        coverage[0].update(state='partial', max_observed_interval_s=None)
+        self.assertEqual(assess_gate(coverage, 0, 'COMPLETED', '0:0')[0], 'fail')
 
     def test_public_telemetry_chunk_resume_finalization_and_mutation_guard(self):
         from publish_telemetry import export_chunk

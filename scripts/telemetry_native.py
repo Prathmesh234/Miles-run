@@ -218,6 +218,11 @@ def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
                 streams.write('cpu-memory-numa', dict(common, source='collector', metric='collection_duration',
                                                     value=time.monotonic()-tick, unit='s'))
                 streams.flush()
+                elapsed = time.monotonic() - tick
+                if elapsed > 12:
+                    streams.write('cpu-memory-numa', dict(common, time=utcnow(), monotonic_s=time.monotonic(),
+                        source='collector', metric='collector_error', value=None, unit='event',
+                        error=f'Collector tick including flush exceeded 12 seconds: {elapsed:.6f}s.'))
                 ticks += 1
                 heartbeat(root, host, os.environ['SLURM_JOB_ID'], ticks, streams.errors, time.monotonic())
                 if streams.errors:

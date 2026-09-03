@@ -83,7 +83,7 @@ def main():
             if lustre_heartbeat.exists() and json.loads(lustre_heartbeat.read_text()).get('slurm_job_id') == 'unallocated':
                 ready = False
             else:
-                ready = all([assert_healthy(d, host, os.environ['SLURM_JOB_ID'], time.monotonic()) for d in directories])
+                ready = all([assert_healthy(d, host, os.environ['SLURM_JOB_ID']) for d in directories])
             if ready:
                 break
             if collector.poll() is not None or time.monotonic() > deadline:
@@ -104,7 +104,7 @@ def main():
         deadline = time.monotonic() + 90
         while True:
             for directory in directories:
-                require_healthy(directory, host, os.environ['SLURM_JOB_ID'], time.monotonic())
+                require_healthy(directory, host, os.environ['SLURM_JOB_ID'])
             try:
                 with opener.open(env_url, timeout=3) as r:
                     if r.status == 200:
@@ -143,7 +143,7 @@ def main():
         deadline = time.monotonic() + 5100
         while child.poll() is None:
             for directory in directories:
-                require_healthy(directory, host, os.environ['SLURM_JOB_ID'], time.monotonic())
+                require_healthy(directory, host, os.environ['SLURM_JOB_ID'])
             if any((run.root / 'control').glob(label + '-failure-*.json')):
                 raise RuntimeError('A peer node failed; stopping this run-owned child and retaining evidence.')
             if shutil.disk_usage(run.root).free < 256*1024**3:

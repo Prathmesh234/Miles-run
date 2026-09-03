@@ -1,15 +1,5 @@
 {
-  "active_submission": {
-    "gpus": 32,
-    "layout": "2t2r",
-    "miles_sha": "977bdee2fa4486349728b3768d504129bfa56848",
-    "optimizer_steps_requested": 3,
-    "root_sha": "c40a73d604d0c2e7f61a68748f21a92de923a9a5",
-    "scope": "Four-node BF16 synchronous revalidation with load-qualified persistent NVML, fail-closed telemetry supervision, episode-ID protocol and corrected MTP counters. Not the final quality or async run.",
-    "slurm_job_id": "154",
-    "status": "RUNNING; optimizer execution not yet verified",
-    "steps_requested": 3
-  },
+  "active_submission": null,
   "blocked_or_unvalidated": [
     {
       "gate": "Hidden-test isolation",
@@ -18,8 +8,8 @@
     },
     {
       "gate": "Full infrastructure telemetry",
-      "smallest_next_step": "Audit all finalized job154 streams and actual checkpoint-load gaps. Do not infer full telemetry eligibility from the short collector qualification.",
-      "state": "Job153 zero-error NVML/IB/CPU qualification passed on four nodes under node-local all-reduce. Historical job143 twelve CLI timeouts remain failed. Job154 is testing persistent collection through actual training/checkpoint writes; continuous DCGM remains incomplete."
+      "smallest_next_step": "Instrument read-only NVML call durations; qualify actual context teardown on all four nodes. Keep 12s health deadline. Public summary previously ignored gaps; fix and republish from raw hashes.",
+      "state": "Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven."
     },
     {
       "gate": "Broad launcher suite",
@@ -33,8 +23,8 @@
     },
     {
       "gate": "GRPO, async and resume fidelity",
-      "smallest_next_step": "Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated.",
-      "state": "Job 143 completed three updates and saves; all 48 trained sample tensors audited. Eighty controller episodes versus 48 trained samples require an exact lifecycle join. New episode-ID adapter passed unit and live protocol tests, not yet model-driven accounting."
+      "smallest_next_step": "Add durable lifecycle receipts for every sampled group, including discarded/cancelled work; test model/optimizer/scheduler/RNG/queue/policy resume on frozen samples.",
+      "state": "Job15448 tensor samples passed;32 of80 controller episodes have no durable native sample join. Job1557 opt-in cursor/buffer tests passed; full restart and async state remain unqualified."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -128,7 +118,10 @@
     "Candidate packagingv2 restores two pinned processor configs without changing or copying26 weight payloads. Forty file checksums and the full serialized tensor audit passed. Both packages and original failures retained.",
     "Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged.",
     "Job153 passed persistent NVML qualification on all32 GPUs during node-local all-reduce: zero collector errors,288 NVLink counter identities per node, CLI bracket checks passed, worst sample gap1.523s. Job152 import-loader failure preserved and fixed in separate commit.",
-    "Current root regression suite:60passed. Exact pinned NVML binding imports successfully; actual training/checkpoint-load telemetry remains under test in job154."
+    "Current root regression suite:60passed. Exact pinned NVML binding imports successfully; actual training/checkpoint-load telemetry remains under test in job154.",
+    "Job154: all 48 trainer-input samples passed exact native token/logprob/mask/reward/GRPO tensor audit; three optimizer and checkpoint receipts verified. Allocation remains failed.",
+    "Job154 controller audit: 80 graded episodes, 55 pass/25 fail, balanced isolated sandbox cleanup; 48 explicitly joined to trained samples, 32 unresolved. No held-out quality claim.",
+    "Job155: seven native cursor/recycled-buffer checkpoint tests passed in pinned Python3.12 Miles image with zero GPUs. Opt-in candidate1411d18 remains disabled in training; full model/optimizer/async/policy resume remains unqualified."
   ],
   "failed_slurm_jobs": [
     {
@@ -190,6 +183,10 @@
     {
       "job_id": 152,
       "reason": "Pinned NVML import loader omitted sys.modules registration. Qualification stopped before load/optimizer; separate fixed job153 passed."
+    },
+    {
+      "job_id": 154,
+      "reason": "Persistent native collector heartbeat exceeded 12 seconds during trainer GPU/Ray teardown. Actual sampling gaps 15.22s/15.48s; original zero exception-error counters do not imply complete telemetry."
     }
   ],
   "heldout_quality_measured": false,
@@ -206,28 +203,29 @@
     127,
     134,
     147,
-    148
+    148,
+    155
   ],
   "last_training_submission": {
     "gpus": 32,
     "layout": "2t2r",
-    "miles_sha": "df8cde5bedc0b19603b3f53433b5a00b76e1d687",
+    "miles_sha": "977bdee2fa4486349728b3768d504129bfa56848",
     "optimizer_steps_requested": 3,
-    "root_sha": "5687a1f8a4bef1938dbffa5dedc313897a29c4a9",
-    "scope": "Three synchronous optimizer updates and three checkpoint saves completed. All 48 trained samples passed native token/logprob/mask and GRPO tensor audits. Collector timeouts, exact environment accounting, resume and quality gates remain open.",
-    "slurm_job_id": "143",
-    "status": "COMPLETED, Slurm exit 0:0; benchmark qualification remains incomplete",
+    "root_sha": "c40a73d604d0c2e7f61a68748f21a92de923a9a5",
+    "scope": "Four-node BF16 synchronous validation completed three updates. Tensor audit passed for all 48 trained samples. Native telemetry stalled for 15.22/15.48s on trainer nodes during teardown; 32 of 80 controller episodes lack native sample joins. Not async, resume, or held-out quality qualification.",
+    "slurm_job_id": "154",
+    "status": "FAILED, Slurm exit 1:0; three optimizer updates and three saves verified",
     "steps_requested": 3
   },
   "model_trajectories_started": true,
-  "optimizer_steps_verified": "Job 143: 3; prior failed job 139: 2 historical updates, excluded from the clean benchmark",
+  "optimizer_steps_verified": "Job154: 3; job143: 3 historical validation updates. Neither qualifies the measured benchmark.",
   "proposed_optimizer_steps": 400,
   "quality_note": "Initial plan: 400 optimizer steps with untouched TB2.1 evaluations at 0/50/100/200/400 after correctness and infrastructure gates. The three-step dummy validation is not the quality budget. Prospective common batch 96 implies 38,400 eligible trajectories; Stage 4 reference remains 64. No held-out quality delta or complete resume has been verified; improvement is not guaranteed. Retention of superseded dummy checkpoints is operator-authorized.",
   "quality_protocol": "docs/quality-protocol.md",
   "run_id": "20260902-172037-a3b210",
   "schema_version": 1,
-  "state": "synchronous_validation_completed_async_benchmark_unqualified",
+  "state": "validation_failed_telemetry_and_accounting",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-03T01:38:24.260328Z"
+  "updated_at": "2026-09-03T02:04:10.380078Z"
 }

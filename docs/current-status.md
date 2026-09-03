@@ -2,10 +2,13 @@
 
 Generated from `docs/current-status.json`.
 
-Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job 143: 3; prior failed job 139: 2 historical updates, excluded from the clean benchmark**. Held-out quality measured: **False**.
+Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job154: 3; job143: 3 historical validation updates. Neither qualifies the measured benchmark.**. Held-out quality measured: **False**.
 
-Latest training allocation: Slurm **154**, 32 GPUs, 2t2r, 3 requested steps. Four-node BF16 synchronous revalidation with load-qualified persistent NVML, fail-closed telemetry supervision, episode-ID protocol and corrected MTP counters. Not the final quality or async run.
-Status snapshot: `2026-09-03T01:38:24.260328Z`; inspect Slurm for live state.
+Latest training allocation: Slurm **154**, 32 GPUs, 2t2r, 3 requested steps. Four-node BF16 synchronous validation completed three updates. Tensor audit passed for all 48 trained samples. Native telemetry stalled for 15.22/15.48s on trainer nodes during teardown; 32 of 80 controller episodes lack native sample joins. Not async, resume, or held-out quality qualification.
+
+**Allocation status: FAILED, Slurm exit 1:0; three optimizer updates and three saves verified**
+
+Status snapshot: `2026-09-03T02:04:10.380078Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -70,16 +73,19 @@ Status snapshot: `2026-09-03T01:38:24.260328Z`; inspect Slurm for live state.
 - Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged.
 - Job153 passed persistent NVML qualification on all32 GPUs during node-local all-reduce: zero collector errors,288 NVLink counter identities per node, CLI bracket checks passed, worst sample gap1.523s. Job152 import-loader failure preserved and fixed in separate commit.
 - Current root regression suite:60passed. Exact pinned NVML binding imports successfully; actual training/checkpoint-load telemetry remains under test in job154.
+- Job154: all 48 trainer-input samples passed exact native token/logprob/mask/reward/GRPO tensor audit; three optimizer and checkpoint receipts verified. Allocation remains failed.
+- Job154 controller audit: 80 graded episodes, 55 pass/25 fail, balanced isolated sandbox cleanup; 48 explicitly joined to trained samples, 32 unresolved. No held-out quality claim.
+- Job155: seven native cursor/recycled-buffer checkpoint tests passed in pinned Python3.12 Miles image with zero GPUs. Opt-in candidate1411d18 remains disabled in training; full model/optimizer/async/policy resume remains unqualified.
 
 ## Remaining gates
 
 | Gate | State | Smallest next step |
 |---|---|---|
 | Hidden-test isolation | Job 146 passed all ten local-runtime checks, including controller episode identity reconciliation; no leaked containers. Scope remains the five qualified task images. | Extend runtime qualification to the frozen full subset. Mid-command WebSocket disconnect remains untested; no policy/grader co-residency. |
-| Full infrastructure telemetry | Job153 zero-error NVML/IB/CPU qualification passed on four nodes under node-local all-reduce. Historical job143 twelve CLI timeouts remain failed. Job154 is testing persistent collection through actual training/checkpoint writes; continuous DCGM remains incomplete. | Audit all finalized job154 streams and actual checkpoint-load gaps. Do not infer full telemetry eligibility from the short collector qualification. |
+| Full infrastructure telemetry | Job154 failed: trainer-node native sample gaps15.22/15.48s, before first NVLink field of the tick; parallel PMA calls <0.31s and separate host Lustre sampling remained live. Individual GPU getter timing was absent; hardware causality unproven. | Instrument read-only NVML call durations; qualify actual context teardown on all four nodes. Keep 12s health deadline. Public summary previously ignored gaps; fix and republish from raw hashes. |
 | Broad launcher suite | New launcher597passed, same12failures/4errors in pinned Linux image; no new failing IDs | Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher. |
 | GPU runtime and provenance | Job120 passed native TP1/EP8/PP1 checkpoint load and packed forward/backward; all parameter hashes unchanged, finite main/MTP gradients on eight GPUs. | Preserve checkpoint parity and native tensor audit evidence. Qualify actual full-state resume and complete runtime telemetry before the async benchmark. |
-| GRPO, async and resume fidelity | Job 143 completed three updates and saves; all 48 trained sample tensors audited. Eighty controller episodes versus 48 trained samples require an exact lifecycle join. New episode-ID adapter passed unit and live protocol tests, not yet model-driven accounting. | Verify native group artifacts, loss/gradient/update/checkpoint and full restart state. Async buffer/policy accounting restore remains unvalidated. |
+| GRPO, async and resume fidelity | Job15448 tensor samples passed;32 of80 controller episodes have no durable native sample join. Job1557 opt-in cursor/buffer tests passed; full restart and async state remain unqualified. | Add durable lifecycle receipts for every sampled group, including discarded/cancelled work; test model/optimizer/scheduler/RNG/queue/policy resume on frozen samples. |
 | 3T/1R batch compatibility | Exact pinned calculator rejects64 at denseDP24; launcher now rejects that configuration early | Validate global96/rollout_batch12/group8 in full trainer across all three layouts before campaign freeze. Stage4 reference stays64. |
 | Task corpus and offline TB2.1 runtime | Full source hashes and base digest bindings frozen. Full corpus runtime unqualified. Offline package image passed; local Docker CLI, sealed grading, task image preparation, and missing-verdict error handling remain open. | Qualify remaining training runtime/images and the separate offline evaluator. Never replace failed task IDs implicitly or train on TB2.1. |
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
