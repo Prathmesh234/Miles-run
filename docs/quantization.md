@@ -18,7 +18,7 @@ Packed expert tensors: **82**, **91.84%** of checkpoint tensor bytes.
 
 ## Next candidate
 
-Qwen-aware expert unpacking, nested text configuration, explicit BF16 GDN/vision exceptions, and matching export/loader precision; not enabled until conversion, hot reload, logprob and gradient checks pass.
+Current full MXFP8 candidate is blocked at preserved TP8 dense K=64 in the pinned SGLang stack. Next candidate: retain affected dense projections in BF16 (or routed-experts-only MXFP8), with matching converter, SGLang loader, Miles export and trainer exceptions. No optimizer enablement until serving, broadcast, logprob/gradient and telemetry gates pass.
 
 This failure applies to the stock conversion recipe, not to B200 low-precision capability. The BF16 run remains unchanged. Higher-precision master weights and optimizer state remain in the documented recipes; quantization does not imply proportional full-checkpoint shrinkage.
 
@@ -31,6 +31,7 @@ This failure applies to the stock conversion recipe, not to B200 low-precision c
 - Prior source inspection failures retained: v1 timed out pulling an uncached Docker image; v2 assumed a nonexistent standalone mxfp8.py module. v3 discovered and captured installed sources without running Docker.
 - Training quantization stays disabled until full load, MTP, broadcast activation, fixed-token logprob/gradient and end-to-end telemetry gates pass. NVFP4 is not enabled.
 - The older Miles Qwen3 MXFP8 launcher comment disallows EP for its cutlass path. The newer pinned SGLang flashinfer_trtllm_routed implementation accepts local expert offset/count for MXFP8. Preserve EP8 and qualify that backend rather than silently changing topology.
+- No quantized serving request succeeded in jobs149/150/151; MTP-on cases were explicitly skipped after MTP-off failure. No quantized optimizer steps, training speedup, or held-out quality improvement is claimed.
 
 ## Reproduce the bounded GPU probe
 
@@ -50,6 +51,7 @@ This failure applies to the stock conversion recipe, not to B200 low-precision c
 - model_revision: `995ad96eacd98c81ed38be0c5b274b04031597b0`
 - run_id: `20260902-172037-a3b210`
 - stock_audit: `tests/02-quantization-recipe-audit-v1/result.json`
+- conversion_miles_sha: `b61dbe83ee815412b72c84ed367ffd329d7922d4`
 
 [Pinned Miles low-precision documentation](https://github.com/radixark/miles/blob/0709889b2848f293b5575d50aa3340fa4de5a20d/docs/advanced/low-precision.md)
 
@@ -89,5 +91,6 @@ New checksum-manifest SHA256: `fe4744bd4d45aa296199e77835ce0959bb61e88ed39ee038e
 |---|---|---|
 | 149 | failed before readiness | Missing processor configs. New v2 package restores them without changing weights. |
 | 150 | failed before readiness | FlashInfer TRT-LLM dense scale shuffle rejects TP8 shape [2048,2]. Next attempt uses documented Triton dense MXFP8, preserving EP8 routed MoE and all weights. |
+| 151 | failed before readiness | Triton-selected dense path reaches CUTLASS MXFP8; m=2,n=2048,k=64 violates n/k >=128. Keep affected dense projections BF16 in a separately tested candidate; not implemented or enabled. |
 
 Failures remain in the evidence bundle; no optimizer steps were enabled by these attempts.

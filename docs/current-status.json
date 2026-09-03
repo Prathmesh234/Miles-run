@@ -50,6 +50,11 @@
       "gate": "CollectiveX normal EP8 runtime",
       "smallest_next_step": "Qualify a separate pinned collective runtime for DeepEP V2. Upstream setup overrides NCCL to2.30.4; do not apply it to Miles. No BF16/FP8 CollectiveX GPU case has run.",
       "state": "Pinned Miles image exports legacy Buffer, not required ElasticBuffer"
+    },
+    {
+      "gate": "Optional Qwen MXFP8 runtime",
+      "smallest_next_step": "Qualify matched BF16 exceptions for affected TP8 dense projections, or routed-experts-only MXFP8. Preserve BF16 baseline and do not bypass original infrastructure/async/resume gates.",
+      "state": "Kernel/export and serialized conversion passed; EP8 serving failed before readiness in149/150/151. No quantized optimizer steps."
     }
   ],
   "completed": [
@@ -106,7 +111,12 @@
     "Job 145 caught a forbidden data field in the new OpenEnv state request. Corrected job 146 passed all ten local sandbox cases with controller episode IDs joining durable events, isolation/timeout checks, and no leaked containers.",
     "Miles 977bdee2f reads canonical SGLang speculative draft counters. Twenty-three wire-codec tests passed in the pinned GPU image on CPU. Job 143 reported acceptance rate zero because the old field names were missing; that value is not a valid model acceptance measurement.",
     "Operator-authorized dummy-run retention removed four older checkpoint payload sets (1,989,034,824,640 bytes), retaining the newest full checkpoint, older metadata/debug logs, and data-position states. Shared free space was verified at approximately 3.0 TB. No S3 archive was configured.",
-    "Current root parser/evidence suite: 44 passed. OpenEnv suite: 101 passed / 3 skipped; targeted launcher suite: 28 passed. Full Miles baseline failures remain separately documented."
+    "Current root parser/evidence suite: 44 passed. OpenEnv suite: 101 passed / 3 skipped; targeted launcher suite: 28 passed. Full Miles baseline failures remain separately documented.",
+    "Public telemetry consolidated after full raw-data review: job143 report is four files /154,256 bytes. Raw evidence remains on shared storage; periodic training publication emits summaries, not raw chunks.",
+    "Job147: B200 MXFP8 kernel/export probe passed24 byte-exact expert weight/scale comparisons, including MTP; five cases including zero control. Six finalized native/host-Lustre streams, zero collector errors.",
+    "Job148: full candidate conversion completed in105.07s; tensor payload39,502,417,632 bytes from71,903,645,408. Independent audit verified64,106 serialized tensors,796 byte-exact higher-precision tensors,26 frozen input hashes and tokenizer identity. No model quality or optimizer claim.",
+    "Candidate packagingv2 restores two pinned processor configs without changing or copying26 weight payloads. Forty file checksums and the full serialized tensor audit passed. Both packages and original failures retained.",
+    "Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged."
   ],
   "failed_slurm_jobs": [
     {
@@ -152,6 +162,18 @@
     {
       "job_id": 145,
       "reason": "New episode-ID client sent a forbidden data field with the OpenEnv state request. Nine checks passed, final protocol check failed, no leaked containers. Fixed and passed in job 146."
+    },
+    {
+      "job_id": 149,
+      "reason": "MXFP8 candidate omitted processor configs; SGLang initialized its processor even for text-only requests. New package fixed metadata without changing weights."
+    },
+    {
+      "job_id": 150,
+      "reason": "FlashInfer TRT-LLM dense scale-shuffle reshape failed at TP8 scale shape2048x2; candidate and failure preserved."
+    },
+    {
+      "job_id": 151,
+      "reason": "Triton-selected MXFP8 dense path reached CUTLASS with K64 below its required128. Quantized serving/training remains blocked; no topology or assertion bypass."
     }
   ],
   "heldout_quality_measured": false,
@@ -166,7 +188,9 @@
     120,
     126,
     127,
-    134
+    134,
+    147,
+    148
   ],
   "last_training_submission": {
     "gpus": 32,
@@ -189,5 +213,5 @@
   "state": "synchronous_validation_completed_async_benchmark_unqualified",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-02T23:24:48.679479+00:00"
+  "updated_at": "2026-09-03T01:24:08.680037Z"
 }

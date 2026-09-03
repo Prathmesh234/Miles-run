@@ -5,7 +5,7 @@ Generated from `docs/current-status.json`.
 Run: `20260902-172037-a3b210`. Optimizer steps verified: **Job 143: 3; prior failed job 139: 2 historical updates, excluded from the clean benchmark**. Held-out quality measured: **False**.
 
 Latest training allocation: Slurm **143**, 32 GPUs, 2t2r, 3 requested steps. Three synchronous optimizer updates and three checkpoint saves completed. All 48 trained samples passed native token/logprob/mask and GRPO tensor audits. Collector timeouts, exact environment accounting, resume and quality gates remain open.
-Status snapshot: `2026-09-02T23:24:48.679479+00:00`; inspect Slurm for live state.
+Status snapshot: `2026-09-03T01:24:08.680037Z`; inspect Slurm for live state.
 
 ## Historical milestones (later gates supersede earlier limits)
 
@@ -63,6 +63,11 @@ Status snapshot: `2026-09-02T23:24:48.679479+00:00`; inspect Slurm for live stat
 - Miles 977bdee2f reads canonical SGLang speculative draft counters. Twenty-three wire-codec tests passed in the pinned GPU image on CPU. Job 143 reported acceptance rate zero because the old field names were missing; that value is not a valid model acceptance measurement.
 - Operator-authorized dummy-run retention removed four older checkpoint payload sets (1,989,034,824,640 bytes), retaining the newest full checkpoint, older metadata/debug logs, and data-position states. Shared free space was verified at approximately 3.0 TB. No S3 archive was configured.
 - Current root parser/evidence suite: 44 passed. OpenEnv suite: 101 passed / 3 skipped; targeted launcher suite: 28 passed. Full Miles baseline failures remain separately documented.
+- Public telemetry consolidated after full raw-data review: job143 report is four files /154,256 bytes. Raw evidence remains on shared storage; periodic training publication emits summaries, not raw chunks.
+- Job147: B200 MXFP8 kernel/export probe passed24 byte-exact expert weight/scale comparisons, including MTP; five cases including zero control. Six finalized native/host-Lustre streams, zero collector errors.
+- Job148: full candidate conversion completed in105.07s; tensor payload39,502,417,632 bytes from71,903,645,408. Independent audit verified64,106 serialized tensors,796 byte-exact higher-precision tensors,26 frozen input hashes and tokenizer identity. No model quality or optimizer claim.
+- Candidate packagingv2 restores two pinned processor configs without changing or copying26 weight payloads. Forty file checksums and the full serialized tensor audit passed. Both packages and original failures retained.
+- Current root evidence/launcher-preparation suite:55passed. Quantized training is not enabled; full Miles baseline failures and missing async/quality/resume gates remain unchanged.
 
 ## Remaining gates
 
@@ -78,6 +83,7 @@ Status snapshot: `2026-09-02T23:24:48.679479+00:00`; inspect Slurm for live stat
 | Placement sweep and quality hill climb | not executed | Pass preceding gates, freeze budget and settings, run warmup plus three rotated repetitions, then the longer selected layout and paired checkpoint evaluation. |
 | Local sandbox disk quota | Docker VFS hard quota unsupported; file-only runtime uses read-only root and size-limited run-owned tmpfs volumes. Live isolation/timeout/cleanup tests passed. | Retain bounded resources and free-space guards; do not generalize this runtime to unrestricted service tasks. |
 | CollectiveX normal EP8 runtime | Pinned Miles image exports legacy Buffer, not required ElasticBuffer | Qualify a separate pinned collective runtime for DeepEP V2. Upstream setup overrides NCCL to2.30.4; do not apply it to Miles. No BF16/FP8 CollectiveX GPU case has run. |
+| Optional Qwen MXFP8 runtime | Kernel/export and serialized conversion passed; EP8 serving failed before readiness in149/150/151. No quantized optimizer steps. | Qualify matched BF16 exceptions for affected TP8 dense projections, or routed-experts-only MXFP8. Preserve BF16 baseline and do not bypass original infrastructure/async/resume gates. |
 
 ## Quality budget
 

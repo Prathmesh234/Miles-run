@@ -1,5 +1,5 @@
 {
-  "candidate": "Qwen-aware expert unpacking, nested text configuration, explicit BF16 GDN/vision exceptions, and matching export/loader precision; not enabled until conversion, hot reload, logprob and gradient checks pass.",
+  "candidate": "Current full MXFP8 candidate is blocked at preserved TP8 dense K=64 in the pinned SGLang stack. Next candidate: retain affected dense projections in BF16 (or routed-experts-only MXFP8), with matching converter, SGLang loader, Miles export and trainer exceptions. No optimizer enablement until serving, broadcast, logprob/gradient and telemetry gates pass.",
   "conversion": {
     "checkpoint": "/shared/posttrainingx/runs/vultr-b200-slurm/20260902-172037-a3b210/models/qwen3.6-35b-a3b-mxfp8-v1",
     "checksummed_files": 37,
@@ -85,6 +85,7 @@
   "packed_expert_tensor_count": 82,
   "payload_bytes": 71903645408,
   "provenance": {
+    "conversion_miles_sha": "b61dbe83ee815412b72c84ed367ffd329d7922d4",
     "header_evidence": "tests/02-quantization-model-header-preflight-v1/model-header-inventory.json",
     "image_digest": "sha256:59a11219eae0defc6594ec678fafe4e897c16904263223f79968cd3e0209a502",
     "installed_loader_sources": "tests/02-qwen-quantization-sglang-source-v3/manifest.json",
@@ -101,7 +102,8 @@
     "Bounded B200 probe pre-registers maximum relative L2 reconstruction error 0.06 and byte-exact agreement between packed conversion and Miles per-expert live export. Tests real main/MTP slices and zero control; not a gradient, speed or quality claim.",
     "Prior source inspection failures retained: v1 timed out pulling an uncached Docker image; v2 assumed a nonexistent standalone mxfp8.py module. v3 discovered and captured installed sources without running Docker.",
     "Training quantization stays disabled until full load, MTP, broadcast activation, fixed-token logprob/gradient and end-to-end telemetry gates pass. NVFP4 is not enabled.",
-    "The older Miles Qwen3 MXFP8 launcher comment disallows EP for its cutlass path. The newer pinned SGLang flashinfer_trtllm_routed implementation accepts local expert offset/count for MXFP8. Preserve EP8 and qualify that backend rather than silently changing topology."
+    "The older Miles Qwen3 MXFP8 launcher comment disallows EP for its cutlass path. The newer pinned SGLang flashinfer_trtllm_routed implementation accepts local expert offset/count for MXFP8. Preserve EP8 and qualify that backend rather than silently changing topology.",
+    "No quantized serving request succeeded in jobs149/150/151; MTP-on cases were explicitly skipped after MTP-off failure. No quantized optimizer steps, training speedup, or held-out quality improvement is claimed."
   ],
   "reproducer": ".venv-launch-tests/bin/python scripts/stage_model_conversion.py \\\n  --run-dir runs/vultr-b200-slurm/20260902-172037-a3b210 \\\n  --kubeconfig /path/to/kubeconfig --format mxfp8-probe --attempt 1",
   "schema_version": 1,
@@ -115,6 +117,11 @@
     {
       "finding": "FlashInfer TRT-LLM dense scale shuffle rejects TP8 shape [2048,2]. Next attempt uses documented Triton dense MXFP8, preserving EP8 routed MoE and all weights.",
       "job_id": 150,
+      "status": "failed before readiness"
+    },
+    {
+      "finding": "Triton-selected dense path reaches CUTLASS MXFP8; m=2,n=2048,k=64 violates n/k >=128. Keep affected dense projections BF16 in a separately tested candidate; not implemented or enabled.",
+      "job_id": 151,
       "status": "failed before readiness"
     }
   ],
