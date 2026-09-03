@@ -65,9 +65,9 @@ class EvidenceTests(unittest.TestCase):
             payload.write_bytes(b'fixture')
             info = payload.stat()
             expected = {'rank.distcp': dict(bytes=info.st_size, inode=info.st_ino, mtime_ns=info.st_mtime_ns)}
-            verify_payload_identity(root, expected)
+            self.assertEqual(verify_payload_identity(root, expected), expected)
             payload.write_bytes(b'changed fixture')
-            with self.assertRaisesRegex(ValueError, 'identity changed'):
+            with self.assertRaisesRegex(ValueError, 'identity changed.*expected.*observed'):
                 verify_payload_identity(root, expected)
             payload.unlink()
             other = root / 'other'

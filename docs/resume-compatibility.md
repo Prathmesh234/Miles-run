@@ -29,7 +29,29 @@ The Megatron consumed-sample counters are zero; Miles dataset cursor state is se
 
 Pass --use-checkpoint-opt-param-scheduler for the controlled resume test, preserve the saved scheduler horizon and all other settings, then verify actual post-load state and the next update. Constant LR did not change in this fixture, but the scheduler counter did.
 
-This reproduces the native scheduler plus the pinned Miles post-load branch, not a whole-model restart. No fix has been enabled in training.
+This reproduces the native scheduler plus the pinned Miles post-load branch, not a whole-model restart. The controlled GPU replay explicitly enables checkpoint-scheduler restoration.
+
+## Frozen-input replay
+
+Status: **gpu_replay_failed_before_model_initialization**. Native CPU job **170**; GPU job **171**, 32 GPUs, 2 independent trainer replicas.
+
+Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. All32 ranks must pass reload before either replica steps. Original inputs mounted read-only; no new checkpoint payload.
+
+| Limitation |
+|---|
+| CPU fixture writer is an explicit adapter, not the training writer. |
+| Full asynchronous queue/accounting, policy version and data cursor remain outside this replay. |
+| Megatron saves one RNG replica when data_parallel_random_init is false; this cannot prove original per-expert-rank RNG coverage. |
+| Payload file identity and small-input checksums are frozen; no whole-file checksum claim for existing497GB checkpoints. |
+
+| Preserved failure or source finding | Scoped change |
+|---|---|
+| Native fixture writer synchronized CUDA with no GPUs | Fixture-only CPU synchronous writer; no package or training writer modification. |
+| Premature local audit while170 was still running | Original failed audit preserved; a2 required terminal COMPLETED0:0 before final export. |
+| Native ckpt_step0 is treated as false in source | Isolated read-only load view with zero-step tracker; no original checkpoint metadata edited. |
+| Checkpoint file stat differed inside container; external stat matches all four worker pods. | Exact-mount CPU check matches all32 payload identities; cause unknown. Retain expected/observed stat values on any future mismatch; no comparison relaxation or checkpoint changes. |
+
+CPU proof: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-audit-v3-a2/result.json`. Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v1/submission.json`.
 
 ## Remaining requirements
 

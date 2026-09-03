@@ -162,13 +162,17 @@ def move_tensors(value):
 
 
 def verify_payload_identity(root, expected):
+    observed = {}
     for name, identity in expected.items():
         path = root / name
         if path.is_symlink():
             raise ValueError('Checkpoint payload symlink refused.')
         stat = path.stat()
-        if dict(bytes=stat.st_size, inode=stat.st_ino, mtime_ns=stat.st_mtime_ns) != identity:
-            raise ValueError('Frozen checkpoint file identity changed: ' + name)
+        observed[name] = dict(bytes=stat.st_size, inode=stat.st_ino, mtime_ns=stat.st_mtime_ns)
+        if observed[name] != identity:
+            raise ValueError('Frozen checkpoint file identity changed: ' + name + '; ' +
+                             json.dumps(dict(expected=identity, observed=observed[name]), sort_keys=True))
+    return observed
 
 
 def worker(config):
@@ -188,7 +192,7 @@ def worker(config):
         slurm_job_id=os.environ['SLURM_JOB_ID'], started_at=utcnow(), optimizer_steps=0, findings=[])
     try:
         logging.basicConfig(level=logging.INFO)
-        verify_payload_identity(Path('/run-artifacts'), config['payload_stat'])
+        result['payload_identity_before'] = verify_payload_identity(Path('/run-artifacts'), config['payload_stat'])
         for name, digest in config['small_inputs'].items():
             if sha256(Path('/run-artifacts') / name) != digest:
                 raise ValueError('Frozen input checksum differs: ' + name)
@@ -262,7 +266,7 @@ def worker(config):
             raise ValueError('Replay optimizer step was not normal.')
         result.update(optimizer_steps=1, step_duration_s=time.monotonic()-started)
         result['next_state'] = verify_state(args, model, optimizer, scheduler, after, 1, output, 'next-state')
-        verify_payload_identity(Path('/run-artifacts'), config['payload_stat'])
+        result['payload_identity_after'] = verify_payload_identity(Path('/run-artifacts'), config['payload_stat'])
         dist.barrier()
     except Exception as exc:
         result['findings'].append(type(exc).__name__ + ': ' + str(exc))

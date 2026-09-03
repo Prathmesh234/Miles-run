@@ -14,7 +14,7 @@
     {
       "gate": "Broad launcher suite",
       "smallest_next_step": "Preserve baseline failures; do not call the full suite green. Continue the targeted runtime qualification of the committed launcher.",
-      "state": "32 targeted launcher/snapshot tests passed. Broad macOS run:384passed/30failed/122errors from platform/dependency limitations; not a full-suite pass. Native cleanup/parser components101passed; root reporting/audit suite74passed."
+      "state": "76 root audit/report tests and32 targeted launcher tests passed; pinned cleanup/parser components101 passed. Broad macOS/native suites retain documented failures; no full-suite pass."
     },
     {
       "gate": "GPU runtime and provenance",
@@ -23,8 +23,8 @@
     },
     {
       "gate": "GRPO, async and resume fidelity",
-      "smallest_next_step": "Preserve the completed journal audit; qualify full-state resume with frozen native trajectories, restored policy version/cursor/buffer, scheduler and RNG, then asynchronous accounting.",
-      "state": "Job167 synchronous GRPO/journal audits passed:32 native samples,48 episodes,zero unresolved. Complete resume remains unqualified; saved scheduler32->48 default-load mismatch has only a component-level fix. Async in-flight/accounting restoration remains open."
+      "smallest_next_step": "Audit the frozen-input replay without relaxing equality. Then qualify policy version, data source and quiesced async accounting at checkpoint boundaries.",
+      "state": "Native CPU replay fixture170 passed. GPU replay171 stopped before model initialization due to a frozen-input identity mismatch; zero optimizer updates. Original failure retained; full resume remains unqualified."
     },
     {
       "gate": "3T/1R batch compatibility",
@@ -58,31 +58,19 @@
     }
   ],
   "completed": [
-    "Committed B200 launcher with whole-node role mapping. The current 22-commit Miles patch series replays exactly to its recorded source tree; source remains pinned independently of the image.",
-    "Four-node preflight: jobs 109/110 reconciled32 B200 GPUs and exercised node-local/four-node all-reduce correctness plus all32 active400G IB rails. Job 111 passed 2 GiB fio per node and180 one-second Lustre samples per node. These are bounded checks, not saturation/burn-in results.",
-    "Pinned runtime: Python 3.12.3, Torch 2.13.0+cu130, CUDA 13.0.88, NCCL 2.29.7, Ray 2.58.0, SGLang 0.5.19.dev52+g98bb145, OpenAI 2.6.1; Megatron 8c1e05747eb612b382df2632783df5c83a853646. Run-local Enroot settings and NVIDIA_VISIBLE_DEVICES=all leave cluster-wide configuration unchanged.",
-    "Qwen model revision 995ad96eacd98c81ed38be0c5b274b04031597b0:40 files /71,926,865,825 bytes individually hash-verified. Pinned32,608,673,792-byte Miles image SHA256 2262e639192be83c00b285a79bcda07c6a23a06295cb4828aecc879e0f2d2698.",
-    "Job 115 passed deterministic node-local EP8 serving with MTP off/on, exact output-token/logprob counts and positive acceptance. Six finalized telemetry streams; short-request forward-timer gauge unavailable. Not a concurrency benchmark.",
-    "Conversion/parity: job 117 generated an MTP-preserving checkpoint; job 119 verified 32,118 comparisons including 785 MTP components, with 32,088 byte/dtype-equal comparisons and30 documented reversible A_log widenings. Original job 118 strict-dtype failure remains preserved.",
-    "Job 120 loaded the cookbook TP1/EP8 trainer on eight GPUs:3,191 unchanged parameter hashes per rank, finite nonzero main/MTP gradients and consistent diagnostic logprobs. No optimizer constructed; not full resume or GRPO validation.",
-    "Training corpus: Terminal-Lego 9c197f1c2e87b64cc316b1a5bfcef57b584929f0;512 train/128 development/1 runtime tasks,5,097 files rehashed. All18 task base tags plus uv helper have frozen digest bindings. Full-corpus image/reference qualification remains pending.",
-    "Evaluation:89 ordered TB2.1 task IDs frozen at 7131e4375048a0e408a8fb404b5f499d726b695b, excluded from training. Job 142 built/imported separate locked Verifiers 0.3.1/Harbor 0.21.0 image; no TB task evaluation executed. Three strict-online dependency conflicts reproduced without forced installation.",
-    "Local environments: jobs 134/146 passed reference solutions, sealed policy/grader isolation, timeouts, protocol/episode identity and cleanup checks for five qualified images. OpenEnv regression101 passed/3 skipped. This is not qualification of the full corpus.",
-    "Actual training-container fabric: job 141 verified 32 ranks using IB and all eight400G HCAs per node, with correct all-reduce and node-local EP8 all-to-all. No Socket fallback; communication throughput still unmeasured.",
-    "Broadcast/model protocol: initial target/MTP weight equality passed on both rollout engines; Qwen placeholder and unfinished-final-message comparisons were independently tested without changing sampled token IDs. Miles 977bdee2f fixes canonical speculative counters;23 codec tests passed. Historical job 143 zero MTP acceptance was a field-name bug, not a valid measurement.",
-    "Synchronous GRPO: jobs 143 and154 each executed three updates and three checkpoint saves on32 GPUs; each48-sample native tensor audit passed. Job 143 had 12 collector timeouts. Job 154 failed on15.22/15.48 s trainer-node sampling gaps despite zero collector exception rows. Neither qualifies the measured benchmark.",
-    "Job 154 environment accounting:80 graded episodes,55 pass/25 fail, balanced isolated cleanup.48 episodes join explicitly to trainer samples;32 remain unresolved. These are training-task outcomes, not held-out quality.",
-    "Resume component: job 155 passed seven native CPU cursor/recycled-buffer checkpoint tests. Candidate1411d18 remains opt-in and disabled in training; optimizer, scheduler, RNG, asynchronous queue and policy-version resume remain unverified.",
-    "Telemetry controls: job 153 passed node-local all-reduce collection (max gap1.523 s). Jobs156/157 passed 64 GiB-per-GPU context teardown without/with EP8 NCCL (max gaps2.142/2.004 s); neither reproduced job 154. Separate owned DCGM probe144 returned real node3 identities, but continuous training-load DCGM remains unqualified.",
-    "Optional quantization: jobs 147/148 passed expert MXFP8 byte checks and full conversion (71.904 GB to39.502 GB tensor payload). Metadata-only repackaging preserved weights. Serving149/150/151 failed before readiness; no quantized optimizer step or speedup/quality claim.",
-    "Batch compatibility: pinned Megatron calculator rejects global64 at denseDP24 and accepts96 across DP8/16/24. Stage4 stays64; Stage5 common96 requires actual trainer validation. CollectiveX/DeepEP V2 sources are pinned, but the Miles image has the incompatible legacy API; no CollectiveX performance result.",
-    "Evidence/retention: authorized pruning removed 1,989,034,824,640 bytes of older dummy checkpoint payloads while retaining latest checkpoint and metadata. No S3 archive configured. Public telemetry keeps four dense files per job, not raw chunks; job 154 summarizes3,657,250 records in 156,009 bytes and explicitly fails its coverage gate.",
-    "Tests: root evidence suite 71 passed; updated targeted launcher/snapshot checks 31 passed. Pinned CPU journal/scheduler/cursor tests passed 54/54 in job160. macOS broad launcher attempt failed (382 passed, 31 failed, 122 errors, including absent /proc); prior pinned Linux baseline remains 597 passed/12 failures/4 errors. No whole-suite green claim.",
-    "Pinned-host teardown controls: job 162 failed with 7.48\u201310.38 s gaps after ordinary exit with 24 GiB pinned host memory per rank. Matched job 163 explicitly released those buffers first and passed on all 32 ranks: worst gap 2.101 s, slowest NVML API 0.773 s. Full Miles trainer cleanup is not yet patched or qualified; both control outcomes remain preserved.",
-    "Job 164 passed96 native CPU journal/cleanup tests. Job165 exposed a parser-order coverage gap and failed before model initialization. Its24 finalized telemetry streams contain545,597 records and zero collector-error rows; this is not load qualification. A separate fix and five real argument-validation tests passed in CPU job166:101 tests, zero failures/errors/skips. The first audit was premature and retained as failed; terminal audit v5-a2 passed.",
-    "Scoped dummy checkpoint retention removed994,517,412,320 payload bytes from two superseded checkpoints; four full checkpoints and all base models retained. Independent check found1,461,723,688,960 free bytes.",
-    "Job167 completed in15m19s on32 GPUs:2 optimizer updates/2 save receipts;32 native training samples and48 controller episodes reconciled,16 explicitly discarded,zero unresolved. All16 trainers released423,352,733,696 pinned tensor bytes with policy version3. Native24-stream telemetry contains3,378,085 records,zero collector errors,maxGPU sample gap3.338s;166 Ray snapshots confirm8 trainer actors per trainer node and1 EP8 engine per rollout node. Full required telemetry, resume, async and quality remain separate gates.",
-    "A fresh local checkout reconstructed all22 Miles patches with git am and matched the exact recorded source tree. Independent shared destination verification passed244 newly synchronized evidence files."
+    "Pinned B200 launcher implements whole-node 1T/3R,2T/2R,3T/1R layouts. All22 Miles patch commits reconstruct the recorded source tree; see patches/manifest.json.",
+    "Model995ad96:40 files/71,926,865,825 bytes individually verified. Native image32,608,673,792 bytes verified; exact image/package/model provenance remains in the run inventory.",
+    "Bounded preflight109\u2013111 reconciled32 B200 GPUs, all32 active400G IB rails, node-local/four-node collective correctness, 2GiB fio per node and180 one-second Lustre samples per node. Not burn-in or saturation characterization.",
+    "Serving115 passed EP8 MTP-off/on deterministic request checks. Conversion119 passed32,118 comparisons with30 documented reversible A_log widenings; trainer120 had finite main/MTP gradients. See docs/checkpoint-parity.md.",
+    "Clean corpus: Terminal-Lego9c197f has512 train/128 development tasks;5,097 source files rehashed. Jobs134/146 qualified only five task images, with sealed grading, timeout and cleanup checks. Full corpus runtime remains open.",
+    "Untouched evaluation:89 TB2.1 task IDs pinned at7131e4 and excluded from training. Separate Python3.12/Verifiers0.3.1/Harbor0.21 image142 built; no TB evaluation executed. Strict online Miles/Verifiers dependency conflicts remain blocked.",
+    "Synchronous reference167 completed two updates/two saves on32 GPUs. All32 trainer samples and48 episodes reconcile:16 unused discards,zero unresolved. See docs/grpo-validation-job167.md; no held-out quality claim.",
+    "Job167 native telemetry:24 finalized streams/3,378,085 records,zero collector errors,maxGPU sample gap3.338s. All16 trainers released423,352,733,696 pinned bytes;166 Ray snapshots verified whole-node actor placement. Full metric coverage and async qualification remain open.",
+    "Current tests:76 root audit/report tests;101 pinned native Miles journal/parser/cleanup tests in166;32 targeted launcher checks. Historical broad suites had platform/dependency failures and are not reported green.",
+    "Checkpoint probe170 passed native CPU loader/comparison and corruption controls with exact replay imports. Fixture writer uses native MCore formatting plus Torch synchronous CPU I/O; no full-model or optimizer restore claim yet.",
+    "Optional MXFP8 conversion148 reduced tensor payload71.904GB to39.502GB, but serving149\u2013151 failed before readiness. No quantized optimizer step or speedup claim; BF16 remains the baseline.",
+    "Retention removed only authorized superseded dummy checkpoint payloads and preserved metadata. Six full training checkpoints remain after167; no S3 archive configured. Public telemetry uses four dense files per job; full-resolution evidence stays outside Git.",
+    "Job171 failure bundle exported307 files; all eight pre/post-allocation inventory checks passed. Final dense telemetry records256,407 samples,zero collector errors, and correctly labels the job failed; no optimizer execution."
   ],
   "failed_slurm_jobs": [
     {
@@ -156,27 +144,37 @@
     {
       "job_id": 161,
       "reason": "Both optimizer steps and saves completed, but trainer-node telemetry ticks14.876/13.296s failed the12s deadline during teardown. NVML per-call evidence identifies a14.425s field query on node0 and9.016s field plus3.057s memory queries on node1. Accounting48/48 and tensors32/32 passed; overallrun remains failed."
+    },
+    {
+      "job_id": 162,
+      "reason": "Ordinary exit with24GiB pinned memory per rank failed telemetry gaps; matched explicit-release control163 passed."
+    },
+    {
+      "job_id": 165,
+      "reason": "Cleanup validation accessed derived use_critic too early; stopped before model initialization. Scoped parser-order fix passed101 native tests in166."
+    },
+    {
+      "job_id": 168,
+      "reason": "CPU fixture writer called CUDA synchronize with GPUs hidden. No GPU/model/optimizer execution. Fixture-only synchronous writer adapter passed169 and final-source170."
+    },
+    {
+      "job_id": 171,
+      "reason": "Checkpoint stat mismatch stopped171 before model initialization. Later exact-mount CPU checks match all32 payload identities; cause remains unknown. Comparison now retains expected/observed values; threshold unchanged."
     }
   ],
   "heldout_quality_measured": false,
   "last_completed_slurm_jobs": [
-    109,
-    110,
-    111,
-    112,
-    115,
-    117,
-    119,
-    120,
-    126,
-    127,
-    134,
-    147,
-    148,
-    155,
-    156,
-    157
+    167,
+    169,
+    170
   ],
+  "last_diagnostic_submission": {
+    "gpus": 32,
+    "optimizer_steps": 0,
+    "reason": "Checkpoint stat mismatch stopped171 before model initialization. Later exact-mount CPU checks match all32 payload identities; cause remains unknown. Comparison now retains expected/observed values; threshold unchanged.",
+    "slurm_job_id": 171,
+    "status": "FAILED 1:0"
+  },
   "last_training_submission": {
     "gpus": 32,
     "layout": "2T/2R",
@@ -192,9 +190,9 @@
   "quality_protocol": "docs/quality-protocol.md",
   "run_id": "20260902-172037-a3b210",
   "schema_version": 1,
-  "state": "validation_failed_telemetry_and_accounting",
-  "status_consolidation": "Superseded test counts, repeated milestones and intermediate source hashes removed from this current-status digest. Exact historical records remain in immutable phase evidence, patches/manifest.json and Git history; failed_slurm_jobs retained.",
+  "state": "synchronous_validation_passed_resume_replay_failed_input_identity",
+  "status_consolidation": "Current milestones consolidated; superseded counts and duplicate intermediate claims removed. Immutable phase logs and Git history retain all underlying evidence and failures.",
   "training_job_submitted": true,
   "training_started": true,
-  "updated_at": "2026-09-03T03:53:20.025110Z"
+  "updated_at": "2026-09-03T04:22:37.834478Z"
 }

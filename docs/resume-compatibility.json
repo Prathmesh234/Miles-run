@@ -1,5 +1,46 @@
 {
   "metadata": {
+    "checkpoint_replay_validation": {
+      "contract": "Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. All32 ranks must pass reload before either replica steps. Original inputs mounted read-only; no new checkpoint payload.",
+      "failure_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job171-final-evidence-v1/result.json",
+      "gpu_job": 171,
+      "gpus": 32,
+      "identity_recheck_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-identity-matching-mounts-v1/result.json",
+      "interventions": [
+        {
+          "failure": "Native fixture writer synchronized CUDA with no GPUs",
+          "fix": "Fixture-only CPU synchronous writer; no package or training writer modification.",
+          "job_id": 168
+        },
+        {
+          "failure": "Premature local audit while170 was still running",
+          "fix": "Original failed audit preserved; a2 required terminal COMPLETED0:0 before final export."
+        },
+        {
+          "failure": "Native ckpt_step0 is treated as false in source",
+          "fix": "Isolated read-only load view with zero-step tracker; no original checkpoint metadata edited."
+        },
+        {
+          "failure": "Checkpoint file stat differed inside container; external stat matches all four worker pods.",
+          "fix": "Exact-mount CPU check matches all32 payload identities; cause unknown. Retain expected/observed stat values on any future mismatch; no comparison relaxation or checkpoint changes.",
+          "job_id": 171
+        }
+      ],
+      "limitations": [
+        "CPU fixture writer is an explicit adapter, not the training writer.",
+        "Full asynchronous queue/accounting, policy version and data cursor remain outside this replay.",
+        "Megatron saves one RNG replica when data_parallel_random_init is false; this cannot prove original per-expert-rank RNG coverage.",
+        "Payload file identity and small-input checksums are frozen; no whole-file checksum claim for existing497GB checkpoints."
+      ],
+      "native_cpu_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-audit-v3-a2/result.json",
+      "native_cpu_job": 170,
+      "optimizer_steps": 0,
+      "replicas": 2,
+      "source_git_sha": "ca12b02bc1792e8d67102eff5da2c085fcb9e93d",
+      "status": "gpu_replay_failed_before_model_initialization",
+      "steps_per_replica": 1,
+      "submission_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v1/submission.json"
+    },
     "components": [
       {
         "component": "Model, optimizer and LR scheduler",

@@ -25,7 +25,18 @@ def render(data):
             lines.append(f"| use_checkpoint_opt_param_scheduler={row['use_checkpoint_opt_param_scheduler']} | "
                 f"{row['loaded_num_steps']} | {row['after_miles_initialization_num_steps']} | {row['lr']} |")
         lines += ['', defect['smallest_fix'], '',
-            'This reproduces the native scheduler plus the pinned Miles post-load branch, not a whole-model restart. No fix has been enabled in training.']
+            'This reproduces the native scheduler plus the pinned Miles post-load branch, not a whole-model restart. The controlled GPU replay explicitly enables checkpoint-scheduler restoration.']
+    replay = meta.get('checkpoint_replay_validation')
+    if replay:
+        lines += ['', '## Frozen-input replay', '',
+            f"Status: **{replay['status']}**. Native CPU job **{replay['native_cpu_job']}**; "
+            f"GPU job **{replay['gpu_job']}**, {replay['gpus']} GPUs, {replay['replicas']} independent trainer replicas.",
+            '', replay['contract'], '', '| Limitation |', '|---|']
+        lines += ['| ' + item.replace('|', '\\|') + ' |' for item in replay['limitations']]
+        lines += ['', '| Preserved failure or source finding | Scoped change |', '|---|---|']
+        for item in replay['interventions']:
+            lines.append('| ' + item['failure'] + ' | ' + item['fix'] + ' |')
+        lines += ['', f"CPU proof: `{replay['native_cpu_evidence']}`. Submission: `{replay['submission_evidence']}`."]
     lines += ['', '## Remaining requirements', '']
     lines += ['- ' + item for item in meta['required_before_resume_claim']]
     lines += ['', '## Evidence', '', f"- Dataset cursor probe: `{meta['cpu_probe']['path']}`."]
