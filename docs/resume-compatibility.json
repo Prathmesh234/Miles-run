@@ -1,9 +1,9 @@
 {
   "metadata": {
     "checkpoint_replay_validation": {
-      "contract": "Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. All32 ranks must pass reload before either replica steps. Original inputs mounted read-only; no new checkpoint payload.",
+      "contract": "Bitwise model and real optimizer tensors, exact scheduler/RNG and class identity. Undefined same-shape/dtype native padding remains in raw evidence but is not logical optimizer state. All32 ranks must pass before either replica steps; original inputs read-only, no new checkpoint payload.",
       "failure_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job171-final-evidence-v1/result.json",
-      "gpu_job": 173,
+      "gpu_job": 175,
       "gpus": 32,
       "identity_recheck_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-identity-matching-mounts-v1/result.json",
       "interventions": [
@@ -24,6 +24,11 @@
           "failure": "Checkpoint file stat differed inside container; external stat matches all four worker pods.",
           "fix": "Exact-mount CPU check matches all32 payload identities; cause unknown. Retain expected/observed stat values on any future mismatch; no comparison relaxation or checkpoint changes.",
           "job_id": 171
+        },
+        {
+          "failure": "192 unsupported class comparisons and391 marked padding tensors; no unexplained tensor differences.",
+          "fix": "Class identity and explicit padding semantics, proven with native CPU174. Raw failure retained; no actual parameter tolerance or runtime-package patch.",
+          "job_id": 173
         }
       ],
       "limitations": [
@@ -32,31 +37,31 @@
         "Megatron saves one RNG replica when data_parallel_random_init is false; this cannot prove original per-expert-rank RNG coverage.",
         "Payload file identity and small-input checksums are frozen; no whole-file checksum claim for existing497GB checkpoints."
       ],
-      "native_cpu_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-test-v4/result.json",
-      "native_cpu_job": 172,
+      "native_cpu_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-test-v5/result.json",
+      "native_cpu_job": 174,
       "optimizer_steps": null,
       "prior_gpu_attempt": {
-        "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job171-final-evidence-v1/result.json",
-        "job_id": 171,
+        "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job173-component-audit-v1/result.json",
+        "job_id": 173,
         "optimizer_steps": 0,
         "status": "FAILED 1:0"
       },
       "replicas": 2,
-      "source_git_sha": "d9cd40d5c7caf9a154eb0bdf8342712939330fb1",
-      "status": "instrumented_gpu_replay_running",
+      "source_git_sha": "7b404474f23932b574f3d6db87b7e1a20704a7c6",
+      "status": "logical_state_gpu_replay_running",
       "steps_per_replica": 1,
-      "submission_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v2/submission.json"
+      "submission_evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v3/submission.json"
     },
     "components": [
       {
         "component": "Model, optimizer and LR scheduler",
         "source": "miles/backends/megatron_utils/model.py:save",
-        "state": "Job154 iteration1 contains common optimizer metadata and scheduler position32. Native replay proves default Miles initialization advances32 to48 without an update; explicit checkpoint-scheduler flag preserves32. Model/optimizer tensor restoration and next-update equality remain untested."
+        "state": "Job173 native checkpoint reload returned on all32 ranks. All234,880 model leaves and320 scheduler leaves matched. Logical optimizer tensors matched except explicitly marked padding;192 class comparisons were unsupported. Corrected comparator passed CPU174; next-update equality remains untested."
       },
       {
         "component": "RNG",
         "source": "miles/backends/megatron_utils/model.py",
-        "state": "Job154 iteration1 contains a deserialized record with Python, NumPy, Torch CPU, CUDA and tracker state. Byte range and metadata hashed. No actual RNG restoration or next-update parity proof."
+        "state": "Job173 matched20,384 saved RNG leaves on32 ranks. This proves equality to the stored RNG replica, not coverage of original per-expert-rank states when data_parallel_random_init=false."
       },
       {
         "component": "Consumed data position and sample identities",
@@ -103,7 +108,44 @@
       },
       "sha256": "8ca700ccfb094d2bd85aaff1a570cf3f8af0664243e1e76cf2e4f6edd65a7771"
     },
-    "miles_revision": "1181014c3c78ed290d4e53fbc33ef8d4cdb1949a",
+    "initial_inspection_miles_revision": "1181014c3c78ed290d4e53fbc33ef8d4cdb1949a",
+    "loaded_component_comparison": {
+      "components": {
+        "iteration": {
+          "failed": 0,
+          "leaves": 32,
+          "tensor_bytes": 0
+        },
+        "model": {
+          "failed": 0,
+          "leaves": 234880,
+          "tensor_bytes": 423352733696
+        },
+        "opt_param_scheduler": {
+          "failed": 0,
+          "leaves": 320,
+          "tensor_bytes": 0
+        },
+        "optimizer": {
+          "failed": 583,
+          "leaves": 218818,
+          "tensor_bytes": 852126268000
+        },
+        "rng_state": {
+          "failed": 0,
+          "leaves": 20384,
+          "tensor_bytes": 163840
+        }
+      },
+      "evidence": "runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job173-component-audit-v1/result.json",
+      "failure_categories": {
+        "explicit_optimizer_padding": 391,
+        "unsupported_class_comparison": 192
+      },
+      "job_id": 173,
+      "unexplained": []
+    },
+    "miles_revision": "3db148a3fec7afb87a8c6275027ae274a7122a19",
     "opt_in_buffer_candidate": {
       "enabled_in_training": false,
       "evidence": [
@@ -176,7 +218,7 @@
       "sha256": "96d1c901c4979130a15ff330b68b4d8f824fa81d4defc85f79d1786db2d57066",
       "smallest_fix": "Pass --use-checkpoint-opt-param-scheduler for the controlled resume test, preserve the saved scheduler horizon and all other settings, then verify actual post-load state and the next update. Constant LR did not change in this fixture, but the scheduler counter did."
     },
-    "scope": "Source inspection, native CPU cursor/buffer tests, saved-state metadata and native scheduler replay. Full model/optimizer/async resume remains unqualified."
+    "scope": "Native CPU cursor/buffer/format checks plus full32-rank model, scheduler and stored-RNG reload comparison. Corrected logical optimizer and next-update replay still pending; full async resume unqualified."
   },
   "runner": "resume-compatibility",
   "schema_version": 1,

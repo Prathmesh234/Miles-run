@@ -37,6 +37,19 @@ def render(data):
         for item in replay['interventions']:
             lines.append('| ' + item['failure'] + ' | ' + item['fix'] + ' |')
         lines += ['', f"CPU proof: `{replay['native_cpu_evidence']}`. Submission: `{replay['submission_evidence']}`."]
+    loaded = meta.get('loaded_component_comparison')
+    if loaded:
+        lines += ['', f"## Job{loaded['job_id']} loaded-state evidence", '',
+            'The original gate remains **failed** and no update ran. Counts include both replicas and all32 ranks; bytes are not unique model capacity.', '',
+            '| Component | Compared leaves | Raw failed leaves |', '|---|---:|---:|']
+        for name, row in loaded['components'].items():
+            lines.append(f"| {name} | {row['leaves']:,} | {row['failed']:,} |")
+        categories = loaded['failure_categories']
+        lines += ['', f"Failed leaves: {categories.get('unsupported_class_comparison', 0)} unsupported class comparisons; "
+            f"{categories.get('explicit_optimizer_padding', 0)} explicitly marked optimizer-padding tensors; "
+            f"{len(loaded['unexplained'])} unexplained differences.", '',
+            'Native source creates this padding with `torch.empty` and discards it during optimizer restore. The revised harness retains raw padding comparisons, excludes only same-shape/same-dtype marked padding from its logical-state gate, and compares classes by identity. Real tensors remain bitwise-gated.', '',
+            f"Audit: `{loaded['evidence']}`."]
     lines += ['', '## Remaining requirements', '']
     lines += ['- ' + item for item in meta['required_before_resume_claim']]
     lines += ['', '## Evidence', '', f"- Dataset cursor probe: `{meta['cpu_probe']['path']}`."]

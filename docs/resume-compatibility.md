@@ -4,8 +4,8 @@
 
 | Component | Current evidence |
 |---|---|
-| Model, optimizer and LR scheduler | Job154 iteration1 contains common optimizer metadata and scheduler position32. Native replay proves default Miles initialization advances32 to48 without an update; explicit checkpoint-scheduler flag preserves32. Model/optimizer tensor restoration and next-update equality remain untested. |
-| RNG | Job154 iteration1 contains a deserialized record with Python, NumPy, Torch CPU, CUDA and tracker state. Byte range and metadata hashed. No actual RNG restoration or next-update parity proof. |
+| Model, optimizer and LR scheduler | Job173 native checkpoint reload returned on all32 ranks. All234,880 model leaves and320 scheduler leaves matched. Logical optimizer tensors matched except explicitly marked padding;192 class comparisons were unsupported. Corrected comparator passed CPU174; next-update equality remains untested. |
+| RNG | Job173 matched20,384 saved RNG leaves on32 ranks. This proves equality to the stored RNG replica, not coverage of original per-expert-rank states when data_parallel_random_init=false. |
 | Consumed data position and sample identities | CPU save/load preserved sample_offset, epoch_id, sample_group_index, sample_index and metadata exactly. |
 | Recycled prompt buffer | Stock inherited save/load drops the buffer. Opt-in CheckpointedRolloutDataSource passed7 native CPU roundtrip/negative tests (job155), also covered in job160; not enabled in training. |
 | Fully asynchronous completed-group queue and accounting | No checkpoint state API on built-in DataBuffer; buffer and window counters initialize empty/zero. Not restart-qualified. |
@@ -33,9 +33,9 @@ This reproduces the native scheduler plus the pinned Miles post-load branch, not
 
 ## Frozen-input replay
 
-Status: **instrumented_gpu_replay_running**. Native CPU job **172**; GPU job **173**, 32 GPUs, 2 independent trainer replicas.
+Status: **logical_state_gpu_replay_running**. Native CPU job **174**; GPU job **175**, 32 GPUs, 2 independent trainer replicas.
 
-Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. All32 ranks must pass reload before either replica steps. Original inputs mounted read-only; no new checkpoint payload.
+Bitwise model and real optimizer tensors, exact scheduler/RNG and class identity. Undefined same-shape/dtype native padding remains in raw evidence but is not logical optimizer state. All32 ranks must pass before either replica steps; original inputs read-only, no new checkpoint payload.
 
 | Limitation |
 |---|
@@ -50,8 +50,27 @@ Bitwise model/optimizer/scheduler/RNG reload and frozen next-update comparison. 
 | Premature local audit while170 was still running | Original failed audit preserved; a2 required terminal COMPLETED0:0 before final export. |
 | Native ckpt_step0 is treated as false in source | Isolated read-only load view with zero-step tracker; no original checkpoint metadata edited. |
 | Checkpoint file stat differed inside container; external stat matches all four worker pods. | Exact-mount CPU check matches all32 payload identities; cause unknown. Retain expected/observed stat values on any future mismatch; no comparison relaxation or checkpoint changes. |
+| 192 unsupported class comparisons and391 marked padding tensors; no unexplained tensor differences. | Class identity and explicit padding semantics, proven with native CPU174. Raw failure retained; no actual parameter tolerance or runtime-package patch. |
 
-CPU proof: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-test-v4/result.json`. Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v2/submission.json`.
+CPU proof: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-native-cpu-test-v5/result.json`. Submission: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-submission-v3/submission.json`.
+
+## Job173 loaded-state evidence
+
+The original gate remains **failed** and no update ran. Counts include both replicas and all32 ranks; bytes are not unique model capacity.
+
+| Component | Compared leaves | Raw failed leaves |
+|---|---:|---:|
+| iteration | 32 | 0 |
+| model | 234,880 | 0 |
+| opt_param_scheduler | 320 | 0 |
+| optimizer | 218,818 | 583 |
+| rng_state | 20,384 | 0 |
+
+Failed leaves: 192 unsupported class comparisons; 391 explicitly marked optimizer-padding tensors; 0 unexplained differences.
+
+Native source creates this padding with `torch.empty` and discards it during optimizer restore. The revised harness retains raw padding comparisons, excludes only same-shape/same-dtype marked padding from its logical-state gate, and compares classes by identity. Real tensors remain bitwise-gated.
+
+Audit: `runs/vultr-b200-slurm/20260902-172037-a3b210/tests/02-resume-replay-job173-component-audit-v1/result.json`.
 
 ## Remaining requirements
 
