@@ -10,6 +10,7 @@ from evidence import Run, atomic, sha256
 from probe_host_lustre import pod_manifest
 from publish_telemetry import start_watcher
 from submit_native_preflight import BOOTSTRAP, batches, entry
+from telemetry_nvml import BINDING_SHA256
 
 PARENT_MILES = '346946ae870be97e9cb6f4e8b7214c7fcf66c041'
 BASE_MILES = '0709889b2848f293b5575d50aa3340fa4de5a20d'
@@ -118,12 +119,18 @@ def main():
         'rdma_devices': '/dev/infiniband mounted into GPU containers only', 'nccl_net': 'IB',
         'rdma_visibility_validation_sha256': sha256(rdma_gate),
         'container_fabric_gate': '32-GPU all-reduce and node-local EP8 all-to-all before Ray/model initialization',
+        'gpu_telemetry_backend': 'persistent-nvml', 'nvml_binding_sha256': BINDING_SHA256,
+        'telemetry_health_contract': 'fail on collector_error, identity mismatch, or host-local heartbeat older than 12 seconds',
         'backend_change_reason': 'Job 137 rejected BF16 broadcast into auto-selected FlashInfer packed expert weights; pinned-loader CPU reproduction retained.',
         'scope': 'Initial synchronous GRPO validation, not the final 400-step hill climb or placement benchmark.'}
     atomic(phase.path / 'launch.json', config)
-    names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py',
-             'telemetry_lustre_host.py', 'grpo_node.py', 'grpo_container.py', 'container_fabric_probe.py', 'local_file_env.py', 'local_openenv_app.py']
+    names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py', 'telemetry_health.py',
+             'telemetry_nvml.py', 'telemetry_lustre_host.py', 'grpo_node.py', 'grpo_container.py', 'container_fabric_probe.py', 'local_file_env.py', 'local_openenv_app.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
+    binding = run.root / 'tests/01-pinned-nvml-bindings-v1/pynvml.py'
+    if sha256(binding) != BINDING_SHA256:
+        raise ValueError('Frozen NVML binding differs from the pinned image extraction.')
+    files[prefix + 'pynvml.py'] = entry(binding.read_bytes())
     files[prefix + 'launch.json'] = entry((json.dumps(config, indent=2) + '\n').encode())
     files[prefix + 'tito-validation.json'] = entry(tito_gate.read_bytes())
     files[prefix + 'rdma-validation.json'] = entry(rdma_gate.read_bytes())
@@ -149,7 +156,7 @@ def main():
     launch = ['srun', '--kill-on-bad-exit=0', '--nodes=4', '--ntasks=4', '--ntasks-per-node=1', '--cpus-per-task=32',
               '--gpus-per-node=8', 'python3', remote + '/' + prefix + 'grpo_node.py', '--run-dir', remote, '--attempt', str(a.attempt)]
     files[prefix + 'submit.sbatch'] = entry(('#!/bin/bash\nset -euo pipefail\nexec ' + shlex.join(launch) + '\n').encode())
-    payloads = list(batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=64*1024))
+    payloads = list(batches({'root': remote, 'create': False, 'manifest_sha256': sha256(run.root / 'run.json')}, files, limit=128*1024))
     for payload in payloads:
         rc, _, _ = phase.command(worker + ['python3', '-c', BOOTSTRAP], stdin=payload, timeout=45)
         if rc:
@@ -166,7 +173,8 @@ def main():
         container = pod['spec']['containers'][0]
         container['command'] = ['python3', '/run-artifacts/' + prefix + 'telemetry_lustre_host.py', '--run-dir', '/run-artifacts',
             '--hostname', row['hostname'], '--duration-s', '5460', '--stream-label', 'lustre-' + label,
-            '--job-marker', 'control/' + label + '-job.json', '--stop-marker', 'control/' + label + '-lustre.stop', '--role', row['role']]
+            '--job-marker', 'control/' + label + '-job.json',
+            '--stop-marker', 'control/' + label + '-' + row['hostname'] + '-lustre.stop', '--role', row['role']]
         container['volumeMounts'] = [{'name': 'host-lustre', 'mountPath': '/host-lustre', 'readOnly': True},
             {'name': 'run-artifacts', 'mountPath': '/run-artifacts', 'subPath': 'posttrainingx/runs/vultr-b200-slurm/' + run.root.name}]
         pod['spec']['volumes'] = [{'name': 'host-lustre', 'hostPath': {'path': '/sys/kernel/debug/lustre/llite', 'type': 'Directory'}},

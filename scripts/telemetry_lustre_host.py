@@ -8,6 +8,9 @@ import re
 import shutil
 import time
 
+from evidence import atomic
+from telemetry_health import heartbeat
+
 
 def duration_seconds(value):
     seconds = int(value)
@@ -56,6 +59,7 @@ def collect(root, host, source, duration, label='lustre-host-validation-v1',
     start = time.monotonic()
     paths = {'normalized': output / 'lustre.jsonl.partial', 'raw': output / 'raw-lustre.jsonl.partial'}
     handles = {k: p.open('x') for k, p in paths.items()}
+    ticks, errors = 0, 0
     def write(key, value):
         handles[key].write(json.dumps(value, allow_nan=False) + '\n')
     try:
@@ -89,10 +93,17 @@ def collect(root, host, source, duration, label='lustre-host-validation-v1',
                         write('normalized', dict(attrs, metric='client_without_operation_samples', value=1,
                                                  unit='state', explanation=str(exc)))
             except (OSError, ValueError) as exc:
-                write('normalized', dict(common, metric='collector_error', value=None, unit='event', error=str(exc)))
+                errors += 1
+                failure = dict(common, metric='collector_error', value=None, unit='event', error=str(exc))
+                write('normalized', failure)
+                atomic(output / 'failure.json', failure)
             for handle in handles.values():
                 handle.flush()
                 os.fsync(handle.fileno())
+            ticks += 1
+            heartbeat(output, host, common.get('slurm_job_id', 'unallocated'), ticks, errors, time.monotonic())
+            if errors:
+                raise RuntimeError('Host Lustre collector failed; evidence retained.')
             time.sleep(max(0, 1 - (time.monotonic() - tick)))
     finally:
         for key, handle in handles.items():

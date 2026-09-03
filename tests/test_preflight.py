@@ -43,6 +43,83 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_telemetry_heartbeat_rejects_stall_error_missing_and_wrong_identity(self):
+        from telemetry_health import heartbeat, assert_healthy, require_healthy
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.assertFalse(assert_healthy(root, 'node', '1', 100))
+            with self.assertRaisesRegex(RuntimeError, 'missing'):
+                require_healthy(root, 'node', '1', 100)
+            heartbeat(root, 'node', '1', 3, 0, 99)
+            self.assertTrue(assert_healthy(root, 'node', '1', 100))
+            for now in (112, 98, float('nan')):
+                with self.assertRaisesRegex(RuntimeError, 'stalled'):
+                    assert_healthy(root, 'node', '1', now)
+            with self.assertRaisesRegex(RuntimeError, 'identity'):
+                assert_healthy(root, 'other', '1', 100)
+            heartbeat(root, 'node', '1', 4, 1, 100)
+            with self.assertRaisesRegex(RuntimeError, 'errors'):
+                assert_healthy(root, 'node', '1', 100)
+            (root / 'failure.json').write_text('{}')
+            heartbeat(root, 'node', '1', 5, 0, 100)
+            with self.assertRaisesRegex(RuntimeError, 'failure marker'):
+                assert_healthy(root, 'node', '1', 100)
+
+    def test_nvml_counter_fields_validate_units_types_identities_and_failures(self):
+        from types import SimpleNamespace as S
+        from telemetry_nvml import field_records
+        fields = [S(fieldId=f, scopeId=l, timestamp=1000000, latencyUsec=2,
+                    nvmlReturn=0, valueType=3, value=S(ullVal=7))
+                  for f in (138, 139) for l in range(18)]
+        rows = field_records(fields, 'GPU-fixture')
+        self.assertEqual(len(rows), 36)
+        self.assertTrue(all(r['value'] == 7168 and r['unit'] == 'B' for r in rows))
+        with self.assertRaisesRegex(ValueError, 'Incomplete'):
+            field_records(fields[:-1], 'GPU-fixture')
+        with self.assertRaisesRegex(ValueError, 'duplicate'):
+            field_records(fields + [fields[0]], 'GPU-fixture')
+        fields[0].valueType = 0
+        with self.assertRaisesRegex(ValueError, 'type'):
+            field_records(fields, 'GPU-fixture')
+        fields[0].nvmlReturn = 3
+        error = field_records(fields, 'GPU-fixture')[0]
+        self.assertEqual(error['metric'], 'collector_error')
+        self.assertIsNone(error['value'])
+
+    def test_stream_error_is_durable_and_visible_to_publication(self):
+        from telemetry_native import Streams
+        from telemetry_health import assert_healthy
+        from publish_telemetry import validate_rows
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            streams = Streams(root)
+            row = dict(time='2026-09-03T00:00:00Z', monotonic_s=1, hostname='gpu-nodes-0',
+                slurm_job_id='152', source='persistent-nvml', metric='collector_error',
+                value=None, unit='event', error='Fixture driver timeout')
+            streams.write('nvidia-smi', row)
+            self.assertEqual(streams.errors, 1)
+            with self.assertRaisesRegex(RuntimeError, 'failure marker'):
+                assert_healthy(root, 'gpu-nodes-0', '152', 1)
+            streams.close()
+            validated = validate_rows((root / 'nvidia-smi.jsonl').read_bytes(), 'gpu-nodes-0', '152')
+            self.assertEqual(validated['collector_errors'], 1)
+
+    def test_nvml_finalization_preserves_streams_when_shutdown_raises(self):
+        from telemetry_native import collect
+        class Sampler:
+            def __init__(self, *args): pass
+            def finish(self): return {'fixture': True}
+            def shutdown(self): raise RuntimeError('shutdown fixture')
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Run.create(Path(temporary) / 'run', {})
+            (run.root / 'inventory/gpu.values.json').write_text('{"gpus":[]}')
+            with patch('telemetry_nvml.NVMLSampler', Sampler), patch.dict(os.environ, {'SLURM_JOB_ID': '152'}):
+                with self.assertRaisesRegex(RuntimeError, 'shutdown fixture'):
+                    collect(run, run.root / 'stop', 0, gpu_backend='nvml')
+            files = list((run.root / 'telemetry/native').glob('*/cpu-memory-numa.jsonl'))
+            self.assertEqual(len(files), 1)
+            self.assertEqual(json.loads(files[0].read_text())['metric'], 'collector_error')
+
     def test_candidate_repackage_preserves_parent_and_links_only_weight_payloads(self):
         from repackage_qwen_candidate import repackage
 

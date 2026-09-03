@@ -15,6 +15,7 @@ from enroot_run_config import prepare
 from evidence import atomic, utcnow
 from infra_node import allocated_run, read_inventory
 from fabric_probe import active_training_ports
+from telemetry_health import assert_healthy, require_healthy
 
 
 def cleanup_actions(actions, findings):
@@ -46,6 +47,7 @@ def main():
     phase = run.phase('02-' + label + '-' + host)
     logs = phase.path / 'logs'
     collector = controller = child = None
+    directories = [run.root / 'telemetry' / name / host for name in (label, 'lustre-' + label)]
     findings = []
     handles = []
     def spawn(argv, name, env=None):
@@ -71,12 +73,18 @@ def main():
         atomic(run.root / f'control/{label}-job.json', {'slurm_job_id': os.environ['SLURM_JOB_ID'], 'active': True})
         collector = spawn(['python3', str(code / 'telemetry_native.py'), '--run-dir', str(run.root),
             '--limit-s', '5300', '--ib-backend', 'perfquery', '--stream-label', label,
-            '--role', plan['role'], '--lustre-backend', 'host-debugfs-pod'], 'native-collector')
+            '--role', plan['role'], '--lustre-backend', 'host-debugfs-pod', '--gpu-backend', 'nvml',
+            '--nvml-binding', str(code / 'pynvml.py'),
+            '--stop-marker', 'control/' + label + '-' + host + '-telemetry.stop'], 'native-collector')
         deadline = time.monotonic() + 45
         while True:
-            gpu = run.root / 'telemetry' / label / host / 'nvidia-smi.jsonl.partial'
-            lustre = run.root / 'telemetry' / ('lustre-' + label) / host / 'lustre.jsonl.partial'
-            if gpu.exists() and gpu.stat().st_size and lustre.exists() and lustre.stat().st_size:
+            # Lustre starts before sbatch: wait for its first allocated heartbeat.
+            lustre_heartbeat = directories[1] / 'heartbeat.json'
+            if lustre_heartbeat.exists() and json.loads(lustre_heartbeat.read_text()).get('slurm_job_id') == 'unallocated':
+                ready = False
+            else:
+                ready = all([assert_healthy(d, host, os.environ['SLURM_JOB_ID'], time.monotonic()) for d in directories])
+            if ready:
                 break
             if collector.poll() is not None or time.monotonic() > deadline:
                 raise RuntimeError('Native GPU and host Lustre telemetry are not both live.')
@@ -95,6 +103,8 @@ def main():
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         deadline = time.monotonic() + 90
         while True:
+            for directory in directories:
+                require_healthy(directory, host, os.environ['SLURM_JOB_ID'], time.monotonic())
             try:
                 with opener.open(env_url, timeout=3) as r:
                     if r.status == 200:
@@ -132,6 +142,8 @@ def main():
         child = spawn(command, 'training-container', env=env)
         deadline = time.monotonic() + 5100
         while child.poll() is None:
+            for directory in directories:
+                require_healthy(directory, host, os.environ['SLURM_JOB_ID'], time.monotonic())
             if any((run.root / 'control').glob(label + '-failure-*.json')):
                 raise RuntimeError('A peer node failed; stopping this run-owned child and retaining evidence.')
             if shutil.disk_usage(run.root).free < 256*1024**3:
@@ -160,19 +172,30 @@ def main():
             if collector is None:
                 return
             try:
-                collector.wait(timeout=15)
+                collector.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 stop(collector)
             if collector.returncode:
                 findings.append('Native telemetry collector failed to finalize.')
+            deadline = time.monotonic() + 15
+            finalized = directories[1] / 'lustre.jsonl'
+            while not finalized.exists() and time.monotonic() < deadline:
+                time.sleep(0.25)
+            if not finalized.exists():
+                findings.append('Host Lustre telemetry did not finalize within 15 seconds.')
+            for directory in directories:
+                if (directory / 'failure.json').exists():
+                    findings.append('Telemetry failure marker: ' + str(directory))
+            if not (directories[0] / 'nvml-validation.json').exists():
+                findings.append('NVML final CLI counter parity proof is missing.')
         def end_inventory():
             if read_inventory(run, label + '-end'):
                 findings.append('Post-allocation GPU reconciliation failed.')
         cleanup_actions([
             ('training-child', lambda: stop(child)),
             ('controller', stop_controller),
-            ('native-stop-marker', lambda: atomic(run.root / 'control' / (label + '-telemetry.stop'), {'time': utcnow()})),
-            ('lustre-stop-marker', lambda: atomic(run.root / 'control' / (label + '-lustre.stop'), {'time': utcnow()})),
+            ('native-stop-marker', lambda: atomic(run.root / 'control' / (label + '-' + host + '-telemetry.stop'), {'time': utcnow()})),
+            ('lustre-stop-marker', lambda: atomic(run.root / 'control' / (label + '-' + host + '-lustre.stop'), {'time': utcnow()})),
             ('collector', stop_collector),
             ('post-allocation-inventory', end_inventory),
         ], findings)

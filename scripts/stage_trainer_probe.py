@@ -36,7 +36,7 @@ def main():
         c['type'] == 'Ready' and c['status'] == 'True' for c in status.get('conditions', [])):
         phase.finish('fail', failure_summary='Kubernetes does not report eight ready GPUs.')
         return 1
-    names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py',
+    names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py', 'telemetry_health.py',
              'telemetry_lustre_host.py', 'model_conversion.py', 'run_model_conversion.py',
              'checkpoint_parity.py', 'run_checkpoint_parity.py', 'trainer_probe.py', 'run_trainer_probe.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}

@@ -14,7 +14,8 @@ import socket
 import subprocess
 import time
 
-from evidence import utcnow
+from evidence import atomic, utcnow
+from telemetry_health import heartbeat
 from infra_node import allocated_run
 from fabric_probe import active_training_ports, capture_port, write_port_capture
 
@@ -76,11 +77,17 @@ class Streams:
     def __init__(self, root):
         self.root = root
         self.files = {}
+        self.errors = 0
 
     def write(self, name, record):
         if name not in self.files:
             self.files[name] = (self.root / (name + '.jsonl.partial')).open('x')
         self.files[name].write(json.dumps(record, sort_keys=True, allow_nan=False) + '\n')
+        if record.get('metric') == 'collector_error':
+            self.errors += 1
+            # Sticky marker is visible even if a later driver call hangs.
+            if not (self.root / 'failure.json').exists():
+                atomic(self.root / 'failure.json', record)
 
     def flush(self):
         for f in self.files.values():
@@ -155,7 +162,8 @@ def sample_sysfs_ib(streams, common):
         except (OSError, ValueError) as exc:
             streams.write('infiniband', dict(attrs, metric='collector_error', value=None, unit='event', error=str(exc)))
 def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
-            role='infrastructure-preflight', lustre_backend='namespace'):
+            role='infrastructure-preflight', lustre_backend='namespace',
+            gpu_backend='cli', nvml_binding=None):
     if ib_backend not in ('sysfs', 'perfquery') or not re.fullmatch(r'[a-z0-9][a-z0-9-]*', stream_label):
         raise ValueError('Invalid explicit collector backend or stream label.')
     host = socket.gethostname()
@@ -163,12 +171,23 @@ def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
     root.mkdir(parents=True, exist_ok=False)
     streams = Streams(root)
     start = time.monotonic()
+    ticks, sampler, findings = 0, None, []
+    common = {'time': utcnow(), 'monotonic_s': start, 'hostname': host,
+              'slurm_job_id': os.environ['SLURM_JOB_ID'], 'role': role}
     commands = {
         'nvidia-smi': (['nvidia-smi', '--query-gpu=' + ','.join(x[0] for x in GPU_FIELDS),
                         '--format=csv,noheader,nounits'], gpu_records),
         'nvlink': (['nvidia-smi', 'nvlink', '-gt', 'd'], nvlink_records),
     }
     try:
+        if gpu_backend == 'nvml':
+            from telemetry_nvml import NVMLSampler
+            inventory = json.loads((run.root / 'inventory/gpu.values.json').read_text())['gpus']
+            uuids = [row['uuid'] for row in inventory if row['hostname'] == host]
+            sampler = NVMLSampler(nvml_binding, uuids, streams, common)
+            commands = {}
+        elif gpu_backend != 'cli':
+            raise ValueError('Unsupported GPU telemetry backend.')
         ports = active_training_ports() if ib_backend == 'perfquery' else []
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
             while time.monotonic() - start < limit_s and not stop_file.exists():
@@ -177,6 +196,8 @@ def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
                           'slurm_job_id': os.environ['SLURM_JOB_ID'], 'role': role}
                 pending = {name: pool.submit(capture, argv) for name, (argv, _) in commands.items()}
                 fabric = [pool.submit(capture_port, hca, port, common) for hca, port in ports]
+                if sampler:
+                    sampler.sample(common)
                 sample_files(streams, common, collect_lustre_stats=lustre_backend == 'namespace')
                 if ib_backend == 'sysfs':
                     sample_sysfs_ib(streams, common)
@@ -196,13 +217,30 @@ def collect(run, stop_file, limit_s, ib_backend='sysfs', stream_label='native',
                 streams.write('cpu-memory-numa', dict(common, source='collector', metric='collection_duration',
                                                     value=time.monotonic()-tick, unit='s'))
                 streams.flush()
+                ticks += 1
+                heartbeat(root, host, os.environ['SLURM_JOB_ID'], ticks, streams.errors, time.monotonic())
+                if streams.errors:
+                    raise RuntimeError('Collector error recorded; stopping instead of concealing missing samples.')
                 time.sleep(max(0, 1 - (time.monotonic()-tick)))
-    except (OSError, ValueError) as exc:
-        streams.write('infiniband', dict(time=utcnow(), monotonic_s=time.monotonic(), hostname=host,
-                      source=ib_backend, metric='collector_error', value=None, unit='event', error=str(exc)))
-        raise
+        if sampler:
+            atomic(root / 'nvml-validation.json', sampler.finish())
+    except Exception as exc:
+        findings.append(str(exc))
+        streams.write('cpu-memory-numa', dict(common, time=utcnow(), monotonic_s=time.monotonic(),
+            source='collector', metric='collector_error', value=None, unit='event', error=str(exc)))
     finally:
+        # Finalize streams even if NVML shutdown raises. If it blocks, the owner
+        # kills this process after a bounded grace period and retains .partial files.
+        if sampler:
+            try:
+                sampler.shutdown()
+            except Exception as exc:
+                findings.append('NVML shutdown: ' + str(exc))
+                streams.write('cpu-memory-numa', dict(common, time=utcnow(), monotonic_s=time.monotonic(),
+                    source='collector', metric='collector_error', value=None, unit='event', error=str(exc)))
         streams.close()
+    if findings:
+        raise RuntimeError('; '.join(findings))
 
 
 def main():
@@ -213,10 +251,17 @@ def main():
     ap.add_argument('--stream-label', default='native')
     ap.add_argument('--role', default='infrastructure-preflight')
     ap.add_argument('--lustre-backend', choices=['namespace', 'host-debugfs-pod'], default='namespace')
+    ap.add_argument('--gpu-backend', choices=['cli', 'nvml'], default='cli')
+    ap.add_argument('--nvml-binding')
+    ap.add_argument('--stop-marker', help='Run-relative, node-owned stop marker.')
     args = ap.parse_args()
     run = allocated_run(args.run_dir)
-    collect(run, run.root / 'control' / (args.stream_label + '-telemetry.stop'), args.limit_s,
-            args.ib_backend, args.stream_label, args.role, args.lustre_backend)
+    marker = args.stop_marker or ('control/' + args.stream_label + '-telemetry.stop')
+    if Path(marker).is_absolute() or '..' in Path(marker).parts:
+        raise ValueError('Stop marker must be a relative run path.')
+    collect(run, run.root / marker, args.limit_s,
+            args.ib_backend, args.stream_label, args.role, args.lustre_backend,
+            args.gpu_backend, args.nvml_binding)
 
 
 if __name__ == '__main__':

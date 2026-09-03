@@ -41,7 +41,7 @@ def main():
         c['type'] == 'Ready' and c['status'] == 'True' for c in status.get('conditions', [])):
         phase.finish('fail', failure_summary='Kubernetes does not report the expected eight ready GPUs.')
         return 1
-    names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py',
+    names = ['evidence.py', 'infra_node.py', 'enroot_run_config.py', 'fabric_probe.py', 'telemetry_native.py', 'telemetry_health.py',
              'telemetry_lustre_host.py', 'qwen_serving_probe.py', 'run_qwen_serving_validation.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     if bool(args.mxfp8_candidate) != bool(args.candidate_checksums_sha256):

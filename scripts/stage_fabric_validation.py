@@ -38,7 +38,7 @@ def main():
         phase.finish('fail', failure_summary='Queue nonempty or unreadable; no workload displaced.')
         return 1
     names = ['evidence.py', 'infra_node.py', 'infra_controller.py', 'fabric_probe.py',
-             'telemetry_native.py', 'validate_fabric_under_load.py']
+             'telemetry_native.py', 'telemetry_health.py', 'validate_fabric_under_load.py']
     files = {prefix + name: entry((repo / 'scripts' / name).read_bytes()) for name in names}
     files[prefix + 'source-revision.txt'] = entry((revision + '\n').encode())
     command = ['python3', remote + '/' + prefix + 'validate_fabric_under_load.py', '--run-dir', remote]
