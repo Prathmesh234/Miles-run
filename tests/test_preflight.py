@@ -43,6 +43,27 @@ from container_fabric_probe import verify_rdma
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_serialized_mxfp8_audit_checks_scale_shape_and_payload_boundaries(self):
+        import struct
+        from audit_mxfp8_checkpoint import expected_tensors, headers, tensor_hash
+
+        rows = [dict(name='mtp.layers.0.mlp.experts.gate_up_proj', shape=[2, 4, 64], dtype='BF16', precision='mxfp8'),
+                dict(name='mtp.fc.weight', shape=[1, 2], dtype='BF16', precision='source')]
+        expected = expected_tensors(rows)
+        self.assertEqual(expected['mtp.layers.0.mlp.experts.1.up_proj.weight'], ([2, 64], 'F8_E4M3'))
+        self.assertEqual(expected['mtp.layers.0.mlp.experts.1.up_proj.weight_scale_inv'], ([2, 2], 'U8'))
+        self.assertEqual(expected['mtp.fc.weight'], ([1, 2], 'BF16'))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            header = json.dumps({'mtp.fc.weight': dict(shape=[1, 2], dtype='BF16', data_offsets=[0, 4])}).encode()
+            path = root / 'model.safetensors'
+            path.write_bytes(struct.pack('<Q', len(header)) + header + b'abcd')
+            entry = headers(root, [path.name])['mtp.fc.weight']
+            self.assertEqual(tensor_hash(root, entry), hashlib.sha256(b'abcd').hexdigest())
+            path.write_bytes(path.read_bytes()[:-1])
+            with self.assertRaisesRegex(ValueError, 'Truncated'):
+                tensor_hash(root, entry)
+
     def test_mxfp8_probe_uses_separate_paths_and_preserves_whole_node_visibility(self):
         from run_model_conversion import container_command
 
