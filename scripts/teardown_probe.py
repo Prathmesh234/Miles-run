@@ -40,6 +40,27 @@ def emit(event, rank, **values):
         **values)), flush=True)
 
 
+def release_pinned_buffers(torch, buffers):
+    """Release only this probe's pinned tensors, then prove allocator accounting."""
+    torch.cuda.synchronize()
+    keys = ('active_bytes.current', 'allocated_bytes.current')
+    before = {k: v for k, v in torch.cuda.memory.host_memory_stats().items() if k in keys}
+    expected = sum(t.numel() * t.element_size() for t in buffers)
+    if before['active_bytes.current'] < expected:
+        raise RuntimeError('Pinned allocator accounting is smaller than the live buffers.')
+    started = time.monotonic()
+    buffers.clear()
+    # Private API is used explicitly in upstream PyTorch's CUDA tests. Missing
+    # support or unexpected accounting is a failed diagnostic, never a fallback.
+    torch._C._host_emptyCache()
+    elapsed = time.monotonic() - started
+    after = {k: v for k, v in torch.cuda.memory.host_memory_stats().items() if k in keys}
+    for key in keys:
+        if after[key] > before[key] - expected:
+            raise RuntimeError('Pinned buffers were not fully released: ' + key)
+    return dict(expected_released_bytes=expected, duration_s=elapsed, before=before, after=after)
+
+
 def main():
     # Torch is a pinned native runtime dependency, not needed by guard unit tests.
     import torch
@@ -58,6 +79,8 @@ def main():
     assert free >= 96 * 1024**3, 'Require 96 GiB free HBM before bounded 64 GiB allocation'
     pinned_gib = int(os.environ.get('PTX_PROBE_PINNED_GIB', '0'))
     assert pinned_gib in (0, 24)
+    release_pinned = os.environ.get('PTX_PROBE_RELEASE_PINNED', '0') == '1'
+    assert not release_pinned or pinned_gib == 24
     if pinned_gib:
         available = available_host_bytes(Path('/proc/meminfo').read_text())
         required = host_allocation_guard(available, pinned_gib * 1024**3, 8)
@@ -77,6 +100,7 @@ def main():
         tensor = torch.empty(8 * 1024**2, dtype=torch.uint8, device='cpu', pin_memory=True)
         tensor.copy_(payload[index % len(payload)][:tensor.numel()], non_blocking=True)
         pinned.append(tensor)
+    del tensor  # Do not leave an extra reference to the last pinned tensor.
     torch.cuda.synchronize()
     if pinned:
         assert all(t.is_pinned() for t in pinned)
@@ -85,6 +109,10 @@ def main():
          allocation_count=len(payload), chunk_mib=chunk_mib,
          pinned_bytes=sum(t.numel() for t in pinned), pinned_allocation_count=len(pinned))
     time.sleep(10)
+    if release_pinned:
+        emit('before_pinned_release', rank)
+        released = release_pinned_buffers(torch, pinned)
+        emit('pinned_released', rank, **released)
     emit('exit_with_live_context', rank, pinned_bytes=sum(t.numel() for t in pinned))
     # Deliberately retain the buffers and communicator through ordinary process
     # exit, matching the preceding diagnostic. Explicit cleanup is a separate test.

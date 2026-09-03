@@ -18,20 +18,15 @@
       "scope": "Neither memory-only nor EP8 NCCL context teardown control reproduces this training-runtime stall. Original failed training gate remains failed."
     },
     "job_id": 153,
-    "local_tests": "69 passed on Python3.12.11. The new command-builder fixture initially invoked Linux Enroot setup on macOS; corrected fixture and failed attempt preserved.",
+    "local_tests": "70 passed on Python3.12.11; includes scoped host release accounting and failure control. Earlier platform-fixture failure preserved.",
     "next_control": {
-      "bounded_workload": "Four whole nodes, eight ranks per node. Per rank:64GiB GPU memory in4096x16MiB chunks plus24GiB pinned host memory in3072x8MiB chunks and node-local EP8 NCCL. Require96GiB free HBM and320GiB host/cgroup-available memory. Five-minute allocation; telemetry includes ordinary exit plus15s afterward. No model/checkpoint changes or optimizer steps.",
-      "hypothesis": "Job161 enables --use-kl-loss even with coefficient0; Miles allocates pinned actor/reference backups. Test whether pinned host-buffer release can reproduce NVML blocking absent from prior GPU-only controls. This is a hypothesis, not an attribution.",
-      "interpretation": "Preserve any failed gate. A pass only rules out this bounded pattern; a stall motivates a separate explicit cleanup control. Keep the12s deadline and all teardown samples. Full trainer/Ray lifecycle remains a separate gate.",
-      "profile": "pinned-host-nccl-teardown",
-      "source_evidence": {
-        "backup": "miles/utils/tensor_backper.py",
-        "command": "training/sync-grpo-v12/logs/gpu-nodes-0/miles.out",
-        "init": "miles/backends/megatron_utils/actor.py",
-        "miles": "1a6303b6204d853c5d812bb92be1319a28028d39"
-      },
-      "status": "planned; no GPU outcome yet",
-      "tests": "tests/00-pinned-host-diagnostic-tests-v2"
+      "api_reference": "https://github.com/pytorch/pytorch/blob/main/test/test_cuda.py",
+      "bounded_workload": "Same four-node32-GPU,64GiB GPU +24GiB host/rank control. Require before/after active and allocated host bytes to decrease by the full24GiB on every rank. Telemetry includes release, process exit and15s afterward; no model or optimizer.",
+      "hypothesis": "Explicitly release only the probe-owned pinned buffers and flush the PyTorch host cache while the CUDA context is alive. Keep the same GPU allocation, NCCL communicator, workload and telemetry thresholds.",
+      "interpretation": "Job162 remains failed. Missing native API/accounting or any collector failure stops this separate attempt. Even a pass requires a later full-trainer lifecycle validation before training is qualified.",
+      "profile": "pinned-host-clean-teardown",
+      "status": "planned; native cleanup API not yet qualified",
+      "tests": "tests/00-pinned-release-diagnostic-tests-v1"
     },
     "nodes": [
       {
@@ -166,6 +161,49 @@
         ],
         "scope": "fragmented-nccl-teardown: 4096x16MiB allocations per GPU, 64GiB/GPU plus EP8 NCCL, normal process exit; no training workload",
         "sha256": "331944125eacd7b0867454332bd226744c6935a8ad2b0285ac735449d312330a"
+      },
+      {
+        "api_timing_audit": {
+          "evidence": "/Users/prathmeshbhatt/Desktop/PostTrainingX/runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-call-audit-job162-v1/result.json",
+          "observed_calls": 19440,
+          "sha256": "976d71b8c9e0b3521ad0084773d127ad525d27122eb7edb540cbe3a0e3f59730",
+          "slowest_call_s": 8.575947967008688
+        },
+        "evidence": "/Users/prathmeshbhatt/Desktop/PostTrainingX/runs/vultr-b200-slurm/20260902-172037-a3b210/tests/01-nvml-result-audit-v6/result.json",
+        "findings": [
+          "Slurm qualification did not complete successfully.",
+          "gpu-nodes-0: nvidia-smi: missing samples, >3 second gap, or collector errors.; nvlink: missing samples, >3 second gap, or collector errors.; infiniband: missing samples, >3 second gap, or collector errors.; cpu-memory-numa: missing samples, >3 second gap, or collector errors.; lustre: missing samples, >3 second gap, or collector errors.",
+          "gpu-nodes-1: nvidia-smi: missing samples, >3 second gap, or collector errors.; nvlink: missing samples, >3 second gap, or collector errors.; infiniband: missing samples, >3 second gap, or collector errors.; cpu-memory-numa: missing samples, >3 second gap, or collector errors.; lustre: missing samples, >3 second gap, or collector errors.",
+          "gpu-nodes-2: nvidia-smi: missing samples, >3 second gap, or collector errors.; nvlink: missing samples, >3 second gap, or collector errors.; infiniband: missing samples, >3 second gap, or collector errors.; cpu-memory-numa: missing samples, >3 second gap, or collector errors.; lustre: missing samples, >3 second gap, or collector errors.",
+          "gpu-nodes-3: nvidia-smi: missing samples, >3 second gap, or collector errors.; nvlink: missing samples, >3 second gap, or collector errors.; infiniband: missing samples, >3 second gap, or collector errors.; cpu-memory-numa: missing samples, >3 second gap, or collector errors.; lustre: missing samples, >3 second gap, or collector errors."
+        ],
+        "interpretation": "32/32 ranks allocated24GiB pinned buffers; all nodes developed7.48-10.38s gaps after exit markers. Fails the3s control criterion, not the12s live heartbeat. Similar blocking API, not exact reproduction of161 or proof of unique root cause.",
+        "job_id": 162,
+        "nodes": [
+          {
+            "hostname": "gpu-nodes-0",
+            "max_gpu_sample_gap_s": 9.053357376949862,
+            "status": "fail"
+          },
+          {
+            "hostname": "gpu-nodes-1",
+            "max_gpu_sample_gap_s": 9.049407413927838,
+            "status": "fail"
+          },
+          {
+            "hostname": "gpu-nodes-2",
+            "max_gpu_sample_gap_s": 10.3817298530048,
+            "status": "fail"
+          },
+          {
+            "hostname": "gpu-nodes-3",
+            "max_gpu_sample_gap_s": 7.481108321924694,
+            "status": "fail"
+          }
+        ],
+        "rank_evidence": "tests/01-pinned-host-events-job162-v1/events.json",
+        "scope": "pinned host:64GiB/GPU plus24GiB pinned host/rank and EP8 NCCL; ordinary exit",
+        "sha256": "ada770b1c6dd7cab083e644e9214814addc2eb909380acec73bd68e2ef6e88bf"
       }
     ]
   },

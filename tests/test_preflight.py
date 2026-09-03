@@ -68,14 +68,39 @@ class EvidenceTests(unittest.TestCase):
             code = Path(temporary)
             pinned, _ = teardown_command(run, code, 'pinned', 'node', 'pinned-host-nccl-teardown')
             old, _ = teardown_command(run, code, 'control', 'node', 'fragmented-nccl-teardown')
+            clean, _ = teardown_command(run, code, 'clean', 'node', 'pinned-host-clean-teardown')
             self.assertIn('PTX_PROBE_PINNED_GIB=24', pinned)
             self.assertIn('PTX_PROBE_PINNED_GIB=0', old)
-            for command in [pinned, old]:
+            self.assertIn('PTX_PROBE_RELEASE_PINNED=0', pinned)
+            self.assertIn('PTX_PROBE_RELEASE_PINNED=1', clean)
+            self.assertIn('PTX_PROBE_PINNED_GIB=24', clean)
+            for command in [pinned, old, clean]:
                 self.assertIn('PTX_PROBE_NCCL=1', command)
                 self.assertIn('PTX_PROBE_CHUNK_MIB=16', command)
                 self.assertIn('--nproc-per-node=8', command)
             with self.assertRaisesRegex(ValueError, 'Unknown teardown'):
                 teardown_command(run, code, 'invalid', 'node', 'typo')
+
+    def test_pinned_buffer_cleanup_checks_release_and_keeps_other_resources(self):
+        from types import SimpleNamespace
+        from teardown_probe import release_pinned_buffers
+        buffers = [SimpleNamespace(numel=lambda: 8, element_size=lambda: 1)]
+        operations = []
+        stats = [{'active_bytes.current': 8, 'allocated_bytes.current': 8},
+                 {'active_bytes.current': 0, 'allocated_bytes.current': 0}]
+        def empty_cache():
+            self.assertEqual(buffers, [])
+            operations.append('host_cache')
+        torch = SimpleNamespace(cuda=SimpleNamespace(synchronize=lambda: operations.append('sync'),
+            memory=SimpleNamespace(host_memory_stats=lambda: stats.pop(0))),
+            _C=SimpleNamespace(_host_emptyCache=empty_cache))
+        result = release_pinned_buffers(torch, buffers)
+        self.assertEqual(operations, ['sync', 'host_cache'])
+        self.assertEqual(result['expected_released_bytes'], 8)
+        buffers.append(SimpleNamespace(numel=lambda: 8, element_size=lambda: 1))
+        stats.extend([{'active_bytes.current': 8, 'allocated_bytes.current': 8}] * 2)
+        with self.assertRaisesRegex(RuntimeError, 'not fully released'):
+            release_pinned_buffers(torch, buffers)
 
     def test_nvml_call_audit_keeps_stalls_errors_and_rejects_missing_gpu_or_invalid_timing(self):
         from audit_nvml_calls import analyze_calls

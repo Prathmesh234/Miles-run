@@ -20,7 +20,8 @@ from telemetry_health import assert_healthy, require_healthy
 
 
 LOAD_PROFILES = ('all-reduce', 'context-teardown', 'nccl-context-teardown',
-                 'fragmented-nccl-teardown', 'pinned-host-nccl-teardown')
+                 'fragmented-nccl-teardown', 'pinned-host-nccl-teardown',
+                 'pinned-host-clean-teardown')
 
 
 def teardown_command(run, code, label, host, profile):
@@ -34,8 +35,9 @@ def teardown_command(run, code, label, host, profile):
     command = ['enroot', 'start', '--pid', '--ipc', '--rw',
         '--env', 'NVIDIA_VISIBLE_DEVICES=all', '--env', 'OMP_NUM_THREADS=1',
         '--env', 'PTX_PROBE_NCCL=' + ('0' if profile == 'context-teardown' else '1'),
-        '--env', 'PTX_PROBE_CHUNK_MIB=' + ('16' if profile in ('fragmented-nccl-teardown', 'pinned-host-nccl-teardown') else '65536'),
-        '--env', 'PTX_PROBE_PINNED_GIB=' + ('24' if profile == 'pinned-host-nccl-teardown' else '0'),
+        '--env', 'PTX_PROBE_CHUNK_MIB=' + ('16' if profile in LOAD_PROFILES[3:] else '65536'),
+        '--env', 'PTX_PROBE_PINNED_GIB=' + ('24' if profile in LOAD_PROFILES[4:] else '0'),
+        '--env', 'PTX_PROBE_RELEASE_PINNED=' + ('1' if profile == 'pinned-host-clean-teardown' else '0'),
         '--env', 'NCCL_NVLS_ENABLE=0', '--env', 'NCCL_DEBUG=INFO',
         '--env', 'PYTHONDONTWRITEBYTECODE=1',
         '--mount', str(code) + ':/ptx:none:bind,ro,x-create=dir',
