@@ -1,8 +1,8 @@
 # Job 167 — telemetry summary
 
-**Telemetry gate: PARTIAL** · Slurm: RUNNING (0:0) · 1,169,103 source records · 0 collector errors.
+**Telemetry gate: PARTIAL** · Slurm: RUNNING (0:0) · 2,379,371 source records · 0 collector errors.
 
-Observed window: 2026-09-03T03:34:31.183255Z to 2026-09-03T03:40:02.718799Z (331.5 s).
+Observed window: 2026-09-03T03:34:31.183255Z to 2026-09-03T03:45:26.290561Z (655.1 s).
 
 Exploratory synchronous qualification; includes startup, JIT, checkpoints and shutdown. No controlled async split comparison or held-out quality claim.
 
@@ -12,10 +12,10 @@ GPU columns pool observed GPU samples. NVLink sums 18 links per GPU tick; IB is 
 
 | Node | Role | GPUs/rails | GPU util mean / p95 (%) | HBM max (GiB/GPU) | Power max (W/GPU) | NVLink Tx mean (GB/s/GPU) | IB Tx mean (GB/s/rail) | Lustre write max (GB/s/client) |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| gpu-nodes-0 | trainer | 8/8 | 0.0066 / 0 | 5.19 | 261 | 0.000129 | 1.59e-05 | 0.0405 |
-| gpu-nodes-1 | trainer | 8/8 | 0.74 / 0 | 5.23 | 257 | 0.000129 | 1.64e-05 | 0.00141 |
-| gpu-nodes-2 | rollout | 8/8 | 1.14 / 1 | 138 | 282 | 0.000343 | 1.61e-05 | 0.0019 |
-| gpu-nodes-3 | rollout | 8/8 | 3.01 / 3 | 141 | 754 | 0.626 | 1.56e-05 | 0.00139 |
+| gpu-nodes-0 | trainer | 8/8 | 3.12 / 9 | 61 | 583 | 0.126 | 0.0154 | 0.0405 |
+| gpu-nodes-1 | trainer | 8/8 | 6.11 / 74.3 | 53.7 | 567 | 0.111 | 1.35e-05 | 0.00526 |
+| gpu-nodes-2 | rollout | 8/8 | 3.67 / 16 | 142 | 705 | 0.447 | 0.0152 | 0.0194 |
+| gpu-nodes-3 | rollout | 8/8 | 3.2 / 7.45 | 142 | 754 | 0.432 | 1.29e-05 | 0.0186 |
 
 ## Failures and coverage
 
@@ -62,18 +62,18 @@ Lowest/highest time-mean within each node; descriptive differences, not hardware
 
 | Node | Metric | Lowest entity : mean | Highest entity : mean | Across-entity CV |
 |---|---|---|---|---:|
-| gpu-nodes-0 | gpu_utilization (%) | 28ee82ef: 0.0033 | 0f5cccee: 0.0132 | 0.5 |
-| gpu-nodes-0 | ib_rail_tx (GB/s) | mlx5_3/1: 1.59e-05 | mlx5_12/1: 1.59e-05 | 0.000366 |
-| gpu-nodes-0 | nvlink_link_tx (GB/s) | 0f5cccee/link-5: 6.76e-06 | 042b468a/link-1: 7.6e-06 | 0.0247 |
-| gpu-nodes-1 | gpu_utilization (%) | 15fdcc49: 0.66 | 5952930a: 1.05 | 0.188 |
-| gpu-nodes-1 | ib_rail_tx (GB/s) | mlx5_2/1: 1.64e-05 | mlx5_3/1: 1.64e-05 | 0.000408 |
-| gpu-nodes-1 | nvlink_link_tx (GB/s) | 1bc17818/link-5: 6.74e-06 | 5952930a/link-0: 7.58e-06 | 0.0256 |
-| gpu-nodes-2 | gpu_utilization (%) | 86218e11: 0.843 | e00780e1: 1.36 | 0.134 |
-| gpu-nodes-2 | ib_rail_tx (GB/s) | mlx5_9/1: 1.61e-05 | mlx5_1/1: 1.61e-05 | 0.000625 |
-| gpu-nodes-2 | nvlink_link_tx (GB/s) | 7872c739/link-6: 1.84e-05 | 01f65707/link-14: 1.99e-05 | 0.0212 |
-| gpu-nodes-3 | gpu_utilization (%) | 6a8efa14: 2.47 | 1d061bc6: 3.56 | 0.124 |
-| gpu-nodes-3 | ib_rail_tx (GB/s) | mlx5_1/1: 1.56e-05 | mlx5_2/1: 1.57e-05 | 0.000781 |
-| gpu-nodes-3 | nvlink_link_tx (GB/s) | 1bd6c6e0/link-11: 0.0334 | 6a8efa14/link-10: 0.036 | 0.0201 |
+| gpu-nodes-0 | gpu_utilization (%) | 0f5cccee: 2.86 | cf39917e: 3.45 | 0.0706 |
+| gpu-nodes-0 | ib_rail_tx (GB/s) | mlx5_4/1: 1.29e-05 | mlx5_1/1: 0.123 | 2.64 |
+| gpu-nodes-0 | nvlink_link_tx (GB/s) | 2941c934/link-16: 0.00668 | 042b468a/link-6: 0.00746 | 0.0241 |
+| gpu-nodes-1 | gpu_utilization (%) | 1bc17818: 5.54 | e1134404: 6.66 | 0.0643 |
+| gpu-nodes-1 | ib_rail_tx (GB/s) | mlx5_4/1: 1.3e-05 | mlx5_1/1: 1.36e-05 | 0.0124 |
+| gpu-nodes-1 | nvlink_link_tx (GB/s) | 0606304d/link-8: 0.00602 | 5952930a/link-7: 0.00632 | 0.00865 |
+| gpu-nodes-2 | gpu_utilization (%) | 86218e11: 3.46 | f453c594: 3.86 | 0.0338 |
+| gpu-nodes-2 | ib_rail_tx (GB/s) | mlx5_9/1: 7.85e-06 | mlx5_1/1: 0.0607 | 1.73 |
+| gpu-nodes-2 | nvlink_link_tx (GB/s) | b159dd83/link-10: 0.0242 | 7872c739/link-10: 0.0255 | 0.0135 |
+| gpu-nodes-3 | gpu_utilization (%) | 6a8efa14: 2.92 | 272aac0b: 3.7 | 0.0755 |
+| gpu-nodes-3 | ib_rail_tx (GB/s) | mlx5_9/1: 7.62e-06 | mlx5_1/1: 2.89e-05 | 0.71 |
+| gpu-nodes-3 | nvlink_link_tx (GB/s) | 1bd6c6e0/link-11: 0.0208 | 272aac0b/link-9: 0.0255 | 0.0618 |
 
 ## What is retained
 
