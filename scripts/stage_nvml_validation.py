@@ -16,7 +16,7 @@ def main():
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--kubeconfig', required=True)
     ap.add_argument('--attempt', type=int, required=True)
-    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown', 'nccl-context-teardown'], default='all-reduce')
+    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown', 'nccl-context-teardown', 'fragmented-nccl-teardown'], default='all-reduce')
     a = ap.parse_args()
     repo = Path(__file__).resolve().parents[1]
     if subprocess.check_output(['git', '-C', str(repo), 'status', '--porcelain'], text=True).strip():

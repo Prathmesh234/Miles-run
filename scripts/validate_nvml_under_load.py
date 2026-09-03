@@ -30,11 +30,14 @@ free,total=torch.cuda.mem_get_info()
 assert free >= 96*1024**3, 'Require 96 GiB free HBM before bounded 64 GiB allocation'
 print(json.dumps({'event':'before_allocate','rank':rank,'monotonic_s':time.monotonic(),
  'free_bytes':free,'total_bytes':total,'torch':torch.__version__}),flush=True)
-payload=torch.empty(64*1024**3,dtype=torch.uint8,device='cuda')
-payload.zero_();torch.cuda.synchronize()
-assert payload[0].item()==0 and payload[-1].item()==0
+chunk_mib=int(os.environ.get('PTX_PROBE_CHUNK_MIB','65536'))
+assert chunk_mib in (16,65536)
+payload=[torch.empty(chunk_mib*1024**2,dtype=torch.uint8,device='cuda') for _ in range(65536//chunk_mib)]
+for tensor in payload:tensor.zero_()
+torch.cuda.synchronize()
+assert payload[0][0].item()==0 and payload[-1][-1].item()==0
 print(json.dumps({'event':'allocated','rank':rank,'monotonic_s':time.monotonic(),
- 'allocated_bytes':torch.cuda.memory_allocated()}),flush=True)
+ 'allocated_bytes':torch.cuda.memory_allocated(),'allocation_count':len(payload),'chunk_mib':chunk_mib}),flush=True)
 time.sleep(10)
 print(json.dumps({'event':'exit_with_live_context','rank':rank,'monotonic_s':time.monotonic()}),flush=True)
 '''
@@ -48,7 +51,8 @@ def teardown_command(run, code, label, host, profile):
     env['NVIDIA_VISIBLE_DEVICES'] = 'all'
     command = ['enroot', 'start', '--pid', '--ipc', '--rw',
         '--env', 'NVIDIA_VISIBLE_DEVICES=all', '--env', 'OMP_NUM_THREADS=1',
-        '--env', 'PTX_PROBE_NCCL=' + ('1' if profile == 'nccl-context-teardown' else '0'),
+        '--env', 'PTX_PROBE_NCCL=' + ('1' if profile in ('nccl-context-teardown', 'fragmented-nccl-teardown') else '0'),
+        '--env', 'PTX_PROBE_CHUNK_MIB=' + ('16' if profile == 'fragmented-nccl-teardown' else '65536'),
         '--env', 'NCCL_NVLS_ENABLE=0', '--env', 'NCCL_DEBUG=INFO',
         '--env', 'PYTHONDONTWRITEBYTECODE=1',
         '--mount', str(code) + ':/ptx:none:bind,ro,x-create=dir',
@@ -62,7 +66,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run-dir', required=True)
     ap.add_argument('--attempt', type=int, required=True)
-    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown', 'nccl-context-teardown'], default='all-reduce')
+    ap.add_argument('--load-profile', choices=['all-reduce', 'context-teardown', 'nccl-context-teardown', 'fragmented-nccl-teardown'], default='all-reduce')
     args = ap.parse_args()
     run = allocated_run(args.run_dir)
     host, job = socket.gethostname(), os.environ['SLURM_JOB_ID']
