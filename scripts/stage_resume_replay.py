@@ -44,6 +44,13 @@ print(json.dumps(dict(small_inputs=small,payload_stat=payloads,cpu_gate=g,cpu_ga
 '''
 
 
+def require_same_inputs(current, original):
+    """A diagnostic retry cannot silently adopt changed checkpoint evidence."""
+    for key in ('small_inputs', 'payload_stat', 'miles_source_sha', 'source_manifest_sha256'):
+        if current[key] != original[key]:
+            raise ValueError('Retry inputs differ from the first frozen replay: ' + key)
+
+
 def stage(args):
     repo = Path(__file__).resolve().parents[1]
     for path in (repo, repo / 'vendor/miles'):
@@ -71,6 +78,9 @@ def stage(args):
         freeze = json.loads(out)
         if freeze['miles_source_sha'] != MILES_SHA or freeze['cpu_gate']['files']['resume_checkpoint_probe.py'] != sha256(repo / 'scripts/resume_checkpoint_probe.py'):
             raise ValueError('Native CPU gate did not test this exact probe source.')
+        if args.attempt > 1:
+            original = json.loads((run.root / 'tests/02-resume-replay-submission-v1/frozen-inputs.json').read_text())
+            require_same_inputs(freeze, original)
         atomic(phase.path / 'frozen-inputs.json', freeze)
         inventory = json.loads((run.root / 'inventory/gpu.values.json').read_text())['gpus']
         hosts = []

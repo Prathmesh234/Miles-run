@@ -76,6 +76,18 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'symlink refused'):
                 verify_payload_identity(root, expected)
 
+    def test_resume_retry_cannot_refreeze_changed_inputs(self):
+        import copy
+        from stage_resume_replay import require_same_inputs
+        initial = dict(small_inputs={'rank.pt': 'digest'}, payload_stat={'shard': {'bytes': 12}},
+                       miles_source_sha='commit', source_manifest_sha256='source digest')
+        require_same_inputs(copy.deepcopy(initial), initial)
+        for key in initial:
+            changed = copy.deepcopy(initial)
+            changed[key] = 'different'
+            with self.assertRaisesRegex(ValueError, 'Retry inputs differ'):
+                require_same_inputs(changed, initial)
+
     def test_sync_digest_reports_current_findings_without_historical_failure_claims(self):
         from report_journal_validation import render
         root = Path(__file__).resolve().parents[1]
