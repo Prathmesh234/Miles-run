@@ -63,7 +63,7 @@ recorded in [docs/quality-protocol.md](docs/quality-protocol.md).
 
 The committed Miles implementation and exact base/patched revisions are recorded
 in [patches/manifest.json](patches/manifest.json). The cumulative patch includes
-all 16 local Miles commits and replays onto the pinned upstream base with an
+the separate local Miles commits listed in that manifest and replays onto the pinned upstream base with an
 identical final source tree. The launcher
 supports all three whole-node layouts and requires an external, explicitly mapped
 Ray cluster. CPU tests do not prove placement or training correctness on GPUs.
@@ -71,9 +71,10 @@ Ray cluster. CPU tests do not prove placement or training correctness on GPUs.
 [The compatibility report](docs/compatibility.md) separates the blocked strict
 online combination from OpenEnv online training and separately locked offline
 evaluation. [The current status](docs/current-status.md) lists the failed and
-unvalidated gates. The four-node synchronous qualification completed three real
-optimizer updates with 48 audited training samples. Its telemetry has collection
-failures, and it is not a completed asynchronous benchmark. No held-out
+unvalidated gates. Earlier four-node synchronous attempts completed optimizer
+updates and passed native sample audits, but failed telemetry qualification.
+The current attempt and its test evidence are recorded in the status report;
+this is not a completed asynchronous benchmark. No held-out
 Terminal-Bench quality result or full resume equivalence has been established.
 
 ## Repository contents and source setup
@@ -84,17 +85,20 @@ environments, model/checkpoint binaries, raw task data, and unrestricted run evi
 are not published. Normalized telemetry snapshots are the explicit exception.
 Raw evidence remains in the run directory on shared storage. Older
 dummy-run checkpoint payloads were pruned with explicit operator authorization;
-the newest full checkpoint and the older metadata/logs were retained.
+explicitly selected full checkpoints and the older metadata/logs were retained.
 
 Reconstruct the exact public Miles source tree from the pinned base and patch:
 
 ```sh
 git clone https://github.com/radixark/miles.git vendor/miles
 git -C vendor/miles checkout --detach 0709889b2848f293b5575d50aa3340fa4de5a20d
-git -C vendor/miles apply --index ../../patches/miles-posttrainingx.patch
+git -C vendor/miles am ../../patches/miles-posttrainingx.patch
 ```
 
+Apply the mailbox series in order; it contains dependent patches to the same files.
 The reconstructed tree hash must match `source_tree_sha1` in the patch manifest.
+Replayed commit IDs can differ because Git records the local committer identity
+and time; the manifest preserves the exact original revisions used on the cluster.
 The local launcher is then available at
 `vendor/miles/scripts/run_qwen3_6_35b_a3b_posttrainingx.py`. The OpenEnv patch and
 its exact revisions are recorded separately in `locks/openenv-patches.json`.
