@@ -22,15 +22,19 @@ def validate(config):
         raise ValueError("Exactly 10 rollouts, one optimizer update per rollout and role")
     if config.get("global_batch_size") != 16:
         raise ValueError("The matched global batch size must remain 16")
-    required = ("model_id", "model_revision", "model_path", "model_args_recipe", "renderer", "save_interval")
+    required = ("model_id", "model_revision", "model_path", "converted_model_path",
+                "model_args_recipe", "renderer", "save_interval")
     unresolved = [key for key in required if not config.get(key)]
     if unresolved:
         raise ValueError("Unresolved run configuration: " + ", ".join(unresolved))
     revision = config["model_revision"]
     if len(revision) != 40 or any(c not in "0123456789abcdef" for c in revision):
         raise ValueError("Pin model_revision to an immutable 40-character commit SHA")
-    if not Path(config["model_path"]).is_absolute():
-        raise ValueError("model_path must be absolute")
+    for key in ("model_path", "converted_model_path"):
+        if not Path(config[key]).is_absolute() or ".." in Path(config[key]).parts:
+            raise ValueError(key + " must be an absolute normalized path")
+    if config["model_path"] == config["converted_model_path"]:
+        raise ValueError("HF input and Megatron conversion must be separate directories")
     interval = config["save_interval"]
     if type(interval) is not int or interval not in (2, 10):
         raise ValueError("Checkpoint cadence must be explicitly chosen: 2 or 10")
@@ -41,6 +45,14 @@ def validate(config):
             raise ValueError("Required CPU offload option missing: " + key)
     if offload.get("offload_train_target") != "cpu":
         raise ValueError("CPU offload is requested, not disk offload")
+    if config["mode"] == "async_ppo_tis" and config.get("tis") != {
+            "enabled": True, "clip_low": 0.0, "clip_high": 2.0}:
+        raise ValueError("Preserve the reference run's detached TIS clipped to [0, 2]")
+
+
+def load_runtime():
+    """The same frozen config is beside this module in every run process."""
+    return load(Path(__file__).with_name("run-config.json"))
 
 
 def extend_training_args(base_args, config):

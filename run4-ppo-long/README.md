@@ -12,9 +12,13 @@ Use job 196 as the synchronous reference and preserve its workload settings.
 ## Important: startup scripts
 
 The `scripts/` directory is the authoritative place for startup and validation
-code. `long_run_config.py` provides the shared contract and argument extension;
-it is **not yet a submission script**. It rejects unresolved model and save
-options. Run 5 shares this code rather than duplicating it.
+code. `long_run_config.py` provides the shared contract and argument extension.
+`build_bundle.py` connects that contract to the trainer, rollout bridge, and
+coordinator. It verifies prior source hashes and produces a frozen runtime
+bundle plus a provenance manifest. It is **not a submission script** and
+rejects unresolved model and save options. Run 5 shares this code rather than
+duplicating it. Generated source copies belong under ignored `.work/` locally
+and on the cluster, not in Git.
 
 Run the preparation checks from the repository root:
 
@@ -22,10 +26,28 @@ Run the preparation checks from the repository root:
 python3 -m unittest discover -s run4-ppo-long/scripts -p test_long_run.py -v
 ```
 
-The six tests cover the ten-update boundary, immutable model revisions,
-preservation of unrelated training arguments, CPU offload requirements, and
-the native async driver's ten-step schedule with fake actors. They do not
-establish GPU/model compatibility or prove ten actual optimizer updates.
+The ten tests cover the ten-update boundary, immutable model revisions,
+preservation of unrelated training arguments, CPU offload requirements, the
+native async driver's ten-step schedule with fake actors, and the generated
+runtime scripts for both modes. The coordinator rejects a converted checkpoint
+whose model ID/revision differs from the requested model before creating a run.
+These tests do not establish GPU/model compatibility or prove ten actual
+optimizer updates.
+
+After resolving `config/run.json`, build a new source bundle from the repository
+root (choose a fresh destination; existing bundles are never overwritten):
+
+```sh
+python3 run4-ppo-long/scripts/build_bundle.py \
+  run4-ppo-long/config/run.json run4-ppo-long/.work/source
+```
+
+Before submission, stage and verify the selected model and its distinct
+Megatron conversion. The conversion's `conversion-complete.json` must identify
+`model_id` and immutable `model_revision`, and the `release/` directory must
+exist. Run model/tokenizer/renderer and precision checks in the pinned image.
+The old 35B conversion is not a fallback. Keep both model inputs read-only in
+the training containers.
 
 ## CPU offloading
 

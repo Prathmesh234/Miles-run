@@ -1,13 +1,21 @@
 {
-  "time_utc": "2026-09-04T01:55:00.862822+00:00",
-  "stage": "preparation_not_training",
+  "time_utc": "2026-09-04T01:59:02.845830+00:00",
+  "stage": "source_integration_not_training",
   "exit_code": 0,
   "stdout": "",
-  "stderr": "test_cpu_offload_required (test_long_run.ConfigTests) ... ok\ntest_exact_ten_update_boundary (test_long_run.ConfigTests) ... ok\ntest_immutable_model_revision_required (test_long_run.ConfigTests) ... ok\ntest_only_authorized_argument_changes (test_long_run.ConfigTests) ... ok\ntest_pending_choices_block_launch (test_long_run.ConfigTests) ... ok\ntest_ten_step_native_async_schedule (test_long_run.ConfigTests)\nExtend the previous native-driver fixture to exercise all ten steps. ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.012s\n\nOK\n",
+  "stderr": "test_async_tis_preserved (test_long_run.ConfigTests) ... ok\ntest_conversion_identity_checked_before_start (test_long_run.ConfigTests) ... ok\ntest_cpu_offload_required (test_long_run.ConfigTests) ... ok\ntest_distinct_conversion_required (test_long_run.ConfigTests) ... ok\ntest_exact_ten_update_boundary (test_long_run.ConfigTests) ... ok\ntest_generated_scripts_use_new_config_in_both_modes (test_long_run.ConfigTests)\nExecute generated argument functions, not a duplicate expected recipe. ... ok\ntest_immutable_model_revision_required (test_long_run.ConfigTests) ... ok\ntest_only_authorized_argument_changes (test_long_run.ConfigTests) ... ok\ntest_pending_choices_block_launch (test_long_run.ConfigTests) ... ok\ntest_ten_step_native_async_schedule (test_long_run.ConfigTests)\nExtend the previous native-driver fixture to exercise all ten steps. ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.045s\n\nOK\n",
   "source_sha256": {
-    "run4-ppo-long/scripts/long_run_config.py": "9ff202e87ad8ea3940a491de4854ed5938dbc25fe41e227d5ea5e0782f8b6132",
-    "run4-ppo-long/scripts/test_long_run.py": "951017416f321682bad1070cc098bffac57d405398f772201ee4809f651ccabf"
+    "run4-ppo-long/scripts/long_run_config.py": "558abe380f03433788a277b396ba84fae83f73ca459f53b10b3ca49650f6143c",
+    "run4-ppo-long/scripts/build_bundle.py": "b6ca9aa46fcbe6c1fe838e8496fdf96c6122e64a4215010072bae1eba464fd09",
+    "run4-ppo-long/scripts/test_long_run.py": "ff46408ba0d2635d53523ae6ced66507cbfd7fc37c0fce8dc175b8fac78c656c"
   },
+  "verified": [
+    "ten-iteration native async scheduler with fake actors",
+    "generated sync/async training arguments preserve reference settings except declared changes",
+    "generated bridge accepts rollout IDs 0 through 9 and rejects 10",
+    "converted-model identity guard rejects mismatched model ID/revision",
+    "source bundles retain verified hashes and refuse overwrite"
+  ],
   "not_verified": [
     "model and renderer compatibility",
     "GPU execution",
