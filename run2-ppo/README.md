@@ -1,16 +1,22 @@
 # Run 2 — synchronous PPO
 
-Corrected PPO job **196** was running when this snapshot was collected. It uses the same base model, task code, 32-GPU allocation, two updates, batch 16 and group size 8. Do not interpret this snapshot as completed training or a final comparison.
+**Job 196 completed both updates: Slurm COMPLETED, exit 0:0.** Both actor and critic had finite nonzero gradients and saved weights after update 1 (the second, zero-based update).
 
-**Startup scripts are essential:** [scripts/README.md](scripts/README.md).
+**Startup scripts are essential:** begin with [scripts/README.md](scripts/README.md). They preserve the exact job-196 configuration and actor-residency/CPU-backup fixes.
 
-- `scripts/`: frozen job-196 startup code and its two actor-residency/backup patches.
-- `logs/job-196-live/`: timestamped, SHA-256-verified training/infrastructure snapshot and submitted sources.
-- `charts/`: measured GPU utilization, memory and power from that snapshot; PNG and SVG.
-- `attempts/job-195-partial-snapshot/`: earlier incomplete snapshot, retained separately. Job 195 was cancelled after a uniform-policy/zero-gradient actor step; it is **not** a valid PPO learning result.
+## Final evidence
 
-Job 195's disjoint actor lost parameters because CPU parameter-buffer backup was disabled. Job 196 retains that backup and restores actor residency before broadcasts, with a uniform-policy rejection gate. Whether the corrected distributed run succeeds must be established from its final logs, not just passing CPU tests.
+- [Final training/infrastructure logs](logs/job-196-final/) and [SHA-256 snapshot manifest](logs/job-196-final/snapshot-manifest.json).
+- [Actor checkpoint checks](logs/job-196-final/checkpoint-verification.json) and [critic checkpoint checks](logs/job-196-final/critic-checkpoint-verification.json): all referenced byte ranges exist, six small tensors loaded on CPU per role, sampled parameters changed from base. Not a full distributed resume test.
+- [Final per-run GPU charts](charts/final/) and [three-run infrastructure comparison](../comparison-infrastructure/README.md): rollout time, execution overlap, weight publication, InfiniBand, NVLink, TIS and optimizer/offload observations.
 
-Raw corrected run: `/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196`.
-Raw cancelled run: `/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T004324Z/runs/job-195`.
-Full raw/binary data and checkpoints remain on the cluster. `collect_evidence.py` can create a new snapshot without overwriting this one.
+The prior `logs/job-196-live/` and original top-level charts are retained as **earlier snapshots**, not the final result. Job 195's incomplete cancelled attempt remains separately in `attempts/job-195-partial-snapshot/`; it is not a valid learning baseline.
+
+Job 195 lost actor parameters because CPU parameter-buffer backup was disabled. Job 196 retains backup, restores actor residency before broadcasts and rejects invalid/uniform behavior logprobs. SGLang/Gloo peer-reset errors occurred during final teardown after checkpointing and publication; the training process and Slurm allocation exited successfully. See the final logs rather than treating the run as warning-free.
+
+Same base model, task, 32 GPUs, two updates, batch 16 and group size 8 as the comparison workload. Generated trajectories and work differ; no model-quality or controlled speedup claim.
+
+Remote corrected run: `/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196`.
+Remote cancelled run: `/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T004324Z/runs/job-195`.
+
+Full raw/binary outputs remain on the cluster. Weights-only checkpoints omit optimizer/RNG state. Nothing from those runs was deleted to publish this report.

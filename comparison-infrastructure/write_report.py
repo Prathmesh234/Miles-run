@@ -1,0 +1,83 @@
+"""Build the narrative from measured results. No invented baseline/scaling values."""
+import json
+from pathlib import Path
+from datetime import datetime,timezone
+from collections import defaultdict
+import statistics
+
+ROOT=Path(__file__).resolve().parent
+
+def fmt(values,digits=2):return ' / '.join(f'{x:,.{digits}f}' for x in values)
+
+def main():
+    data=json.loads((ROOT/'results.json').read_text());runs=data['runs'];a=next(r for r in runs if r['job_id']==197)
+    verification=json.loads((ROOT/'verification.json').read_text())
+    lines=['# Miles runs: execution and infrastructure evidence','',
+    '**Three two-update experiments, the same fixed four-node configuration.** This report distinguishes measured workload utilization from an unperformed scaling benchmark. Startup scripts, raw logs and binary checkpoint locations are preserved.','',
+    '## Did the runs finish?','']
+    for r in runs:
+        v=verification['runs'][str(r['job_id'])]
+        lines.append(f"- **Job {r['job_id']} · {r['label']}:** Slurm `{v['slurm_state']}`, scheduler exit `{v['slurm_exit']}`, training exit `{r['exit_code']}`; {len(r['batches'])} recorded updates. Work window {r['active_window'][1]-r['active_window'][0]:.2f} s (first rollout through last recorded save/train end). Rollouts {fmt([b['rollout_seconds'] for b in r['batches']])} s; active action tokens {fmt([b['active_tokens'] for b in r['batches']],0)}.")
+    lines += ['',
+    'Job 190 is a GRPO-style credit assignment with the custom IPO objective, **not standard GRPO**. Job 195 was cancelled after an invalid uniform-policy actor step and is excluded from valid-run comparisons; its evidence remains in `run2-ppo/attempts/`. Jobs 196/197 retain the CPU parameter-backup and resident-broadcast fixes, start from the same original model, and reject invalid behavior logprobs.','',
+    'Both PPO runs have finite nonzero actor and critic gradients. Structural checkpoint checks and small CPU tensor reads verify saved actor/critic weights; these are **weights-only checkpoints, not a full optimizer/RNG resume test**. See [verification.json](verification.json) for exact checks.','',
+    'Lifecycle warnings are not hidden: startup `/freeze_gc` connection-refused retries preceded successful generation. Job 196 logged SGLang/Gloo peer-reset errors after final checkpointing/weight publication during teardown, while the training process and Slurm allocation exited successfully. Interpret shutdown stack traces in their timestamp context. Any corresponding job-197 warnings are recorded in verification, not silently discarded.','',
+    '## What was held constant?','',
+    '- Qwen3.6-35B-A3B; pinned Miles `70b89e11770fc9bac984e22cfff89c51cca44203`; Megatron trainer; identical Terminal Lego four-task cycle and task code.','- Two updates, batch 16, group size 8, max context 8,192, max response 2,048, eight turns. No continuation from the preceding trained checkpoint.','- Four assigned worker nodes, eight B200s each. Nodes 0–1 train actor/critic; nodes 2–3 serve rollouts. Rollout TP16, attention DP2, EP16; trainer TP1, EP8.','- Node inventory reports two AMD EPYC 9575F sockets / 256 logical CPUs, about 3,170,218,620 KiB RAM on node 0, 183,359 MiB reported HBM per GPU and a 1,000 W GPU power limit. Driver 595.71.05 reports CUDA 13.2 capability; this is not a claim about every library runtime version. Per-node raw inventories preserve differences.','',
+    'The algorithms, generated trajectories, token counts, first-use compilation and cache state differ. Async PPO also recomputes trainer-reference logprobs rather than reusing rollout logprobs, adding work required for correct TIS; it has extra observational instrumentation. Total runtime is not a controlled algorithm speedup or quality comparison. Only two updates were run; no confidence intervals or convergence claims are justified.','',
+    '## How much rollout work overlapped training?','',
+    f"Job 197 measured **{a['rollout_compute_overlap_seconds']:.2f} seconds** of rollout/training overlap, counting simultaneous actor/critic spans only once. Native one-batch-ahead scheduling prefetches the next batch while the current batch trains and waits before publishing new weights. It is not the separate persistent-worker `--fully-async` implementation.",'',
+    '![Execution timeline](charts/02-execution-timeline.png)','',
+    '![Work and time](charts/01-work-and-time.png)','',
+    '## Are weight transfers saturating scale-out bandwidth?','',
+    'The latency and link-pressure figures answer different questions: elapsed publication time includes implementation/control work, while port counters measure all node traffic. We do not divide an assumed model size by publication time and label the result wire bandwidth.','']
+    for r in runs:
+        vals=[p['seconds'] for p in r['weight_transfers']]
+        lines.append(f"- Job {r['job_id']} publication spans, initial / after update 0 / after update 1: **{fmt(vals)} s**.")
+    lines += ['', '![Weight publication](charts/03-weight-publication.png)','',
+    '![One-second transfer bursts](charts/06-transfer-bursts.png)','',
+    f"Fine collector coverage: {a['collector_wall_seconds']['count']:,} samples; collection wall time median {a['collector_wall_seconds']['p50']:.3f}s / p95 {a['collector_wall_seconds']['p95']:.3f}s / max {a['collector_wall_seconds']['max']:.3f}s (not CPU time). There were {sum(a['fabric_highrate_errors'].values())} NVLink query failures/timeouts, concentrated on training nodes, and no IB query errors. Missing NVLink samples are not zero-filled; later counter deltas span the actual gap. Publication-window intervals were approximately 1.2–2.3s despite a requested 1s cadence.",'',
+    'The 1s requested-cadence sampler began at **2026-09-04 01:21:22 UTC**, so it does not cover the initial async publication. Actual sampling intervals, time spent collecting each sample, missing bins and counter resets are retained. The first sampler attempt at 01:17:04 failed immediately due to a script syntax error; the corrected v2 was smoke-tested and all four streams verified. Both attempts are preserved. This was a measurement-setup error, not a training/cluster failure.','',
+    '![Scale-out IB](charts/04-scale-out-ib.png)','']
+    for r in runs:
+        peaks=[v['utilization_pct']['max'] for v in r['fabric_link_statistics'] if v['fabric']=='IB']
+        node=[v['utilization_pct']['max'] for k,v in r['fabric_summary'].items() if k.startswith('IB:') and k.endswith(':TX') and v['utilization_pct']]
+        lines.append(f"- Job {r['job_id']} common ≈10s sampler: hottest GPU-fabric port **{max(peaks):.2f}%**, busiest node aggregate **{max(node):.2f}%** of nominal one-way capacity during the reported work window.")
+    fine=[v['utilization_pct']['max'] for v in a['fabric_highrate_link_statistics'] if v['fabric']=='IB']
+    if fine:lines += ['',f"Job 197's finer sampler observed up to **{max(fine):.2f}%** on an individual 400-Gb/s IB port across its covered work window (not necessarily a weight-transfer phase). Compare publication-only bursts above, and do not rank runs using different sampling cadences."]
+    lines += ['',
+    '**These observations do not establish a network ceiling or scaling efficiency.** No 1→2→4-node sweep, isolated network benchmark or fixed-token strong/weak scaling test was run. A busy individual port can be hidden by averaging eight ports; the report shows both. Coarse bins can also hide sub-second saturation.','',
+    '## How much scale-up NVLink bandwidth was used?','',
+    '![Scale-up NVLink](charts/05-scale-up-nvlink.png)','',
+    'The scale-up chart is measured payload utilization during training, not a GPU-count scaling curve. Job 190 lacks continuous NVLink data counters and is omitted, not assigned zero. Node aggregate and hottest-link views use the same ≈5s telemetry for jobs 196/197. The finer async counter stream is also preserved in results.','',
+    '## Is the async run really off-policy, and is TIS active?','']
+    for b in a['batches']:
+        s=b['scalar_actor']
+        lines.append(f"- Update {b['step']}: recorded policy lag **{b['recorded_policy_lag']}**, served weight versions `{b['served_weight_versions']}`; mean raw IS ratio **{s.get('train/tis',float('nan')):.6f}**, mean clamped weight **{s.get('train/tis_weight',float('nan')):.6f}**, upper-clipped fraction **{100*s.get('train/tis_upper_clipfrac',float('nan')):.6f}%**, actor gradient norm **{s.get('train/grad_norm',float('nan')):.6f}**; mean absolute trainer/behavior logprob mismatch **{s.get('train/train_rollout_logprob_abs_diff',float('nan')):.6f}**.")
+    lines += ['', '![Off-policy and TIS](charts/07-off-policy-tis.png)','',
+    'The correction is `clamp(exp(trainer_before_update_logprob − recorded_behavior_logprob), 0, 2)` with detached reference logprobs. PPO still applies its separate clipped new-policy/trainer-before-update ratio. Removing `--use-rollout-logprobs` prevents double-counting behavior correction. The active-token mask excludes observations and tool output. Version lag zero can still have small numerical backend mismatch; lag one does not imply large IS weights after a single small update. With one actor optimizer step per batch, the new-policy/reference PPO ratio is evaluated before that step, explaining PPO KL = 0 and ESS = 1 in these async logs; those values do not negate the separate nontrivial behavior-policy correction. Means do not reveal the complete ratio distribution; no histogram is fabricated from means.','',
+    'Legacy synchronous sample metadata `policy_version` was the rollout ID, **not** a measured serving weight version. It is not reused as proof of staleness. Native per-token reduction is enabled; report scalars use the framework’s valid-token reduction.','',
+    '## What happened to optimizer state and model offloading?','',
+    '![Broadcast onload and offload](charts/10-broadcast-offload.png)','',
+    '![Optimizer offload](charts/08-optimizer-offload.png)','']
+    groups=defaultdict(list)
+    for p in a['optimizer_steps']:groups[(p['resolved_role'],p['rollout_id'])].append(p)
+    for (role,step),rows in sorted(groups.items()):
+        cpu=[sum(v for k,v in p['after']['unique_storage_bytes'].items() if k.startswith('state:cpu'))/1024**3 for p in rows]
+        gpu=[sum(v for k,v in p['after']['unique_storage_bytes'].items() if k.startswith('state:cuda'))/1024**3 for p in rows]
+        lines.append(f"- {role.title()} update {step}: {len(rows)} optimizer rank records; mean referenced state **{statistics.mean(cpu):.2f} GiB CPU / {statistics.mean(gpu):.2f} GiB CUDA per rank**; median / slowest step **{statistics.median(p['elapsed_seconds'] for p in rows):.3f} / {max(p['elapsed_seconds'] for p in rows):.3f} s**.")
+    lines += ['',
+    'Optimizer storage sizes are unique *referenced storages per process*, not physical resident host pages, unique global parameter bytes or PCIe transfer volume. CPU Adam-state placement is separate from TMS model parameter/gradient offloading. Driver actor onload/offload spans are retained independently of publication time.','',
+    '**Instrumentation gap:** the per-rank sleep/wake/update wrapper was installed but produced no lifecycle records in this runtime. The existing native structured logs do contain a subset of rank/role-labelled sleep/wake durations; these are preserved in results, but their 0.1s printed precision and Ray log deduplication prevent a complete rank distribution. Driver-level onload/offload and optimizer-step records did work. Optimizer rows record `role=unknown`; native training-log labels are joined by host/PID to recover the role. If absent, role is inferred only from one unambiguous enclosing serialized driver call; the assignment basis is retained in results. Host timers add no CUDA synchronization and are not direct copy-engine timings.','',
+    '![GPU context](charts/09-gpu-context.png)','',
+    '## Units, denominators and coverage','',
+    '- InfiniBand PMA data-counter deltas are multiplied by **4 bytes**, then divided by actual elapsed time. [NVIDIA port-counter definitions](https://docs.nvidia.com/networking/display/ufmsdnappumv4184/appendix%2B%E2%80%93%2Bsupported%2Bport%2Bcounters%2Band%2Bevents) document the four-octet units.','- NVLink `nvidia-smi nvlink -gt d` data counters are **KiB**, multiplied by 1,024. These are payload counters, not raw traffic. [NVIDIA SMI documentation](https://docs.nvidia.com/deploy/nvidia-smi/index.html) defines both counter modes.','- GPU scale-out denominator: eight active 400-Gb/s IB ports per node, **3.2 Tb/s one-way**; 100-Gb/s storage ports are excluded. TX and RX are never summed against a one-way denominator. Incomplete node counter groups become null, not zero.','- Scale-up denominator: nominal **1.8 TB/s bidirectional per B200**, 18 links → 50 GB/s per link/direction, or 7.2 TB/s node TX across eight GPUs. [NVIDIA’s NVLink 5 description](https://developer.nvidia.com/blog/inside-nvidia-blackwell-ultra-the-chip-powering-the-ai-factory-era/) supplies the nominal rate and link count. Hardware status instead reports 53.125 GB/s raw per-link line rate; the FEC-adjusted `-dr` query is unsupported by the installed driver. Neither is a measured application ceiling.','- Common collectors: ≈2s GPU/host, ≈5s NVLink, ≈10s IB and SGLang Prometheus. Requested cadence is not substituted for actual time. Missing/reset/error intervals are counted; `lctl` unavailable means missing Lustre metrics, not zero storage traffic.','- Comparative bandwidth window: first rollout start through last recorded train/save end. Initial setup and final publication may lie outside it; publication-specific charts use their own overlapping bins. Fine/coarse publication bins include boundary traffic and cannot isolate model bytes.','- GPU busy percentages are not model FLOP utilization. HBM changes do not measure optimizer copy volume. Reported peaks are sampled interval averages, not instantaneous maxima.','',
+    '## Reproduce and inspect','',
+    '**Startup scripts are essential.** Each run’s `scripts/README.md` documents its frozen launcher; do not replace those files with reporting helpers.','',
+    '- [Run 1 sources and evidence](../run1-grpo/README.md) · [Run 2 sources and final evidence](../run2-ppo/README.md) · [Run 3 async sources and final evidence](../run3-async-ppo/README.md).','- [Derived metrics and input SHA-256s](results.json), [completion/checkpoint verification](verification.json), [exported PNG/SVG figures](charts/), [analysis tests](test_analysis.py).','- Binary checkpoints and complete remote runs remain on the shared filesystem. Git contains bounded text evidence and plots, not model weights, kubeconfigs or credentials. Earlier run snapshots are preserved.','',
+    '```bash','python3 -m unittest discover -s comparison-infrastructure -p "test_*.py" -v','python3 comparison-infrastructure/analyze.py \\\n  --run 190 "GRPO-style / IPO" evidence-job-190/job-190 \\\n  --run 196 "Synchronous PPO" run2-ppo/logs/job-196-final \\\n  --run 197 "Async PPO + TIS" run3-async-ppo/logs/job-197-final \\\n  --output comparison-infrastructure/results.json','python3 comparison-infrastructure/verify_results.py','python3 comparison-infrastructure/render.py comparison-infrastructure/results.json','python3 comparison-infrastructure/write_report.py','```','',
+    'Plot dependency: Matplotlib 3.9.4 (NumPy 2.0.2 in the rendering environment). Analysis uses Python’s standard library. `capture_fabric_1s.py` is the corrected read-only sampler; failed/v2 launch records document its coverage. Validation programs are post-run tools, not changes to the training sources.','']
+    (ROOT/'README.md').write_text('\n'.join(lines))
+    print('Wrote comparison-infrastructure/README.md')
+
+if __name__=='__main__':main()

@@ -1,0 +1,63 @@
+2026-09-04 01:16:13,882	INFO agent.py:177 -- Dashboard agent grpc address: 10.244.180.242:38103
+2026-09-04 01:16:13,882	INFO utils.py:319 -- Get all modules by type: DashboardAgentModule
+2026-09-04 01:16:14,075	INFO utils.py:352 -- Available modules: [<class 'ray.dashboard.modules.aggregator.aggregator_agent.AggregatorAgent'>, <class 'ray.dashboard.modules.event.event_agent.EventAgent'>, <class 'ray.dashboard.modules.job.job_agent.JobAgent'>, <class 'ray.dashboard.modules.log.log_agent.LogAgent'>, <class 'ray.dashboard.modules.log.log_agent.LogAgentV1Grpc'>, <class 'ray.dashboard.modules.reporter.healthz_agent.HealthzAgent'>, <class 'ray.dashboard.modules.reporter.reporter_agent.ReporterAgent'>]
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.aggregator.aggregator_agent.AggregatorAgent'>
+2026-09-04 01:16:14,075	INFO aggregator_agent.py:153 -- Event HTTP target is not enabled or publishing events to external HTTP service is disabled. Skipping sending events to external HTTP service. events_export_addr: 
+2026-09-04 01:16:14,075	INFO aggregator_agent.py:172 -- Publishing events to GCS is disabled
+2026-09-04 01:16:14,075	INFO aggregator_agent.py:191 -- Publishing events to the dashboard head is disabled
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.event.event_agent.EventAgent'>
+2026-09-04 01:16:14,075	INFO event_agent.py:51 -- Event agent cache buffer size: 10240
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.job.job_agent.JobAgent'>
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.log.log_agent.LogAgent'>
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.log.log_agent.LogAgentV1Grpc'>
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.reporter.healthz_agent.HealthzAgent'>
+2026-09-04 01:16:14,075	INFO agent.py:196 -- Loading DashboardAgentModule: <class 'ray.dashboard.modules.reporter.reporter_agent.ReporterAgent'>
+2026-09-04 01:16:14,082	WARNING gpu_profile_manager.py:78 -- [GpuProfilingManager] `dynolog` is not installed, GPU profiling will not be available.
+2026-09-04 01:16:14,082	WARNING gpu_profile_manager.py:135 -- [GpuProfilingManager] GPU profiling is disabled, skipping daemon setup.
+2026-09-04 01:16:14,083	INFO agent.py:201 -- Loaded 7 modules.
+2026-09-04 01:16:14,084	INFO http_server_agent.py:138 -- Dashboard agent http address: 10.244.180.242:52365
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [POST] <PlainResource  /api/job_agent/jobs/> -> <function JobAgent.submit_job at 0x778ac7c3ae80>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <PlainResource  /api/job_agent/jobs/> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [POST] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}/stop> -> <function JobAgent.stop_job at 0x778ac7c3b060>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}/stop> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [DELETE] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}> -> <function JobAgent.delete_job at 0x778ac7c3b240>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [GET] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}/logs> -> <function JobAgent.get_job_logs at 0x778ac7c3b420>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}/logs> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [GET] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}/logs/tail> -> <function JobAgent.tail_job_logs at 0x778ac7c3b600>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <DynamicResource  /api/job_agent/jobs/{job_or_submission_id}/logs/tail> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [GET] <PlainResource  /api/local_raylet_healthz> -> <function HealthzAgent.health_check at 0x778ac79b8e00>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <PlainResource  /api/local_raylet_healthz> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [GET] <PlainResource  /api/healthz> -> <function HealthzAgent.unified_health at 0x778ac79b9080>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <PlainResource  /api/healthz> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [GET] <StaticResource  /logs -> PosixPath('/tmp/ray/session_2026-09-04_01-16-00_792933_265/logs')> -> <bound method StaticResource._handle of <StaticResource  /logs -> PosixPath('/tmp/ray/session_2026-09-04_01-16-00_792933_265/logs')>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:146 -- <ResourceRoute [OPTIONS] <StaticResource  /logs -> PosixPath('/tmp/ray/session_2026-09-04_01-16-00_792933_265/logs')> -> <bound method _PreflightHandler._preflight_handler of <aiohttp_cors.cors_config._CorsConfigImpl object at 0x778ac7752a50>>
+2026-09-04 01:16:14,084	INFO http_server_agent.py:147 -- Registered 16 routes.
+2026-09-04 01:16:14,086	INFO process_watcher.py:45 -- raylet pid is 79
+2026-09-04 01:16:14,086	INFO process_watcher.py:65 -- check_parent_via_pipe
+2026-09-04 01:16:14,087	INFO event_utils.py:132 -- Monitor events logs modified after 1788482773.9610922 on /tmp/ray/session_2026-09-04_01-16-00_792933_265/logs/events, the source types are all.
+2026-09-04 01:16:14,223	INFO gpu_providers.py:552 -- Using GPU Provider: NvidiaGpuProvider
+2026-09-04 01:16:14,290	INFO gpu_providers.py:380 -- Failed to retrieve GPU process SM utilization using `nvmlDeviceGetProcessesUtilizationInfo`, error: Not Found
+2026-09-04 01:32:58,222	INFO agent.py:275 -- Terminated Raylet: ip=10.244.180.242, node_id=1d5b39728787b176641b29b66b42b9e0bebe64610b9786e368654866. _check_parent_via_pipe: The parent is dead.
+2026-09-04 01:32:58,226	ERROR process_watcher.py:115 -- Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [2026-09-04 01:32:41,276 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:43,276 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:43,276 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:45,279 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:45,279 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:47,282 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:47,283 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:49,285 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:49,285 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:51,288 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:51,288 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:53,291 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:53,292 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:55,294 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:55,294 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:57,297 I 79 79] (raylet) ray_syncer.cc:108: Connection to the node was broken, reconnecting. node_id=00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:57,297 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:225: Failed to send a message to node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:57,300 I 79 79] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-04 01:32:58,211 W 79 79] (raylet) retryable_grpc_client.cc:85: GCS has been unavailable for more than 60 seconds
+    [2026-09-04 01:32:58,211 E 79 79] (raylet) rpc_client.h:204: Failed to connect to GCS within 60 seconds. GCS may have been killed. It's either GCS is terminated by `ray stop` or is killed unexpectedly. If it is killed unexpectedly, see the log file gcs_server.out. https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#logging-directory-structure. The program will terminate.
+

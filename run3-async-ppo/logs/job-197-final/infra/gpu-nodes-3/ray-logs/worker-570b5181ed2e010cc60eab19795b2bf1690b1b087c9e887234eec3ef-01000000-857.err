@@ -1,0 +1,811 @@
+:job_id:01000000
+:actor_name:SGLangEngine
+WARNING:sglang.srt.server_args:DP attention is enabled. chunked prefill size is adjusted from 16384 to 8192.
+WARNING:sglang.srt.server_args:Disabling SGLANG_OPT_USE_CUSTOM_ALL_REDUCE_V2 because nnodes=2 (custom all-reduce v2 is intra-node only).
+[2026-09-04 01:18:00] server_args=ServerArgs(model_path='/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0', tokenizer_path='/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0', tokenizer_mode='auto', tokenizer_backend='huggingface', tokenizer_worker_num=1, detokenizer_worker_num=1, skip_tokenizer_init=False, load_format='auto', model_loader_extra_config='{}', trust_remote_code=True, context_length=8192, is_embedding=False, enable_multimodal=None, revision=None, model_impl='auto', model_config_parser='auto', json_model_override_args='{}', dtype='bfloat16', quantization=None, quantization_param_path=None, kv_cache_dtype='auto', enable_fp32_lm_head=True, modelopt_quant=None, modelopt_checkpoint_restore_path=None, modelopt_checkpoint_save_path=None, modelopt_export_path=None, quantize_and_serve=False, rl_quant_profile=None, enable_tf32_matmul=False, mem_fraction_static=0.85, max_running_requests=16, max_queued_requests=None, max_total_tokens=None, chunked_prefill_size=8192, enable_dynamic_chunking=False, max_prefill_tokens=16384, prefill_max_requests=None, schedule_policy='fcfs', enable_priority_scheduling=False, disable_priority_preemption=False, default_priority_value=None, abort_on_priority_when_disabled=False, schedule_low_priority_values_first=False, priority_scheduling_preemption_threshold=10, retraction_policy='length', schedule_conservativeness=0.3, page_size=1, c128_page_size=16, swa_full_tokens_ratio=0.8, disable_hybrid_swa_memory=False, radix_eviction_policy='lru', prefill_only_disable_kv_cache=False, disable_radix_cache=False, enable_page_major_kv_layout=False, enable_unified_memory=False, disable_chunked_prefix_cache=False, disable_overlap_schedule=False, num_continuous_decode_steps=1, scheduler_recv_interval=1, enable_mixed_chunk=False, nccl_port=15001, dist_timeout=None, dist_init_addr='10.244.180.242:15003', gated_launch_port=None, nnodes=2, node_rank=0, tp_size=16, dcp_size=1, pp_size=1, pp_max_micro_batch_size=None, pp_async_batch_depth=0, dp_size=2, load_balance_method='round_robin', attn_cp_size=1, moe_dp_size=1, dwdp_size=1, dcp_comm_backend='ag_rs', dcp_replicate_q_proj=None, enable_prefill_cp=False, cp_strategy=None, enable_dsa_cache_layer_split=False, enable_dsa_prefill_context_parallel=False, dsa_prefill_cp_mode='round-robin-split', enable_prefill_context_parallel=False, prefill_cp_mode='in-seq-split', enable_cp_decode_attn_tp=False, enable_dp_attention=True, enable_dp_attention_local_control_broadcast=False, enable_dp_lm_head=False, enable_tp_lm_head_all_to_all=False, enable_attn_tp_input_scattered=False, disable_attn_tp_gather=False, enable_p2p_check=False, device='cuda', base_gpu_id=0, gpu_id_step=1, random_seed=0, mlx_enable_sampling=False, watchdog_timeout=300, soft_watchdog_timeout=None, sleep_on_idle=False, use_ray=False, custom_sigquit_handler=None, numa_node=None, gc_threshold=None, host='10.244.180.242', port=15000, fastapi_root_path='', smg_grpc_mode=False, grpc_mode=False, grpc_port=None, sidecar=None, sidecar_args=None, skip_server_warmup=True, warmups=None, enable_http2=False, http2_max_concurrent_streams=200, ssl_keyfile=None, ssl_certfile=None, ssl_ca_certs=None, ssl_keyfile_password=None, enable_ssl_refresh=False, api_key=None, admin_api_key=None, served_model_name='/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0', weight_version='default', chat_template=None, hf_chat_template_name=None, completion_template=None, file_storage_path='sglang_storage', enable_cache_report=False, reasoning_parser=None, default_chat_template_kwargs=None, strip_thinking_cache=False, enable_strict_thinking=False, tool_call_parser=None, tool_server=None, sampling_defaults='model', asr_max_buffer_seconds=60, asr_max_concurrent_sessions=32, preferred_sampling_params=None, allow_auto_truncate=False, stream_interval=1, batch_notify_size=16, stream_response_default_include_usage=False, incremental_streaming_output=False, enable_streaming_session=False, enable_session_radix_cache=False, log_level='info', log_level_http=None, log_requests=False, log_requests_level=2, log_requests_format='text', log_requests_target=None, uvicorn_access_log_exclude_prefixes=[], crash_dump_folder=None, show_time_cost=False, enable_metrics=True, smg_http_sidecar_port=None, enable_mfu_metrics=False, enable_metrics_for_all_schedulers=False, load_snapshot_publish_interval=15, tokenizer_metrics_custom_labels_header='x-custom-labels', tokenizer_metrics_allowed_custom_labels=None, extra_metric_labels=None, bucket_time_to_first_token=None, bucket_inter_token_latency=None, bucket_e2e_request_latency=None, prompt_tokens_buckets=None, generation_tokens_buckets=None, gc_warning_threshold_secs=0.0, decode_log_interval=40, enable_request_time_stats_logging=False, kv_events_config=None, enable_forward_pass_metrics=False, forward_pass_metrics_worker_id='', forward_pass_metrics_ipc_name=None, enable_trace=False, trace_modules='request', otlp_traces_endpoint='localhost:4317', export_metrics_to_file=False, export_metrics_to_file_dir=None, stat_loggers=None, constrained_json_whitespace_pattern=None, constrained_json_disable_any_whitespace=False, attention_backend='triton', decode_attention_backend=None, prefill_attention_backend=None, sampling_backend='flashinfer', grammar_backend='xgrammar', radix_cache_backend=None, mm_attention_backend=None, fp8_gemm_runner_backend='auto', fp4_gemm_runner_backend='auto', bf16_gemm_backend='auto', dsa_prefill_backend=None, dsa_decode_backend=None, dsa_paged_mqa_logits_backend='auto', dsa_topk_backend='sgl-kernel', disable_flashinfer_autotune=False, flashinfer_autotune_skip_ops=None, mamba_backend='triton', cuda_graph_config=CudaGraphConfig(decode=PhaseConfig(backend='full', max_bs=512, bs=[1, 2, 4, 8, 12, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], tc_compiler='eager', full_prefill_max_req=None, full_prefill_prefix_chunk_tokens=None), prefill=PhaseConfig(backend='disabled', max_bs=16384, bs=[4, 8, 12, 16, 20, 24, 28, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256, 288, 320, 352, 384, 416, 448, 480, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584, 3840, 4096, 4608, 5120, 5632, 6144, 6656, 7168, 7680, 8192, 8704, 9216, 9728, 10240, 10752, 11264, 11776, 12288, 12800, 13312, 13824, 14336, 14848, 15360, 15872, 16384], tc_compiler='eager', full_prefill_max_req=None, full_prefill_prefix_chunk_tokens=None)), cuda_graph_backend_decode=None, cuda_graph_backend_prefill='disabled', cuda_graph_max_bs_decode=None, cuda_graph_max_bs_prefill=None, cuda_graph_bs_decode=None, cuda_graph_bs_prefill=None, cuda_graph_tc_compiler=None, disable_prefill_cuda_graph=False, disable_decode_cuda_graph=False, disable_cuda_graph=False, disable_draft_cuda_graph=False, disable_cuda_graph_padding=False, enable_profile_cuda_graph=False, enable_cudagraph_gc=False, debug_cuda_graph=False, enable_layerwise_nvtx_marker=False, enable_nccl_nvls=False, enable_symm_mem=False, triton_attention_reduce_in_fp32=False, triton_attention_num_kv_splits=8, triton_attention_split_tile_size=None, flashinfer_mla_disable_ragged=False, enable_fused_qk_norm_rope=False, enable_precise_embedding_interpolation=False, enable_fused_moe_sum_all_reduce=False, enable_deepseek_v4_fp4_indexer=False, disable_custom_all_reduce=False, enable_mscclpp=False, enable_torch_symm_mem=False, enable_scattered_sconv=False, pre_warm_nccl=False, enable_quant_communications=False, enable_flashinfer_allreduce_fusion=False, enforce_disable_flashinfer_allreduce_fusion=False, flashinfer_allreduce_fusion_backend=None, enable_aiter_allreduce_fusion=False, enable_torch_compile=False, enable_torch_compile_debug_mode=False, torch_compile_max_bs=32, speculative_algorithm=None, speculative_draft_model_path=None, speculative_draft_model_revision=None, speculative_draft_load_format=None, speculative_num_steps=None, speculative_eagle_topk=None, speculative_num_draft_tokens=None, speculative_dflash_block_size=None, speculative_dspark_block_size=None, speculative_dspark_sps_table_path=None, speculative_dspark_confidence_sts_path=None, speculative_dspark_align_verify_tokens_to_graph_tier=False, speculative_accept_threshold_single=1.0, speculative_accept_threshold_acc=1.0, speculative_use_rejection_sampling=False, speculative_token_map=None, speculative_attention_mode='prefill', speculative_draft_attention_backend=None, speculative_draft_kv_cache_dtype=None, speculative_draft_window_size=None, speculative_moe_runner_backend='flashinfer_cutlass', speculative_moe_a2a_backend=None, speculative_draft_model_quantization=None, _speculative_draft_quantization_explicitly_set=False, speculative_skip_dp_mlp_sync=False, enable_multi_layer_eagle=False, speculative_adaptive=False, speculative_adaptive_config=None, decoupled_spec_bind_endpoint=None, decoupled_spec_connect_endpoints=None, decoupled_spec_rank=None, decoupled_spec_role='null', spec_trace_dir=None, speculative_ngram_min_bfs_breadth=1, speculative_ngram_max_bfs_breadth=10, speculative_ngram_match_type='BFS', speculative_ngram_max_trie_depth=18, speculative_ngram_capacity=10000000, speculative_ngram_external_corpus_path=None, speculative_ngram_external_sam_budget=0, speculative_ngram_external_corpus_max_tokens=10000000, ep_size=16, moe_a2a_backend='none', moe_runner_backend='flashinfer_cutlass', flashinfer_mxfp4_moe_precision='default', deepep_mode='auto', fuseep_mode=2, deepep_dispatcher_output_dtype='auto', ep_num_redundant_experts=0, ep_dispatch_algorithm=None, init_expert_location='trivial', enable_eplb=False, eplb_algorithm='auto', eplb_rebalance_num_iterations=1000, eplb_rebalance_layers_per_chunk=None, eplb_min_rebalancing_utilization_threshold=1.0, expert_distribution_recorder_mode=None, expert_distribution_recorder_buffer_size=1000, expert_balancedness_report_mode='off', deepep_config=None, moe_dense_tp_size=None, elastic_ep_backend=None, enable_elastic_expert_backup=False, mooncake_ib_device=None, enable_waterfill=False, ep_join_mode=None, ep_join_rank_offset=0, elastic_ep_initial_size=None, max_ep_size=None, elastic_ep_scale_timeout=600, elastic_ep_rejoin=False, disable_flashinfer_cutlass_moe_fp4_allgather=False, disable_shared_experts_fusion=False, enforce_shared_experts_fusion=False, max_mamba_cache_size=None, mamba_ssm_dtype=None, mamba_max_states_per_path=-1, enable_mamba_cache_stochastic_rounding=False, mamba_cache_philox_rounds=0, mamba_full_memory_ratio=0.9, mamba_radix_cache_strategy='extra_buffer', uses_mamba_radix_cache=True, mamba_track_interval=256, enable_int8_mamba_checkpoint=False, int8_mamba_ckpt_size=None, linear_attn_backend='triton', linear_attn_decode_backend=None, linear_attn_prefill_backend=None, linear_attn_verify_backend=None, enable_linear_replayssm=False, linear_replayssm_cache_len=16, enable_linear_replayssm_spec=False, enable_hierarchical_cache=False, hicache_ratio=2.0, hicache_size=0, hicache_write_policy='write_through', hicache_io_backend='kernel', hicache_mem_layout='page_first', hicache_storage_backend=None, hicache_storage_prefetch_policy='timeout', hicache_storage_backend_extra_config=None, enable_hisparse=False, hisparse_config=None, enable_broadcast_mm_inputs_process=False, enable_prefix_mm_cache=False, mm_enable_dp_encoder=False, mm_process_config={}, mm_processor_worker_num=0, mm_io_worker_num=0, allowed_media_domains=[], media_url_max_file_size_mb=64, mm_preprocess_cache_size_mb=None, trust_mm_content_hashes=False, limit_mm_data_per_request=None, enable_mm_global_cache=False, image_processor_backend='auto', mm_global_cache_backend='mooncake', disable_fast_image_processor=False, mm_feature_transport='cpu', keep_mm_feature_on_device=False, enable_lora=None, enable_lora_overlap_loading=None, max_lora_rank=None, lora_target_modules=None, lora_paths=None, max_loaded_loras=None, max_loras_per_batch=8, lora_eviction_policy='lru', lora_backend='csgmv', max_lora_chunk_size=16, experts_shared_outer_loras=None, lora_use_virtual_experts=True, lora_strict_loading=False, lora_drain_wait_threshold=0.0, enable_two_batch_overlap=False, enable_single_batch_overlap=False, tbo_token_distribution_threshold=0.48, cpu_offload_gb=0, offload_group_size=-1, offload_num_in_group=1, offload_prefetch_step=1, offload_mode='cpu', enable_lmcache=False, lmcache_config_file=None, enable_flexkv=False, flexkv_config_file=None, kt_weight_path=None, kt_method='AMXINT4', kt_cpuinfer=None, kt_threadpool_count=2, kt_num_gpu_experts=None, kt_max_deferred_experts_per_token=None, dllm_algorithm=None, dllm_algorithm_config=None, dllm_fdfo=True, disaggregation_mode='null', disaggregation_transfer_backend='mooncake', disaggregation_bootstrap_port=8998, disaggregation_ib_device=None, disaggregation_decode_enable_radix_cache=False, disaggregation_decode_enable_offload_kvcache=False, disaggregation_decode_retraction_backup=None, num_reserved_decode_tokens=512, disaggregation_decode_extra_slots=None, disaggregation_decode_polling_interval=1, optimistic_prefill_attempts=0, encoder_only=False, language_only=False, language_model_only=False, encoder_transfer_backend='zmq_to_scheduler', encoder_urls=[], encoder_bootstrap_port=8997, encoder_register_urls=[], enable_adaptive_dispatch_to_encoder=False, enable_pdmux=False, pdmux_config_path=None, sm_group_num=8, startup_weight_load_mode='serial', custom_weight_loader=[], custom_pull_weights_pre_read_hook=None, weight_loader_disable_mmap=False, weight_loader_prefetch_checkpoints=False, weight_loader_prefetch_num_threads=4, weight_loader_drop_cache_after_load=False, remote_instance_weight_loader_seed_instance_ip=None, remote_instance_weight_loader_seed_instance_service_port=None, remote_instance_weight_loader_send_weights_group_ports=None, remote_instance_weight_loader_backend='nccl', remote_instance_weight_loader_start_seed_via_transfer_engine=False, enable_engine_info_bootstrap=False, enable_rdt_weight_sync=False, engine_info_bootstrap_port=15002, modelexpress_config=None, download_dir=None, model_checksum=None, delete_ckpt_after_loading=False, decrypted_config_file=None, decrypted_draft_config_file=None, checkpoint_engine_wait_weights_before_ready=False, enable_prefill_delayer=False, prefill_delayer_max_delay_passes=30, prefill_delayer_token_usage_low_watermark=None, prefill_delayer_forward_passes_buckets=None, prefill_delayer_wait_seconds_buckets=None, prefill_delayer_queue_min_ratio=None, prefill_delayer_max_delay_ms=None, min_free_slots_delay=None, enable_deterministic_inference=False, enable_prefill_only_deterministic_inference=False, true_on_policy_contract=None, rl_on_policy_target=None, kv_canary='none', kv_canary_real_data='none', kv_canary_sweep_interval=0, enable_dynamic_batch_tokenizer=False, dynamic_batch_tokenizer_batch_size=32, dynamic_batch_tokenizer_batch_timeout=0.002, enable_tokenizer_batch_encode=False, disable_tokenizer_batch_decode=False, debug_tensor_dump_output_folder=None, debug_tensor_dump_layers=None, debug_tensor_dump_input_file=None, enable_memory_saver=False, enable_weights_cpu_backup=False, enable_draft_weights_cpu_backup=True, enable_custom_logit_processor=False, enable_return_hidden_states=False, return_hidden_states_mode=None, enable_return_routed_experts=False, enable_return_indexer_topk=False, disable_outlines_disk_cache=False, enable_mis=False, weight_cache_mode='off', weight_cache_socket=None, weight_cache_timeout=1800, forward_hooks=None, msprobe_dump_config=None)
+[2026-09-04 01:18:02] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:02] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:07] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:08] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:08] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:09] Multimodal processor concurrency enabled with 2 isolated worker threads (auto).
+[2026-09-04 01:18:10] Using default HuggingFace chat template with detected content format: openai
+[2026-09-04 01:18:10] Auto-detected template features: reasoning_config=ReasoningToggleConfig(toggle_param='enable_thinking', default_enabled=True, special_case=None, effort_kwarg=None), reasoning_parser=qwen3, tool_call_parser=qwen3_coder
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:13] User lacks permission to set NUMA affinity, skipping NUMA node configuration for GPU. If using docker, try adding --cap-add SYS_NICE to your docker run command.
+[2026-09-04 01:18:30 DP0 TP4 EP4] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:30 DP0 TP4 EP4] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP7 EP7] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP7 EP7] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP2 EP2] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP2 EP2] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP1 EP1] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP1 EP1] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP0 EP0] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:31 DP0 TP0 EP0] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP5 EP5] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP5 EP5] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP6 EP6] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP6 EP6] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP3 EP3] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP3 EP3] Detected Megatron Core, using Megatron-FSDP with Megatron.
+[2026-09-04 01:18:32 DP0 TP4 EP4] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:32 DP0 TP4 EP4] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:33 DP0 TP4 EP4] Init torch distributed begin.
+[2026-09-04 01:18:33 DP0 TP7 EP7] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:33 DP0 TP7 EP7] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:33 DP0 TP7 EP7] Init torch distributed begin.
+[2026-09-04 01:18:33 DP0 TP2 EP2] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:33 DP0 TP2 EP2] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:33 DP0 TP2 EP2] Init torch distributed begin.
+[2026-09-04 01:18:34 DP0 TP1 EP1] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:34 DP0 TP1 EP1] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:34 DP0 TP0 EP0] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:34 DP0 TP0 EP0] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:34 DP0 TP6 EP6] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:34 DP0 TP1 EP1] Init torch distributed begin.
+[2026-09-04 01:18:34 DP0 TP6 EP6] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:34 DP0 TP5 EP5] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:34 DP0 TP5 EP5] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:34 DP0 TP3 EP3] Ignore import error when loading sglang.srt.multimodal.processors.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:34 DP0 TP3 EP3] Multimodal data loading enabled with 16 worker threads (auto).
+[2026-09-04 01:18:34 DP0 TP0 EP0] Init torch distributed begin.
+[2026-09-04 01:18:34 DP0 TP6 EP6] Init torch distributed begin.
+[2026-09-04 01:18:34 DP0 TP5 EP5] Init torch distributed begin.
+[2026-09-04 01:18:34 DP0 TP3 EP3] Init torch distributed begin.
+[2026-09-04 01:18:35 DP0 TP0 EP0] sglang is using nccl==2.29.7
+[2026-09-04 01:18:37 DP0 TP3 EP3] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP2 EP2] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP1 EP1] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP4 EP4] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP0 EP0] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP5 EP5] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP6 EP6] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP7 EP7] CustomAllreduce is disabled because this process group spans across nodes.
+[2026-09-04 01:18:37 DP0 TP0 EP0] Init torch distributed ends. elapsed=3.36 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP7 EP7] Init torch distributed ends. elapsed=4.35 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP6 EP6] Init torch distributed ends. elapsed=3.06 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP4 EP4] Init torch distributed ends. elapsed=4.67 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP5 EP5] Init torch distributed ends. elapsed=3.04 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP2 EP2] Init torch distributed ends. elapsed=4.00 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP1 EP1] Init torch distributed ends. elapsed=3.66 s, mem usage=1.14 GB
+[2026-09-04 01:18:37 DP0 TP3 EP3] Init torch distributed ends. elapsed=3.03 s, mem usage=1.14 GB
+[2026-09-04 01:18:38 DP0 TP7 EP7] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP4 EP4] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP1 EP1] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP0 EP0] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP5 EP5] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP6 EP6] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP3 EP3] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP2 EP2] Ignore import error when loading sglang.srt.models.sarashina2_vision: cannot import name 'MultimodalDataItem' from 'sglang.srt.managers.mm_utils' (/sgl-workspace/sglang/python/sglang/srt/managers/mm_utils.py)
+[2026-09-04 01:18:38 DP0 TP4 EP4] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP7 EP7] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP3 EP3] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP5 EP5] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP0 EP0] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP1 EP1] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP2 EP2] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP6 EP6] Load weight begin. avail mem=176.54 GB
+[2026-09-04 01:18:38 DP0 TP4 EP4] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP7 EP7] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP4 EP4] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP7 EP7] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP3 EP3] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP3 EP3] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP5 EP5] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP5 EP5] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP0 EP0] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP0 EP0] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP1 EP1] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP1 EP1] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP6 EP6] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP6 EP6] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP2 EP2] Multimodal attention backend not set. Use fa4.
+[2026-09-04 01:18:38 DP0 TP2 EP2] Using fa4 as multimodal attention backend.
+[2026-09-04 01:18:38 DP0 TP7 EP7] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP4 EP4] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP1 EP1] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP5 EP5] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP3 EP3] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP0 EP0] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP4 EP4] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP6 EP6] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP7 EP7] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP2 EP2] FlashInfer TRTLLM MoE deferred finalize is disabled (moe_runner_backend=flashinfer_cutlass, quant_method=UnquantizedFusedMoEMethod).
+[2026-09-04 01:18:38 DP0 TP1 EP1] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP5 EP5] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP0 EP0] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP3 EP3] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP6 EP6] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP2 EP2] using attn output gate!
+[2026-09-04 01:18:38 DP0 TP1 EP1] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP2 EP2] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP0 EP0] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP3 EP3] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP4 EP4] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP5 EP5] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP6 EP6] multimem all-gather disabled because the TP group spans across nodes.
+[2026-09-04 01:18:38 DP0 TP7 EP7] multimem all-gather disabled because the TP group spans across nodes.
+Multi-thread loading shards:   0% Completed | 0/26 [00:00<?, ?it/s]Multi-thread loading shards:   4% Completed | 1/26 [00:02<01:12,  2.89s/it]Multi-thread loading shards:   8% Completed | 2/26 [00:03<00:35,  1.49s/it]Multi-thread loading shards:  12% Completed | 3/26 [00:03<00:20,  1.15it/s]Multi-thread loading shards:  19% Completed | 5/26 [00:03<00:08,  2.39it/s]Multi-thread loading shards:  27% Completed | 7/26 [00:03<00:04,  3.92it/s]Multi-thread loading shards:  35% Completed | 9/26 [00:03<00:02,  5.69it/s]Multi-thread loading shards:  42% Completed | 11/26 [00:03<00:01,  7.62it/s]Multi-thread loading shards:  50% Completed | 13/26 [00:04<00:01,  9.59it/s]Multi-thread loading shards:  58% Completed | 15/26 [00:04<00:00, 11.44it/s][2026-09-04 01:18:42 DP0 TP3 EP3] Load weight end. elapsed=4.50 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+Multi-thread loading shards:  65% Completed | 17/26 [00:04<00:00, 13.14it/s]Multi-thread loading shards:  73% Completed | 19/26 [00:04<00:00, 14.63it/s]Multi-thread loading shards:  81% Completed | 21/26 [00:04<00:00, 15.84it/s]Multi-thread loading shards:  88% Completed | 23/26 [00:04<00:00, 15.47it/s][2026-09-04 01:18:43 DP0 TP2 EP2] Load weight end. elapsed=5.02 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+Multi-thread loading shards:  96% Completed | 25/26 [00:04<00:00, 15.68it/s]Multi-thread loading shards: 100% Completed | 26/26 [00:04<00:00,  5.42it/s]
+[2026-09-04 01:18:43 DP0 TP0 EP0] Load weight end. elapsed=5.09 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+[2026-09-04 01:18:44 DP0 TP1 EP1] Load weight end. elapsed=5.68 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+[2026-09-04 01:18:44 DP0 TP4 EP4] Load weight end. elapsed=6.49 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+[2026-09-04 01:18:44 DP0 TP7 EP7] Load weight end. elapsed=6.52 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+[2026-09-04 01:18:44 DP0 TP5 EP5] Load weight end. elapsed=6.53 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+[2026-09-04 01:18:44 DP0 TP6 EP6] Load weight end. elapsed=6.54 s, type=Qwen3_5MoeForConditionalGeneration, avail mem=171.22 GB, mem usage=5.31 GB.
+[2026-09-04 01:18:45 DP0 TP0 EP0] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP7 EP7] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP6 EP6] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP4 EP4] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP2 EP2] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP5 EP5] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP3 EP3] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP1 EP1] Reserving 0.10 GB of the KV budget for post-sizing multimodal allocations (feature-transport pools + embedding cache).
+[2026-09-04 01:18:45 DP0 TP0 EP0] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP5 EP5] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP4 EP4] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP2 EP2] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP7 EP7] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP6 EP6] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP1 EP1] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP3 EP3] Mamba Cache is allocated. max_mamba_cache_size: 9139, conv_state size: 1.57GB, ssm_state size: 66.94GB 
+[2026-09-04 01:18:45 DP0 TP7 EP7] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP7 EP7] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP3 EP3] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP3 EP3] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP6 EP6] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP6 EP6] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP0 EP0] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP2 EP2] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP1 EP1] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP0 EP0] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP2 EP2] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP5 EP5] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP1 EP1] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP5 EP5] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP4 EP4] KV Cache is allocated. dtype: torch.bfloat16, #tokens: 7982385, K size: 38.06 GB, V size: 38.06 GB
+[2026-09-04 01:18:45 DP0 TP4 EP4] Memory pool end. avail mem=26.52 GB
+[2026-09-04 01:18:45 DP0 TP0 EP0] Linear attention kernel backend: decode=triton, prefill=triton, verify=triton
+[2026-09-04 01:18:45 DP0 TP0 EP0] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP0 EP0] GDN kernel dispatcher: decode=TritonGDNKernel, extend=TritonGDNKernel, verify=TritonGDNKernel packed_decode=True
+[2026-09-04 01:18:45 DP0 TP3 EP3] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP0 EP0] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp0_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP3 EP3] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp3_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP4 EP4] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP5 EP5] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP4 EP4] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp4_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP2 EP2] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP5 EP5] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp5_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP2 EP2] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp2_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP6 EP6] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP6 EP6] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp6_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP7 EP7] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP1 EP1] Using hybrid linear attention backend for hybrid GDN models.
+[2026-09-04 01:18:45 DP0 TP7 EP7] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp7_pp0_dp0.json
+[2026-09-04 01:18:45 DP0 TP1 EP1] Running FlashInfer autotune with cache: /root/.cache/sglang/flashinfer/autotune/0.6.17/sm100/81ee953ad07f858f/rank_tp1_pp0_dp0.json
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+[AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.09s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.05profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.10profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.84profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.88profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.05profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.84profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.82profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  20%|██        | 1/5 [00:01<00:04,  1.10s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.07profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  60%|██████    | 3/5 [00:01<00:00,  3.11profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.85profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.05profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.84profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1:  80%|████████  | 4/5 [00:01<00:00,  4.06profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  5.35profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.80profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm1: 100%|██████████| 5/5 [00:01<00:00,  3.84profile/s]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2:   0%|          | 0/5 [00:00<?, ?profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.62s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.63s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.61s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.61s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.62s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.62s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.60s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  20%|██        | 1/5 [00:05<00:22,  5.62s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2:  60%|██████    | 3/5 [00:05<00:03,  1.50s/profile][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.35s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.35s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.34s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.34s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.35s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.35s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.34s/profile]
+[AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.02profile/s][AutoTuner]: Tuning trtllm::fused_moe::gemm2: 100%|██████████| 5/5 [00:06<00:00,  1.35s/profile]
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+[2026-09-04 01:19:12 DP0 TP3 EP3] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP2 EP2] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP3 EP3] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP2 EP2] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP3 EP3] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.31 GB
+[2026-09-04 01:19:12 DP0 TP4 EP4] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP2 EP2] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.31 GB
+[2026-09-04 01:19:12 DP0 TP1 EP1] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP4 EP4] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP5 EP5] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP7 EP7] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP7 EP7] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP1 EP1] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP5 EP5] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP4 EP4] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.31 GB
+[2026-09-04 01:19:12 DP0 TP7 EP7] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.63 GB
+[2026-09-04 01:19:12 DP0 TP5 EP5] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.31 GB
+[2026-09-04 01:19:12 DP0 TP1 EP1] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.31 GB
+[2026-09-04 01:19:12 DP0 TP6 EP6] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP6 EP6] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP6 EP6] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.31 GB
+[2026-09-04 01:19:12 DP0 TP0 EP0] FlashInfer autotune completed.
+[2026-09-04 01:19:12 DP0 TP0 EP0] Disable prefill CUDA graph because cuda_graph_config resolved prefill.backend='disabled' (e.g. via --cuda-graph-backend-prefill=disabled or auto-disable rules).
+[2026-09-04 01:19:12 DP0 TP0 EP0] Capture target decode CUDA graph begin. backend=full, num_tokens_per_req=1, bs=[8], avail mem=24.38 GB
+  0%|          | 0/1 [00:00<?, ?it/s]Capturing batches (bs=8 avail_mem=24.38 GB):   0%|          | 0/1 [00:00<?, ?it/s]Capturing batches (bs=8 avail_mem=24.38 GB): 100%|██████████| 1/1 [00:00<00:00,  1.42it/s]Capturing batches (bs=8 avail_mem=24.38 GB): 100%|██████████| 1/1 [00:00<00:00,  1.42it/s]
+[2026-09-04 01:19:14 DP0 TP4 EP4] Capture target decode CUDA graph end. elapsed=1.80 s, mem usage=0.12 GB, avail mem=24.19 GB.
+[2026-09-04 01:19:14 DP0 TP4 EP4] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:14 DP0 TP4 EP4] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:14 DP0 TP7 EP7] Capture target decode CUDA graph end. elapsed=1.81 s, mem usage=0.12 GB, avail mem=24.50 GB.
+[2026-09-04 01:19:14 DP0 TP7 EP7] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:14 DP0 TP7 EP7] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:14 DP0 TP1 EP1] Capture target decode CUDA graph end. elapsed=1.85 s, mem usage=0.12 GB, avail mem=24.19 GB.
+[2026-09-04 01:19:14 DP0 TP1 EP1] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:14 DP0 TP1 EP1] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:14 DP0 TP0 EP0] Capture target decode CUDA graph end. elapsed=1.87 s, mem usage=0.12 GB, avail mem=24.25 GB.
+[2026-09-04 01:19:14 DP0 TP0 EP0] max_total_num_tokens=7982385, chunked_prefill_size=8192, max_prefill_tokens=16384, max_running_requests=8, context_len=8192, available_gpu_mem=24.25 GB
+[2026-09-04 01:19:14 DP0 TP0 EP0] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:14 DP0 TP0 EP0] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:14 DP0 TP3 EP3] Capture target decode CUDA graph end. elapsed=1.90 s, mem usage=0.12 GB, avail mem=24.19 GB.
+[2026-09-04 01:19:14 DP0 TP3 EP3] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:14 DP0 TP3 EP3] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:15 DP0 TP5 EP5] Capture target decode CUDA graph end. elapsed=2.07 s, mem usage=0.12 GB, avail mem=24.19 GB.
+[2026-09-04 01:19:15 DP0 TP5 EP5] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:15 DP0 TP5 EP5] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:15 DP0 TP6 EP6] Capture target decode CUDA graph end. elapsed=2.07 s, mem usage=0.12 GB, avail mem=24.19 GB.
+[2026-09-04 01:19:15 DP0 TP6 EP6] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:15 DP0 TP6 EP6] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:15 DP0 TP2 EP2] Capture target decode CUDA graph end. elapsed=2.15 s, mem usage=0.12 GB, avail mem=24.19 GB.
+[2026-09-04 01:19:15 DP0 TP2 EP2] Init Unified Radix Cache. Components: (<ComponentType.FULL: 0>, <ComponentType.MAMBA: 2>). Tree Core: UnifiedTreeCore
+[2026-09-04 01:19:15 DP0 TP2 EP2] Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True hicache_attached=False streaming_wrapped=False
+[2026-09-04 01:19:15] Engine startup timings (s): load_weight=6.54, kv_cache_allocation=0.09, scheduler_e2e=46.48, cuda_graph={prefill=0.00, decode=2.15, target_verify=0.00, draft_prefill=0.00, draft_decode=0.00, draft_extend=0.00}, tokenizer_e2e=74.72
+[2026-09-04 01:19:15] INFO:     Started server process [951]
+[2026-09-04 01:19:15] INFO:     Waiting for application startup.
+[2026-09-04 01:19:15] Using default chat sampling params from model generation config: {'temperature': 1.0, 'top_k': 20, 'top_p': 0.95}
+[2026-09-04 01:19:16] INFO:     Application startup complete.
+[2026-09-04 01:19:16] INFO:     Uvicorn running on http://10.244.180.242:15000 (Press CTRL+C to quit)
+[2026-09-04 01:19:16] post-warmup freeze_gc failed
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py", line 493, in _make_request
+    conn.request(
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connection.py", line 500, in request
+    self.endheaders()
+  File "/usr/lib/python3.12/http/client.py", line 1360, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/usr/lib/python3.12/http/client.py", line 1120, in _send_output
+    self.send(msg)
+  File "/usr/lib/python3.12/http/client.py", line 1064, in send
+    self.connect()
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connection.py", line 331, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connection.py", line 219, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: HTTPConnection(host='10.244.180.242', port=15000): Failed to establish a new connection: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='10.244.180.242', port=15000): Max retries exceeded with url: /freeze_gc (Caused by NewConnectionError("HTTPConnection(host='10.244.180.242', port=15000): Failed to establish a new connection: [Errno 111] Connection refused"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/sgl-workspace/sglang/python/sglang/srt/entrypoints/http_server.py", line 2434, in _freeze_gc_after_server_warmup
+    res = requests.post(
+          ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/requests/api.py", line 134, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/requests/adapters.py", line 729, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='10.244.180.242', port=15000): Max retries exceeded with url: /freeze_gc (Caused by NewConnectionError("HTTPConnection(host='10.244.180.242', port=15000): Failed to establish a new connection: [Errno 111] Connection refused"))
+[2026-09-04 01:19:16] The server is fired up and ready to roll!
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+[2026-09-04 01:19:28 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.07
+[2026-09-04 01:19:28 DP0 TP0 EP0] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP3 EP3] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP1 EP1] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP4 EP4] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP5 EP5] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP6 EP6] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP2 EP2] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+[2026-09-04 01:19:28 DP0 TP7 EP7] Cache not flushed because there are pending requests. #queue-req: 0, #running-req: 1
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+[2026-09-04 01:19:30 DP0 TP0 EP0] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP2 EP2] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP6 EP6] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP4 EP4] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP1 EP1] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP7 EP7] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP5 EP5] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP3 EP3] Reset HybridReqToTokenPool
+[2026-09-04 01:19:30 DP0 TP0 EP0] Cache flushed successfully!
+[2026-09-04 01:19:30] WARNING:  Invalid HTTP request received.
+[2026-09-04 01:19:30] WARNING:  Invalid HTTP request received.
+/usr/local/lib/python3.12/dist-packages/fastapi/routing.py:352: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  return await dependant.call(**values)
+[2026-09-04 01:19:42 DP0 TP0 EP0] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=1, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP4 EP4] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=5, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP7 EP7] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=8, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP2 EP2] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=3, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP6 EP6] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=7, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP1 EP1] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=2, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP3 EP3] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=4, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP5 EP5] init custom process group: master_address=10.244.13.18, master_port=38517, rank_offset=1, rank=6, world_size=17, group_name=miles-pp_0, backend=nccl
+[2026-09-04 01:19:42 DP0 TP4 EP4] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP0 EP0] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP1 EP1] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP2 EP2] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP7 EP7] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP3 EP3] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP5 EP5] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP6 EP6] Reset HybridReqToTokenPool
+[2026-09-04 01:19:42 DP0 TP0 EP0] Cache flushed successfully!
+[2026-09-04 01:19:53 DP0 TP2 EP2] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP4 EP4] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP0 EP0] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP3 EP3] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP6 EP6] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP5 EP5] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP1 EP1] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP7 EP7] Weight version changed. old_version='default' new_version='1' num_recorded=0
+[2026-09-04 01:19:53 DP0 TP7 EP7] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP3 EP3] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP6 EP6] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP1 EP1] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP0 EP0] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP4 EP4] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP5 EP5] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:19:53 DP0 TP2 EP2] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+/usr/local/lib/python3.12/dist-packages/triton/language/core.py:2284: UserWarning: tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.
+  warn("tl.make_block_ptr is deprecated. Use TensorDescriptor or tl.make_tensor_descriptor instead.")
+[2026-09-04 01:20:19 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1211, #cached-token: 0, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 23.97
+[2026-09-04 01:20:20 DP0 TP0 EP0] Prefill batch, #new-seq: 7, #new-token: 7929, #cached-token: 0, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 7315.77
+[2026-09-04 01:20:23 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 2497, full token usage: 0.00, mamba num: 26, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 4.64, #queue-req: 0
+[2026-09-04 01:20:24 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 2817, full token usage: 0.00, mamba num: 26, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 897.80, #queue-req: 0
+[2026-09-04 01:20:24 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 3137, full token usage: 0.00, mamba num: 26, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 901.65, #queue-req: 0
+[2026-09-04 01:20:25 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 99, #cached-token: 1280, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 20.23
+[2026-09-04 01:20:25 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 3467, full token usage: 0.00, mamba num: 27, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 465.61, #queue-req: 0
+[2026-09-04 01:20:25 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 3787, full token usage: 0.00, mamba num: 27, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 891.91, #queue-req: 0
+[2026-09-04 01:20:25 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 108, #cached-token: 1280, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 147.85
+[2026-09-04 01:20:25 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 4189, full token usage: 0.00, mamba num: 28, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 740.68, #queue-req: 0
+[2026-09-04 01:20:26 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 4509, full token usage: 0.00, mamba num: 28, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 892.32, #queue-req: 0
+[2026-09-04 01:20:26 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 4904, full token usage: 0.00, mamba num: 28, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 640.29, #queue-req: 0
+[2026-09-04 01:20:26 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 453, #cached-token: 1024, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 498.18
+[2026-09-04 01:20:27 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 415, #cached-token: 1152, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1299.49
+[2026-09-04 01:20:27 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 5144, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 648.60, #queue-req: 0
+[2026-09-04 01:20:27 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 451, #cached-token: 1088, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1013.01
+[2026-09-04 01:20:27 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 5483, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 681.80, #queue-req: 0
+[2026-09-04 01:20:28 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 5803, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 535.85, #queue-req: 1
+[2026-09-04 01:20:28 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 6123, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 785.99, #queue-req: 2
+[2026-09-04 01:20:29 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 562, #cached-token: 1024, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 1691, cuda graph: False, input throughput (token/s): 350.58
+[2026-09-04 01:20:29 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 6355, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 659.00, #queue-req: 1
+[2026-09-04 01:20:29 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 6675, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 893.05, #queue-req: 1
+[2026-09-04 01:20:29 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 6995, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 874.64, #queue-req: 1
+[2026-09-04 01:20:30 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 539, #cached-token: 1152, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 1764, cuda graph: False, input throughput (token/s): 479.40
+[2026-09-04 01:20:30 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 7093, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 624.24, #queue-req: 2
+[2026-09-04 01:20:30 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 484, #cached-token: 1280, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 3621, cuda graph: False, input throughput (token/s): 886.04
+[2026-09-04 01:20:30 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 7348, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 683.95, #queue-req: 2
+[2026-09-04 01:20:31 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 7668, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 875.08, #queue-req: 2
+[2026-09-04 01:20:31 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 7988, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 778.91, #queue-req: 3
+[2026-09-04 01:20:31 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 270, #cached-token: 1536, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 3, #pending-token: 3764, cuda graph: False, input throughput (token/s): 268.82
+[2026-09-04 01:20:31 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 535, #cached-token: 1280, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 3860, cuda graph: False, input throughput (token/s): 5252.25
+[2026-09-04 01:20:32 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 8226, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 609.84, #queue-req: 3
+[2026-09-04 01:20:32 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 8546, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 881.67, #queue-req: 3
+[2026-09-04 01:20:32 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 669, #cached-token: 1280, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 3918, cuda graph: False, input throughput (token/s): 712.43
+[2026-09-04 01:20:33 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 119, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 2007, cuda graph: False, input throughput (token/s): 908.78
+[2026-09-04 01:20:33 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 8901, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 554.31, #queue-req: 2
+[2026-09-04 01:20:33 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 9221, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 879.94, #queue-req: 2
+[2026-09-04 01:20:33 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 9541, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 868.61, #queue-req: 3
+[2026-09-04 01:20:34 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 9861, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 874.78, #queue-req: 3
+[2026-09-04 01:20:34 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10181, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 873.24, #queue-req: 3
+[2026-09-04 01:20:35 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10501, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 772.42, #queue-req: 3
+[2026-09-04 01:20:35 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 215, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 4141, cuda graph: False, input throughput (token/s): 92.47
+[2026-09-04 01:20:35 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10680, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 746.40, #queue-req: 2
+[2026-09-04 01:20:35 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 171, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 2178, cuda graph: False, input throughput (token/s): 475.12
+[2026-09-04 01:20:35 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1154, #cached-token: 1024, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 2387, cuda graph: False, input throughput (token/s): 7121.87
+[2026-09-04 01:20:35 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10694, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 655.10, #queue-req: 1
+[2026-09-04 01:20:36 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 11014, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 875.46, #queue-req: 1
+[2026-09-04 01:20:36 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 11334, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 879.03, #queue-req: 1
+[2026-09-04 01:20:37 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 11654, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 873.28, #queue-req: 1
+[2026-09-04 01:20:37 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 11974, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 861.92, #queue-req: 1
+[2026-09-04 01:20:37 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12294, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 872.43, #queue-req: 1
+[2026-09-04 01:20:38 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 83, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 34.52
+[2026-09-04 01:20:38 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12568, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 587.75, #queue-req: 0
+[2026-09-04 01:20:38 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12888, full token usage: 0.00, mamba num: 30, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 865.33, #queue-req: 0
+[2026-09-04 01:20:38 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 135, #cached-token: 2560, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 246.53
+[2026-09-04 01:20:39 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 10473, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 663.93, #queue-req: 0
+[2026-09-04 01:20:39 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 10713, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 576.17, #queue-req: 0
+[2026-09-04 01:20:39 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 9012, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 555.49, #queue-req: 0
+[2026-09-04 01:20:40 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 9212, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 542.03, #queue-req: 0
+[2026-09-04 01:20:40 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 9412, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 542.41, #queue-req: 0
+[2026-09-04 01:20:41 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 9612, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 538.80, #queue-req: 0
+[2026-09-04 01:20:41 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 9812, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 537.03, #queue-req: 0
+[2026-09-04 01:20:41 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 10012, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 535.74, #queue-req: 0
+[2026-09-04 01:20:42 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 10212, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 538.57, #queue-req: 0
+[2026-09-04 01:20:42 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 10412, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 536.99, #queue-req: 0
+[2026-09-04 01:20:42 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 10612, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 533.59, #queue-req: 0
+[2026-09-04 01:20:43 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 10812, full token usage: 0.00, mamba num: 18, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 520.83, #queue-req: 0
+[2026-09-04 01:20:43 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1974, #cached-token: 1216, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 423.85
+[2026-09-04 01:20:43 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 12951, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 498.78, #queue-req: 0
+[2026-09-04 01:20:44 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 13191, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 620.23, #queue-req: 0
+[2026-09-04 01:20:44 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 13431, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 645.29, #queue-req: 0
+[2026-09-04 01:20:44 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7251, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 386.54, #queue-req: 0
+[2026-09-04 01:20:45 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7371, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 323.70, #queue-req: 0
+[2026-09-04 01:20:45 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7491, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 320.77, #queue-req: 0
+[2026-09-04 01:20:45 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7611, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 323.13, #queue-req: 0
+[2026-09-04 01:20:46 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7731, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 321.77, #queue-req: 0
+[2026-09-04 01:20:46 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7851, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 286.20, #queue-req: 0
+[2026-09-04 01:20:47 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 244, #cached-token: 3328, full token usage: 0.00, mamba usage: 0.00, #running-req: 2, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 66.47
+[2026-09-04 01:20:47 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7982, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 259.21, #queue-req: 0
+[2026-09-04 01:20:47 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8102, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 284.51, #queue-req: 0
+[2026-09-04 01:20:47 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 50, #cached-token: 3328, full token usage: 0.00, mamba usage: 0.00, #running-req: 2, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 74.01
+[2026-09-04 01:20:48 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8233, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 269.06, #queue-req: 0
+[2026-09-04 01:20:48 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8353, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 318.19, #queue-req: 0
+[2026-09-04 01:20:48 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8473, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 320.23, #queue-req: 0
+[2026-09-04 01:20:49 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8593, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 321.02, #queue-req: 0
+[2026-09-04 01:20:49 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8713, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 318.50, #queue-req: 0
+[2026-09-04 01:20:49 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8833, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 316.89, #queue-req: 0
+[2026-09-04 01:20:50 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 8953, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 316.32, #queue-req: 0
+[2026-09-04 01:20:50 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9073, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 316.62, #queue-req: 0
+[2026-09-04 01:20:51 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9193, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 306.68, #queue-req: 0
+[2026-09-04 01:20:51 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9313, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 280.89, #queue-req: 0
+[2026-09-04 01:20:51 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9433, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 316.86, #queue-req: 0
+[2026-09-04 01:20:52 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9553, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 314.65, #queue-req: 0
+[2026-09-04 01:20:52 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9673, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 317.12, #queue-req: 0
+[2026-09-04 01:20:53 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9793, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 312.17, #queue-req: 0
+[2026-09-04 01:20:53 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 9913, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 313.26, #queue-req: 0
+[2026-09-04 01:20:53 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 10033, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 316.51, #queue-req: 0
+[2026-09-04 01:20:54 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 10153, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 316.61, #queue-req: 0
+[2026-09-04 01:20:54 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 7214, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 314.98, #queue-req: 0
+[2026-09-04 01:20:55 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7294, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 157.31, #queue-req: 0
+[2026-09-04 01:20:55 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 75, #cached-token: 4352, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 9.78
+[2026-09-04 01:20:55 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7385, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 176.32, #queue-req: 0
+[2026-09-04 01:20:55 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7465, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 178.05, #queue-req: 0
+[2026-09-04 01:20:56 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 188, #cached-token: 4416, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 224.88
+[2026-09-04 01:20:56 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7649, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 156.86, #queue-req: 0
+[2026-09-04 01:20:56 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7729, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 198.53, #queue-req: 0
+[2026-09-04 01:20:57 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4325, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 149.16, #queue-req: 0
+[2026-09-04 01:20:57 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4365, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.72, #queue-req: 0
+[2026-09-04 01:20:58 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4405, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.59, #queue-req: 0
+[2026-09-04 01:20:58 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1080, #cached-token: 4608, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 591.94
+[2026-09-04 01:20:58 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 8962, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 177.23, #queue-req: 0
+[2026-09-04 01:20:58 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4485, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 138.73, #queue-req: 0
+[2026-09-04 01:20:59 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4525, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 105.31, #queue-req: 0
+[2026-09-04 01:20:59 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4565, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.53, #queue-req: 0
+[2026-09-04 01:21:00 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4605, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 103.55, #queue-req: 0
+[2026-09-04 01:21:00 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4645, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 103.48, #queue-req: 0
+[2026-09-04 01:21:00 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4685, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 96.48, #queue-req: 0
+[2026-09-04 01:21:01 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4725, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 84.41, #queue-req: 0
+[2026-09-04 01:21:01 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4765, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 97.34, #queue-req: 0
+[2026-09-04 01:21:01 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 4077, #cached-token: 1152, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1068.42
+[2026-09-04 01:21:02 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5266, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 70.02, #queue-req: 0
+[2026-09-04 01:21:02 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 4293, #cached-token: 1216, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 4907.93
+[2026-09-04 01:21:02 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5513, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 71.13, #queue-req: 0
+[2026-09-04 01:21:03 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1058, #cached-token: 4096, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 2606.26
+[2026-09-04 01:21:03 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 9505, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 107.66, #queue-req: 0
+[2026-09-04 01:21:03 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5203, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 129.71, #queue-req: 0
+[2026-09-04 01:21:03 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 578, #cached-token: 4608, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 926.17
+[2026-09-04 01:21:04 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5222, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 106.10, #queue-req: 0
+[2026-09-04 01:21:04 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5262, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 103.21, #queue-req: 0
+[2026-09-04 01:21:04 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 2826, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 3043.53
+[2026-09-04 01:21:05 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 9202, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 138.75, #queue-req: 0
+[2026-09-04 01:21:05 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 222, #cached-token: 5120, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 325.72
+[2026-09-04 01:21:05 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 9435, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 169.79, #queue-req: 0
+[2026-09-04 01:21:05 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 9515, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 205.97, #queue-req: 0
+[2026-09-04 01:21:06 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5422, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 109.97, #queue-req: 0
+[2026-09-04 01:21:06 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5462, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 101.85, #queue-req: 0
+[2026-09-04 01:21:07 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5502, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 103.02, #queue-req: 0
+[2026-09-04 01:21:07 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5542, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.02, #queue-req: 0
+[2026-09-04 01:21:08 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5582, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.17, #queue-req: 0
+[2026-09-04 01:21:19 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1361, #cached-token: 0, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 95.47
+[2026-09-04 01:21:19 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 977, #cached-token: 384, full token usage: 0.00, mamba usage: 0.00, #running-req: 1, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 4428.59
+[2026-09-04 01:21:20 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 2366, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 4.06, #queue-req: 0
+[2026-09-04 01:21:20 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 17, #cached-token: 1344, full token usage: 0.00, mamba usage: 0.00, #running-req: 2, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 22.28
+[2026-09-04 01:21:20 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 17, #cached-token: 1344, full token usage: 0.00, mamba usage: 0.00, #running-req: 3, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1796.16
+[2026-09-04 01:21:21 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 2560, full token usage: 0.00, mamba num: 14, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 159.37, #queue-req: 0
+[2026-09-04 01:21:21 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 2720, full token usage: 0.00, mamba num: 14, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 442.90, #queue-req: 0
+[2026-09-04 01:21:21 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 2880, full token usage: 0.00, mamba num: 14, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 445.12, #queue-req: 0
+[2026-09-04 01:21:22 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 3040, full token usage: 0.00, mamba num: 14, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 447.37, #queue-req: 0
+[2026-09-04 01:21:22 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 3200, full token usage: 0.00, mamba num: 14, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 441.98, #queue-req: 0
+[2026-09-04 01:21:22 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 3360, full token usage: 0.00, mamba num: 14, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 439.67, #queue-req: 0
+[2026-09-04 01:21:23 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 3213, full token usage: 0.00, mamba num: 11, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 424.38, #queue-req: 0
+[2026-09-04 01:21:23 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 121, #cached-token: 1536, full token usage: 0.00, mamba usage: 0.00, #running-req: 3, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 46.76
+[2026-09-04 01:21:23 DP0 TP0 EP0] Decode batch, #running-req: 3, #full token: 3349, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: False, gen throughput (token/s): 301.91, #queue-req: 0
+[2026-09-04 01:21:23 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1108, #cached-token: 384, full token usage: 0.00, mamba usage: 0.00, #running-req: 3, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 2051.33
+[2026-09-04 01:21:24 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 4555, full token usage: 0.00, mamba num: 16, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 339.79, #queue-req: 0
+[2026-09-04 01:21:24 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 20, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 3, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 26.31
+[2026-09-04 01:21:24 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 4326, full token usage: 0.00, mamba num: 15, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 277.18, #queue-req: 0
+[2026-09-04 01:21:24 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 452, #cached-token: 1344, full token usage: 0.00, mamba usage: 0.00, #running-req: 4, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1815.04
+[2026-09-04 01:21:25 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 20, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 97.09
+[2026-09-04 01:21:25 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 4993, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 371.41, #queue-req: 0
+[2026-09-04 01:21:25 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 20, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 6, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 45.03
+[2026-09-04 01:21:25 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 3800, full token usage: 0.00, mamba num: 21, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 560.26, #queue-req: 0
+[2026-09-04 01:21:25 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 88, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 220.46
+[2026-09-04 01:21:26 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 20, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 6, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 72.91
+[2026-09-04 01:21:26 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 4081, full token usage: 0.00, mamba num: 24, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 442.32, #queue-req: 0
+[2026-09-04 01:21:26 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 4361, full token usage: 0.00, mamba num: 24, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 684.43, #queue-req: 0
+[2026-09-04 01:21:27 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 234, #cached-token: 1536, full token usage: 0.00, mamba usage: 0.00, #running-req: 6, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 285.74
+[2026-09-04 01:21:27 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 4652, full token usage: 0.00, mamba num: 25, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 661.50, #queue-req: 0
+[2026-09-04 01:21:27 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 4932, full token usage: 0.00, mamba num: 25, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 773.68, #queue-req: 0
+[2026-09-04 01:21:27 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 219, #cached-token: 1536, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 274.30
+[2026-09-04 01:21:27 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 4489, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 587.53, #queue-req: 0
+[2026-09-04 01:21:28 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 4729, full token usage: 0.00, mamba num: 22, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 657.13, #queue-req: 0
+[2026-09-04 01:21:28 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 59, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 86.78
+[2026-09-04 01:21:28 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 4910, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 553.90, #queue-req: 0
+[2026-09-04 01:21:29 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 5150, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 470.79, #queue-req: 0
+[2026-09-04 01:21:29 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 329, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 6, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 387.77
+[2026-09-04 01:21:29 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 678, #cached-token: 1536, full token usage: 0.00, mamba usage: 0.00, #running-req: 6, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 2037.39
+[2026-09-04 01:21:29 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 5734, full token usage: 0.00, mamba num: 27, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 396.77, #queue-req: 0
+[2026-09-04 01:21:30 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 348, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 931.00
+[2026-09-04 01:21:30 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 6818, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 668.69, #queue-req: 0
+[2026-09-04 01:21:30 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 117, #cached-token: 2176, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 0, cuda graph: False, input throughput (token/s): 227.07
+[2026-09-04 01:21:30 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 281, #cached-token: 2048, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1494.28
+[2026-09-04 01:21:30 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 950, #cached-token: 1344, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 6426.57
+[2026-09-04 01:21:31 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 7737, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 447.06, #queue-req: 0
+[2026-09-04 01:21:31 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 554, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 0, cuda graph: False, input throughput (token/s): 1347.75
+[2026-09-04 01:21:31 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 191, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 2162, cuda graph: False, input throughput (token/s): 1074.35
+[2026-09-04 01:21:31 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 8551, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 617.03, #queue-req: 1
+[2026-09-04 01:21:31 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 114, #cached-token: 2048, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 486.91
+[2026-09-04 01:21:31 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1040, #cached-token: 1344, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 4091.71
+[2026-09-04 01:21:32 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 8509, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 559.01, #queue-req: 1
+[2026-09-04 01:21:32 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1015, #cached-token: 1536, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 2526, cuda graph: False, input throughput (token/s): 2173.57
+[2026-09-04 01:21:32 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 8411, full token usage: 0.00, mamba num: 27, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 629.49, #queue-req: 1
+[2026-09-04 01:21:32 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1182, #cached-token: 1344, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 0, cuda graph: False, input throughput (token/s): 5265.63
+[2026-09-04 01:21:32 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 271, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 0, cuda graph: False, input throughput (token/s): 1325.88
+[2026-09-04 01:21:33 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 9379, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 559.80, #queue-req: 2
+[2026-09-04 01:21:33 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 9699, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 774.60, #queue-req: 3
+[2026-09-04 01:21:33 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10019, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 783.06, #queue-req: 3
+[2026-09-04 01:21:34 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 230, #cached-token: 2368, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 3, #pending-token: 4802, cuda graph: False, input throughput (token/s): 168.98
+[2026-09-04 01:21:34 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10272, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 744.45, #queue-req: 3
+[2026-09-04 01:21:34 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10592, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 775.42, #queue-req: 3
+[2026-09-04 01:21:35 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 662, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 3, #pending-token: 5364, cuda graph: False, input throughput (token/s): 730.79
+[2026-09-04 01:21:35 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10128, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 628.15, #queue-req: 3
+[2026-09-04 01:21:35 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 364, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 3, #pending-token: 5507, cuda graph: False, input throughput (token/s): 659.27
+[2026-09-04 01:21:35 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 10923, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 635.79, #queue-req: 3
+[2026-09-04 01:21:36 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 136, #cached-token: 2560, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 3, #pending-token: 5138, cuda graph: False, input throughput (token/s): 317.85
+[2026-09-04 01:21:36 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 11534, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 670.44, #queue-req: 3
+[2026-09-04 01:21:36 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 251, #cached-token: 2560, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 4869, cuda graph: False, input throughput (token/s): 420.27
+[2026-09-04 01:21:36 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 23, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 2542, cuda graph: False, input throughput (token/s): 232.91
+[2026-09-04 01:21:36 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 11985, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 603.70, #queue-req: 2
+[2026-09-04 01:21:37 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12305, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 767.66, #queue-req: 2
+[2026-09-04 01:21:37 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 238, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 2, #pending-token: 2281, cuda graph: False, input throughput (token/s): 306.83
+[2026-09-04 01:21:37 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12616, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 738.54, #queue-req: 2
+[2026-09-04 01:21:38 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12936, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 865.11, #queue-req: 2
+[2026-09-04 01:21:38 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 169, #cached-token: 2112, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 1, #pending-token: 2576, cuda graph: False, input throughput (token/s): 224.99
+[2026-09-04 01:21:38 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 13060, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 668.24, #queue-req: 1
+[2026-09-04 01:21:38 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 272, #cached-token: 2304, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 674.47
+[2026-09-04 01:21:38 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 968, #cached-token: 1792, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 4363.67
+[2026-09-04 01:21:39 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12285, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 630.97, #queue-req: 0
+[2026-09-04 01:21:39 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 11390, full token usage: 0.00, mamba num: 27, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 838.68, #queue-req: 0
+[2026-09-04 01:21:39 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 161, #cached-token: 2560, full token usage: 0.00, mamba usage: 0.00, #running-req: 7, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 290.82
+[2026-09-04 01:21:39 DP0 TP0 EP0] Decode batch, #running-req: 8, #full token: 12927, full token usage: 0.00, mamba num: 31, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 728.56, #queue-req: 0
+[2026-09-04 01:21:40 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 946, #cached-token: 2560, full token usage: 0.00, mamba usage: 0.00, #running-req: 6, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1292.52
+[2026-09-04 01:21:40 DP0 TP0 EP0] Decode batch, #running-req: 7, #full token: 12694, full token usage: 0.00, mamba num: 27, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 626.36, #queue-req: 0
+[2026-09-04 01:21:40 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 11166, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 600.47, #queue-req: 0
+[2026-09-04 01:21:41 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 11406, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 601.23, #queue-req: 0
+[2026-09-04 01:21:41 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 123, #cached-token: 3072, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 105.95
+[2026-09-04 01:21:41 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 11658, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 481.66, #queue-req: 0
+[2026-09-04 01:21:42 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 11898, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 639.97, #queue-req: 0
+[2026-09-04 01:21:42 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 12138, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 633.31, #queue-req: 0
+[2026-09-04 01:21:42 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 11176, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 546.81, #queue-req: 0
+[2026-09-04 01:21:43 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 11376, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 535.37, #queue-req: 0
+[2026-09-04 01:21:43 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 8602, full token usage: 0.00, mamba num: 15, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 496.99, #queue-req: 0
+[2026-09-04 01:21:43 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 8762, full token usage: 0.00, mamba num: 15, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 427.03, #queue-req: 0
+[2026-09-04 01:21:44 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1326, #cached-token: 1472, full token usage: 0.00, mamba usage: 0.00, #running-req: 4, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 480.41
+[2026-09-04 01:21:44 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 10248, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 378.47, #queue-req: 0
+[2026-09-04 01:21:44 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1076, #cached-token: 2816, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1826.42
+[2026-09-04 01:21:44 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 12810, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 475.02, #queue-req: 0
+[2026-09-04 01:21:45 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 13050, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 559.25, #queue-req: 0
+[2026-09-04 01:21:45 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 13290, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 632.84, #queue-req: 0
+[2026-09-04 01:21:46 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 13530, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 632.90, #queue-req: 0
+[2026-09-04 01:21:46 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 76, #cached-token: 3328, full token usage: 0.00, mamba usage: 0.00, #running-req: 5, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 44.42
+[2026-09-04 01:21:46 DP0 TP0 EP0] Decode batch, #running-req: 6, #full token: 13781, full token usage: 0.00, mamba num: 23, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 540.46, #queue-req: 0
+[2026-09-04 01:21:46 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 12455, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 461.10, #queue-req: 0
+[2026-09-04 01:21:47 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 12655, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 452.60, #queue-req: 0
+[2026-09-04 01:21:47 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 12855, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 524.15, #queue-req: 0
+[2026-09-04 01:21:47 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 1157, #cached-token: 3392, full token usage: 0.00, mamba usage: 0.00, #running-req: 4, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 759.14
+[2026-09-04 01:21:48 DP0 TP0 EP0] Decode batch, #running-req: 5, #full token: 14064, full token usage: 0.00, mamba num: 19, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 379.05, #queue-req: 0
+[2026-09-04 01:21:48 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 215, #cached-token: 4544, full token usage: 0.00, mamba usage: 0.00, #running-req: 4, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 353.08
+[2026-09-04 01:21:48 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 12342, full token usage: 0.00, mamba num: 16, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 405.49, #queue-req: 0
+[2026-09-04 01:21:49 DP0 TP0 EP0] Decode batch, #running-req: 4, #full token: 10433, full token usage: 0.00, mamba num: 12, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 416.18, #queue-req: 0
+[2026-09-04 01:21:49 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7196, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 268.42, #queue-req: 0
+[2026-09-04 01:21:49 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7276, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 207.73, #queue-req: 0
+[2026-09-04 01:21:50 DP0 TP0 EP0] Decode batch, #running-req: 2, #full token: 7356, full token usage: 0.00, mamba num: 8, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 208.16, #queue-req: 0
+[2026-09-04 01:21:50 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4514, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 202.42, #queue-req: 0
+[2026-09-04 01:21:51 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4554, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 101.16, #queue-req: 0
+[2026-09-04 01:21:51 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4594, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 91.90, #queue-req: 0
+[2026-09-04 01:21:51 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4634, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.83, #queue-req: 0
+[2026-09-04 01:21:52 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4674, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.41, #queue-req: 0
+[2026-09-04 01:21:52 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4714, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 94.08, #queue-req: 0
+[2026-09-04 01:21:53 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4754, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.33, #queue-req: 0
+[2026-09-04 01:21:53 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 189, #cached-token: 4608, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 39.54
+[2026-09-04 01:21:53 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4821, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 74.44, #queue-req: 0
+[2026-09-04 01:21:54 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4861, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 92.18, #queue-req: 0
+[2026-09-04 01:21:54 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 4901, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.69, #queue-req: 0
+[2026-09-04 01:21:54 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 0, full token usage: 0.00, mamba num: 0, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 104.10, #queue-req: 0
+[2026-09-04 01:21:54 DP0 TP0 EP0] Prefill batch, #new-seq: 1, #new-token: 876, #cached-token: 4864, full token usage: 0.00, mamba usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 571.43
+[2026-09-04 01:21:55 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5781, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 80.83, #queue-req: 0
+[2026-09-04 01:21:55 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5821, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.17, #queue-req: 0
+[2026-09-04 01:21:56 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5861, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.14, #queue-req: 0
+[2026-09-04 01:21:56 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5901, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 78.60, #queue-req: 0
+[2026-09-04 01:21:57 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5941, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 90.63, #queue-req: 0
+[2026-09-04 01:21:57 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 5981, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 81.47, #queue-req: 0
+[2026-09-04 01:21:57 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6021, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.89, #queue-req: 0
+[2026-09-04 01:21:58 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6061, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.49, #queue-req: 0
+[2026-09-04 01:21:58 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6101, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.28, #queue-req: 0
+[2026-09-04 01:21:59 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6141, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 71.90, #queue-req: 0
+[2026-09-04 01:21:59 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6181, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 88.79, #queue-req: 0
+[2026-09-04 01:22:00 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6221, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.11, #queue-req: 0
+[2026-09-04 01:22:00 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6261, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 101.81, #queue-req: 0
+[2026-09-04 01:22:00 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6301, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 102.65, #queue-req: 0
+[2026-09-04 01:22:01 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6341, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 101.38, #queue-req: 0
+[2026-09-04 01:22:01 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6381, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 101.96, #queue-req: 0
+[2026-09-04 01:22:02 DP0 TP0 EP0] Decode batch, #running-req: 1, #full token: 6421, full token usage: 0.00, mamba num: 4, mamba usage: 0.00, cuda graph: True, gen throughput (token/s): 101.44, #queue-req: 0
+[2026-09-04 01:25:57 DP0 TP0 EP0] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP4 EP4] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP2 EP2] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP1 EP1] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP6 EP6] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP7 EP7] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP5 EP5] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP3 EP3] Reset HybridReqToTokenPool
+[2026-09-04 01:25:57 DP0 TP0 EP0] Cache flushed successfully!
+[2026-09-04 01:26:04 DP0 TP0 EP0] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP2 EP2] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP5 EP5] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP3 EP3] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP7 EP7] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP1 EP1] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP6 EP6] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP4 EP4] Weight version changed. old_version='1' new_version='2' num_recorded=0
+[2026-09-04 01:26:04 DP0 TP0 EP0] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP2 EP2] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP3 EP3] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP4 EP4] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP1 EP1] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP6 EP6] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP7 EP7] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:26:04 DP0 TP5 EP5] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:18 DP0 TP4 EP4] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP0 EP0] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP2 EP2] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP1 EP1] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP3 EP3] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP7 EP7] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP5 EP5] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP6 EP6] Reset HybridReqToTokenPool
+[2026-09-04 01:31:18 DP0 TP0 EP0] Cache flushed successfully!
+[2026-09-04 01:31:26 DP0 TP0 EP0] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP6 EP6] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP2 EP2] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP5 EP5] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP4 EP4] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP1 EP1] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP3 EP3] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP7 EP7] Weight version changed. old_version='2' new_version='3' num_recorded=0
+[2026-09-04 01:31:26 DP0 TP7 EP7] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP3 EP3] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP1 EP1] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP4 EP4] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP0 EP0] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP2 EP2] [continue_generation] torch.cuda.empty_cache() called: reserved 155826.0 MB -> 154314.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP5 EP5] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)
+[2026-09-04 01:31:26 DP0 TP6 EP6] [continue_generation] torch.cuda.empty_cache() called: reserved 155828.0 MB -> 154316.0 MB (freed 1512.0 MB)

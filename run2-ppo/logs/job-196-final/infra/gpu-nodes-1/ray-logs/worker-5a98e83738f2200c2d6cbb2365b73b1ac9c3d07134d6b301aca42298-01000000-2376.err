@@ -1,0 +1,148 @@
+:job_id:01000000
+:actor_name:MegatronTrainRayActor
+[2026-09-04 01:00:24.713 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=init phase=start
+[2026-09-04 01:00:24.713 critic_cell0_rank1] reloadable_process_group.py:21 - Applying monkey patch to torch.distributed
+[2026-09-04 01:00:26.703 critic_cell0_rank1] train_actor.py:132 - Set NUMA affinity for GPU 1
+[2026-09-04 01:00:36.761 critic_cell0_rank1] actor.py:162 - Set torch_memory_saver.memory_margin_bytes to 1073741824
+/root/Megatron-LM/megatron/core/transformer/transformer_config.py:2278: UserWarning: If you are using transformer_engine as the transformer implementation, the core_attn is from transformer_engine and may be the fused version. For fused attention, you have no need to set 'core_attn' to recompute. Please check that the core_attn recompute is really needed.
+  warnings.warn(
+/root/Megatron-LM/megatron/core/models/mimo/config/base_configs.py:12: UserWarning: MimoModelConfig is experimental and still under active development. The API may change without notice in future releases.
+  class MimoModelConfig:
+/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/utils.py:485: UserWarning: torch.distributed is disabled, unavailable or uninitialized, assuming the intent is to load in a single process.
+  return func(*args, **kwargs)
+[2026-09-04 01:00:52.350 critic_cell0_rank1] utils.py:996 - make_tp_sharded_tensor_for_checkpoint received extra kwargs: ['allow_shape_mismatch']
+/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/logger.py:90: UserWarning: The argument order of load has been changed. Please check the document to avoid future breakages.
+  result = func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/utils.py:483: UserWarning: torch.distributed is disabled, unavailable or uninitialized, assuming the intent is to load in a single process.
+  return func(args[0], **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/planner_helpers.py:489: FutureWarning: Please use DTensor instead and we are deprecating ShardedTensor.
+  device = getattr(value, "device", None)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/default_planner.py:503: FutureWarning: Please use DTensor instead and we are deprecating ShardedTensor.
+  and md.size != obj.size()
+[2026-09-04 01:01:02.858 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=sleep phase=start
+[2026-09-04 01:01:03.682 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 139.3, 'used_GB': 39.05, 'allocated_GB': 33.34, 'reserved_GB': 33.35}
+[2026-09-04 01:01:05.875 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 172.62, 'used_GB': 5.72, 'allocated_GB': 33.34, 'reserved_GB': 33.35}
+[2026-09-04 01:01:05.875 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=sleep phase=end ok=true elapsed_s=3.0
+[2026-09-04 01:01:05.875 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=init phase=end ok=true elapsed_s=41.2
+[2026-09-04 01:02:48.679 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train phase=start
+[2026-09-04 01:02:48.680 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=wake_up phase=start
+[2026-09-04 01:02:48.683 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before wake_up model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 172.62, 'used_GB': 5.72, 'allocated_GB': 33.34, 'reserved_GB': 33.35}
+[2026-09-04 01:02:50.597 critic_cell0_rank1] reloadable_process_group.py:151 - Reloading 19 process groups in pid 2376
+[2026-09-04 01:02:50.602 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after wake_up model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 139.29, 'used_GB': 39.05, 'allocated_GB': 33.34, 'reserved_GB': 33.35}
+[2026-09-04 01:02:50.602 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=wake_up phase=end ok=true elapsed_s=1.9
+[2026-09-04 01:02:50.608 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train_critic phase=start
+[WARNING] Field "span" in type "ir.TupleType" duplicates an ancestor field in "ir.Type". Child types should not re-register inherited fields.
+[WARNING] Field "span" in type "ir.FuncType" duplicates an ancestor field in "ir.Type". Child types should not re-register inherited fields.
+[WARNING] Field "span" in type "ir.TensorMapType" duplicates an ancestor field in "ir.Type". Child types should not re-register inherited fields.
+[WARNING] Field "binding_blocks" in type "script.ir_builder.relax.FunctionFrame" duplicates an ancestor field in "script.ir_builder.relax.SeqExprFrame". Child types should not re-register inherited fields.
+[WARNING] Field "output" in type "script.ir_builder.relax.FunctionFrame" duplicates an ancestor field in "script.ir_builder.relax.SeqExprFrame". Child types should not re-register inherited fields.
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'span' in 'ir.TupleType' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'span' in 'ir.FuncType' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'span' in 'ir.TensorMapType' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'name' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'tag' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'attrs' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'shape' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'dtype' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+[WARNING] Field "policy_type" in type "tl.GemmSPWarpPolicy" duplicates an ancestor field in "tl.GemmWarpPolicy". Child types should not re-register inherited fields.
+[WARNING] Field "m_warp" in type "tl.GemmSPWarpPolicy" duplicates an ancestor field in "tl.GemmWarpPolicy". Child types should not re-register inherited fields.
+[WARNING] Field "n_warp" in type "tl.GemmSPWarpPolicy" duplicates an ancestor field in "tl.GemmWarpPolicy". Child types should not re-register inherited fields.
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'policy_type' in 'tl.GemmSPWarpPolicy' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'm_warp' in 'tl.GemmSPWarpPolicy' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'n_warp' in 'tl.GemmSPWarpPolicy' duplicates an ancestor field. Child types should not re-register inherited fields.
+  info = core._register_object_by_index(type_index, cls)
+[2026-09-04 01:03:11.858 critic_cell0_rank1] __init__.py:209 - [FLA Backend] gated_delta_rule.chunk_gated_delta_rule -> flash_qla
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/nvidia_cutlass_dsl/dsl_packages/cutlass/base_dsl/dsl.py:2309: UserWarning: Argument aux_data (position 18) cannot be converted to a JitArgument for function 'cutlass___call___flash_attncutesm100_hd256_2cta_fmha_forwardBlackwellFusedMultiHeadAttentionForward_object_at__Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi'. Its type `<class 'flash_attn.cute.utils.AuxData'>` is not supported. If the value is known at compile time, annotate it: `aux_data: Constexpr`. Otherwise, implement the `JitArgument` or `DynamicExpression` protocol for type `<class 'flash_attn.cute.utils.AuxData'>`, or register a custom argument adapter.
+  exe_args, func_types, adapted_args = self.generate_mlir_function_types(
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/nvidia_cutlass_dsl/dsl_packages/cutlass/base_dsl/dsl.py:2309: UserWarning: Argument aux_data (position 18) cannot be converted to a JitArgument for function 'cutlass___call___flash_attncutesm100_hd256_2cta_fmha_forwardBlackwellFusedMultiHeadAttentionForward_object_at__Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi'. Its type `<class 'flash_attn.cute.utils.AuxData'>` is not supported. If the value is known at compile time, annotate it: `aux_data: Constexpr`. Otherwise, implement the `JitArgument` or `DynamicExpression` protocol for type `<class 'flash_attn.cute.utils.AuxData'>`, or register a custom argument adapter.
+  exe_args, func_types, adapted_args = self.generate_mlir_function_types(
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/campaign/miles/miles/backends/training_utils/loss.py:218: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  torch.tensor(num_tokens if args.calculate_per_token_loss else 1, device=logits.device),
+/usr/local/lib/python3.12/dist-packages/nvidia_cutlass_dsl/dsl_packages/cutlass/base_dsl/dsl.py:2309: UserWarning: Argument aux_data (position 21) cannot be converted to a JitArgument for function 'cutlass___call___flash_attncutesm100_hd256_2cta_fmha_backwardBlackwellFusedMultiHeadAttentionBackward_object_at__Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmem'. Its type `<class 'flash_attn.cute.utils.AuxData'>` is not supported. If the value is known at compile time, annotate it: `aux_data: Constexpr`. Otherwise, implement the `JitArgument` or `DynamicExpression` protocol for type `<class 'flash_attn.cute.utils.AuxData'>`, or register a custom argument adapter.
+  exe_args, func_types, adapted_args = self.generate_mlir_function_types(
+/root/Megatron-LM/megatron/core/pipeline_parallel/schedules.py:220: UserWarning: The AccumulateGrad node's stream does not match the stream of the node that produced the incoming gradient. This may incur unnecessary synchronization and break CUDA graph capture if the AccumulateGrad node's stream is the default stream. This mismatch is caused by an AccumulateGrad node created prior to the current iteration being kept alive. This can happen if the autograd graph is still being kept alive by tensors such as the loss, or if you are using DDP, which will stash a reference to the node. To resolve the mismatch, delete all references to the autograd graph or ensure that DDP initialization is performed under the same stream as subsequent forwards. If the mismatch is intentional, you can use torch.autograd.graph.set_warn_on_accumulate_grad_stream_mismatch(False) to suppress this warning. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/input_buffer.cpp:310.)
+  Variable._execution_engine.run_backward(
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+[2026-09-04 01:05:01.867 critic_cell0_rank1] model.py:642 - ft op=train_step rollout=0 step=0 attempt=0 outcome=NORMAL valid_step=true
+[2026-09-04 01:05:02.331 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train_critic phase=end ok=true elapsed_s=131.7
+[2026-09-04 01:05:02.331 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train phase=end ok=true elapsed_s=133.7
+[2026-09-04 01:05:02.337 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=sleep phase=start
+[2026-09-04 01:05:03.763 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 113.92, 'used_GB': 64.42, 'allocated_GB': 34.5, 'reserved_GB': 47.27}
+[2026-09-04 01:05:13.622 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 171.91, 'used_GB': 6.43, 'allocated_GB': 34.5, 'reserved_GB': 47.27}
+[2026-09-04 01:05:13.622 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=sleep phase=end ok=true elapsed_s=11.3
+[2026-09-04 01:08:09.745 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train phase=start
+[2026-09-04 01:08:09.746 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=wake_up phase=start
+[2026-09-04 01:08:09.750 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before wake_up model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 170.69, 'used_GB': 7.65, 'allocated_GB': 34.5, 'reserved_GB': 47.27}
+[2026-09-04 01:08:13.939 critic_cell0_rank1] reloadable_process_group.py:151 - Reloading 19 process groups in pid 2376
+[2026-09-04 01:08:13.941 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after wake_up model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 123.47, 'used_GB': 54.88, 'allocated_GB': 34.5, 'reserved_GB': 47.27}
+[2026-09-04 01:08:13.941 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=wake_up phase=end ok=true elapsed_s=4.2
+[2026-09-04 01:08:13.945 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train_critic phase=start
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+[rank1]:W0904 01:08:25.159000 2376 torch/_dynamo/convert_frame.py:1994] [1/8] torch._dynamo hit config.recompile_limit (8)
+[rank1]:W0904 01:08:25.159000 2376 torch/_dynamo/convert_frame.py:1994] [1/8]    function: 'bias_dropout_add_fused_inference' (/root/Megatron-LM/megatron/core/fusions/fused_bias_dropout.py:79)
+[rank1]:W0904 01:08:25.159000 2376 torch/_dynamo/convert_frame.py:1994] [1/8]    last reason: 1/6: residual.stride()[1] == 2048*x_with_bias[0].size()[0]  # (unknown source residual.stride()[1], please file a bug)
+[rank1]:W0904 01:08:25.159000 2376 torch/_dynamo/convert_frame.py:1994] [1/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank1]:W0904 01:08:25.159000 2376 torch/_dynamo/convert_frame.py:1994] [1/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+/campaign/miles/miles/backends/training_utils/loss.py:218: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  torch.tensor(num_tokens if args.calculate_per_token_loss else 1, device=logits.device),
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
+  return func(*args, **kwargs)
+/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
+  return func(*args, **kwargs)
+[2026-09-04 01:08:55.221 critic_cell0_rank1] model.py:642 - ft op=train_step rollout=1 step=0 attempt=0 outcome=NORMAL valid_step=true
+[2026-09-04 01:08:55.452 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train_critic phase=end ok=true elapsed_s=41.5
+[2026-09-04 01:08:55.453 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train phase=end ok=true elapsed_s=45.7
+[2026-09-04 01:08:55.457 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=sleep phase=start
+[2026-09-04 01:08:56.653 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 113.55, 'used_GB': 64.79, 'allocated_GB': 34.28, 'reserved_GB': 46.42}
+[2026-09-04 01:09:15.153 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 170.69, 'used_GB': 7.65, 'allocated_GB': 34.28, 'reserved_GB': 46.42}
+[2026-09-04 01:09:15.154 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=sleep phase=end ok=true elapsed_s=19.7
+[2026-09-04 01:10:58.115 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=wake_up phase=start
+[2026-09-04 01:10:58.124 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before wake_up model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 170.69, 'used_GB': 7.66, 'allocated_GB': 34.28, 'reserved_GB': 46.42}
+[2026-09-04 01:11:02.001 critic_cell0_rank1] reloadable_process_group.py:151 - Reloading 19 process groups in pid 2376
+[2026-09-04 01:11:02.003 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after wake_up model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 124.31, 'used_GB': 54.03, 'allocated_GB': 34.28, 'reserved_GB': 46.42}
+[2026-09-04 01:11:02.003 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=wake_up phase=end ok=true elapsed_s=3.9
+[2026-09-04 01:11:02.331 critic_cell0_rank1] utils.py:996 - make_tp_sharded_tensor_for_checkpoint received extra kwargs: ['allow_shape_mismatch']
+[2026-09-04 01:11:02.539 critic_cell0_rank1] validation.py:361 - Rank 1 common state dict differs from rank 0 common state dict. Keys only on rank 0: [], Keys only on 1: [], Mismatched keys: [(('args',), <class 'argparse.Namespace'>, <class 'argparse.Namespace'>)]
+[2026-09-04 01:11:08.747 critic_cell0_rank1] torch.py:763 - MCore's async save is deprecated and will be removed in the future releases. Please, use NVRx async solution by setting `async_strategy` to `nvrx`.
+[2026-09-04 01:11:22.658 critic_cell0_rank1] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=sleep phase=start
+[2026-09-04 01:11:31.639 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage before offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 122.54, 'used_GB': 55.81, 'allocated_GB': 34.28, 'reserved_GB': 46.42}
+[2026-09-04 01:11:38.586 critic_cell0_rank1] memory_utils.py:41 - [Rank 1] Memory-Usage after offload model: {'gpu': '1', 'total_GB': 178.34, 'free_GB': 170.68, 'used_GB': 7.67, 'allocated_GB': 34.28, 'reserved_GB': 46.42}
+[2026-09-04 01:11:38.587 critic_cell0_rank1] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=sleep phase=end ok=true elapsed_s=15.9

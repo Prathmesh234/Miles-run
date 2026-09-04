@@ -1,3 +1,17 @@
+# Miles experiments: GRPO-style / IPO, PPO, and async PPO + TIS
+
+**[Read the three-run infrastructure report](comparison-infrastructure/README.md)** for the final results and clean, exportable charts: rollout time, actual overlap, weight-publication latency, IB/NVLink utilization, off-policy correction and optimizer offloading.
+
+**[Run folders and essential startup scripts](RUNS.md)** preserve the exact sources and evidence for jobs 190, 196 and 197. Earlier snapshots and the invalid cancelled job-195 attempt remain separate. No old run artifacts were deleted.
+
+The report distinguishes sampled fabric utilization from actual scaling efficiency: no node-count or GPU-count scaling sweep was performed.
+
+---
+
+## Archived job-190 report
+
+The following original report concerns job 190 and its Prime-RL baseline only; use the report above for the later PPO runs.
+
 # Miles / Megatron Terminal-Lego run — job 190
 
 Completed **3 September 2026** on **32 NVIDIA B200 GPUs**. This repository now contains the completed Miles experiment, its comparison with Prime-RL job 181, reproducibility scripts, and infrastructure evidence. It replaces the previous job-177 working tree; older work remains in Git history.
