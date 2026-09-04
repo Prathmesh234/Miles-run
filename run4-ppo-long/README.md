@@ -1,0 +1,61 @@
+# Run 4 — longer synchronous PPO (preparation)
+
+**Not submitted.** The requested “ADB” model needs clarification; 80B is the
+proposed interpretation, not a confirmed selection. Checkpoint cadence also
+needs confirmation before launch. No model weights have been downloaded.
+
+The target is 10 actor optimizer updates and 10 critic optimizer updates:
+10 rollout batches × 1 update per role per batch, with global batch size 16.
+Start from the larger model's original weights, not a trained checkpoint.
+Use job 196 as the synchronous reference and preserve its workload settings.
+
+## Important: startup scripts
+
+The `scripts/` directory is the authoritative place for startup and validation
+code. `long_run_config.py` provides the shared contract and argument extension;
+it is **not yet a submission script**. It rejects unresolved model and save
+options. Run 5 shares this code rather than duplicating it.
+
+Run the preparation checks from the repository root:
+
+```sh
+python3 -m unittest discover -s run4-ppo-long/scripts -p test_long_run.py -v
+```
+
+The six tests cover the ten-update boundary, immutable model revisions,
+preservation of unrelated training arguments, CPU offload requirements, and
+the native async driver's ten-step schedule with fake actors. They do not
+establish GPU/model compatibility or prove ten actual optimizer updates.
+
+## CPU offloading
+
+The prior runs already enabled CPU Adam. Retain
+`--optimizer-cpu-offload`, `--overlap-cpu-optimizer-d2h-h2d`, and
+`--use-precision-aware-optimizer`, and make the phase-boundary target explicit
+with `--offload-train --offload-train-target cpu`.
+
+Miles' [pinned Qwen3-Next 80B recipe](https://github.com/radixark/miles/blob/70b89e11770fc9bac984e22cfff89c51cca44203/docs/models/qwen/qwen3-next.md)
+documents CPU Adam for that model. Its stock GSPO, colocation, parallelism and
+speculative-decoding settings must **not** silently replace this experiment's
+PPO task configuration. The model's tokenizer, renderer, architecture recipe,
+weight conversion and router precision need validation after model selection.
+
+Miles distinguishes [paused-model offload from optimizer state placement](https://github.com/radixark/miles/blob/70b89e11770fc9bac984e22cfff89c51cca44203/docs/advanced/disk-offload.md).
+CPU optimizer referenced bytes, process RSS, HBM usage and offload wall time
+will be reported separately; none alone measures PCIe bandwidth. CPU offload
+is requested here, not NVMe streaming or disk-backed model offload.
+
+## Storage and publication
+
+At preparation time all four nodes were idle and `/shared` had approximately
+2,643.5 GiB free. Two 80B runs saving actor and critic weights at updates
+2/4/6/8/10 would require approximately 3.2 TB of BF16 checkpoints alone,
+before model staging/conversion and safety headroom. All old runs must remain.
+The proposed alternative is final actor/critic checkpoints at update 10 only,
+with logs and metrics for every update. This is not yet approved.
+
+Keep the existing per-run `scripts/`, `config/`, `logs/`, and `charts/` layout.
+Publish only reviewed scripts/configuration, consolidated metrics, essential
+logs, charts and verification receipts. Retain full archives and weights on
+the cluster; do not add duplicated source trees or per-process debug dumps to
+Git. Final reports must distinguish preparation tests from executed results.
