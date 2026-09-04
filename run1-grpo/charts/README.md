@@ -1,5 +1,7 @@
 # Infrastructure charts — job 190
 
+**[RL charts are in rl/](rl/README.md):** rewards/admission, IPO optimization, rollout behavior and task outcomes, with PNG/SVG exports and source hashes. Infrastructure plots below are preserved.
+
 Rendered from the committed telemetry in `evidence-job-190/job-190/` by [`plot_infra_charts.py`](../plot_infra_charts.py). These are post-publication analysis artifacts derived from the evidence; they are not part of `publication-manifest.json`. Regenerate with `python3 plot_infra_charts.py` from the repository root (requires matplotlib and numpy).
 
 Shaded bands on time-series charts are the two trainer update windows from `infrastructure-runtime-summary.json`; dotted lines are `training_start` / `training_end` from `timeline.jsonl`. All times are UTC, 3 September 2026.

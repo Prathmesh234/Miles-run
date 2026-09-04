@@ -11,6 +11,8 @@ Use job 196 as the synchronous reference and preserve its workload settings.
 
 ## Important: startup scripts
 
+After this run produces evidence, use the shared [RL renderer](../comparison-infrastructure/rl_charts.py) with `--folder run4-ppo-long --log-root <repository-relative-log-directory> --rollout-root <repository-relative-rollout-directory> --job-id <actual-job-id> --label 'Long synchronous PPO'`. All five arguments are required. It will write reward, task-outcome, policy, rollout and critic charts under `charts/rl/`, plus compact metrics and source hashes. No RL curves exist yet because this job has not run. The original workload uses binary solved rewards and eight-sample groups; different workloads require adapting and validating the recipe.
+
 The `scripts/` directory is the authoritative place for startup and validation
 code. `long_run_config.py` provides the shared contract and argument extension.
 `build_bundle.py` connects that contract to the trainer, rollout bridge, and

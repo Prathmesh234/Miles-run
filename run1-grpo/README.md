@@ -5,6 +5,8 @@ The folder name is convenient shorthand: this run used **group-relative credit w
 
 **Startup scripts matter:** see [scripts/README.md](scripts/README.md). Those are the frozen run sources, including `run.sbatch`, `coordinator.py`, `training_entry.py` and the pinned-harness adapter.
 
+**[RL chart gallery](charts/rl/README.md):** rewards before/after admission, custom IPO objective, entropy, actor gradients, mismatch, masking, rollout lengths/truncation and per-task outcomes. PNG/SVG exports and compact source metrics are included; critic learning and TIS do not apply to this run.
+
 - `logs/`: training, harness, infrastructure and event logs.
 - `rollouts/`: recorded task episodes and accepted batches.
 - `metrics/`: extracted scalars, checkpoint verification and baseline comparison.

@@ -6,6 +6,7 @@
 
 ## Final evidence
 
+- [RL chart gallery](charts/rl/README.md): rewards, task outcomes, policy loss/entropy/gradients, PPO clipping/KL/ESS, rollout behavior and critic learning, in PNG/SVG with source metrics and hashes.
 - [Final training/infrastructure logs](logs/job-196-final/) and [SHA-256 snapshot manifest](logs/job-196-final/snapshot-manifest.json).
 - [Actor checkpoint checks](logs/job-196-final/checkpoint-verification.json) and [critic checkpoint checks](logs/job-196-final/critic-checkpoint-verification.json): all referenced byte ranges exist, six small tensors loaded on CPU per role, sampled parameters changed from base. Not a full distributed resume test.
 - [Final per-run GPU charts](charts/final/) and [three-run infrastructure comparison](../comparison-infrastructure/README.md): rollout time, execution overlap, weight publication, InfiniBand, NVLink, TIS and optimizer/offload observations.

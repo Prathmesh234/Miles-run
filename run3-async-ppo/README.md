@@ -16,6 +16,8 @@ The actor CPU-backup and resident-broadcast fixes are retained. A pre-training p
 
 ## Metrics enabled
 
+**[RL chart gallery](charts/rl/README.md):** six multi-panel PNG/SVG figures covering rewards, task outcomes, policy optimization, rollout behavior, critic learning, policy lag and TIS. The correction view distinguishes behavior-policy mismatch from PPO's pre-update reference metrics.
+
 - Driver wall time for each weight publication, with actor onload/offload timed separately.
 - Attempted per-rank lifecycle wrappers produced no records; native structured logs retain a partial, rounded rank-labelled view. Complete driver onload/offload spans and optimizer-step CPU RSS/CUDA memory records are available.
 - Optimizer step wall time, CPU/GPU referenced optimizer storage sizes before/after each step, optimizer classes and instrumentation overhead.

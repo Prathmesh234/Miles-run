@@ -1,5 +1,8 @@
 # Miles experiments: GRPO-style / IPO, PPO, and async PPO + TIS
 
+**RL chart galleries:** [Run 1 — GRPO-style/IPO](run1-grpo/charts/rl/README.md) · [Run 2 — PPO](run2-ppo/charts/rl/README.md) · [Run 3 — async PPO + TIS](run3-async-ppo/charts/rl/README.md).
+Fifteen multi-panel figures in PNG/SVG cover raw rewards, task outcomes, policy loss/entropy/gradients, clipping, rollout behavior, PPO critic learning, and async importance correction. Each gallery includes compact source data, hashes, interpretation notes and missing metrics. These are two-update training diagnostics, not held-out learning curves.
+
 **[Read the three-run infrastructure report](comparison-infrastructure/README.md)** for the final results and clean, exportable charts: rollout time, actual overlap, weight-publication latency, IB/NVLink utilization, off-policy correction and optimizer offloading.
 
 **[Run folders and essential startup scripts](RUNS.md)** preserve the exact sources and evidence for jobs 190, 196 and 197. Earlier snapshots and the invalid cancelled job-195 attempt remain separate. No old run artifacts were deleted.
