@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "interventions": [
+    {
+      "event": "staging_source_list_error",
+      "classification": "experimental_configuration",
+      "job_id": null,
+      "optimizer_steps": 0,
+      "failure": "Generated sitecustomize.py was incorrectly listed as source input.",
+      "fix": "Removed nonexistent input; retained failed local preflight."
+    },
+    {
+      "event": "native_test_runner_error",
+      "classification": "experimental_configuration",
+      "job_id": 191,
+      "optimizer_steps": 0,
+      "failure": "AST fixture compilation lacked location metadata.",
+      "fix": "ast.fix_missing_locations; repeated native CPU tests passed."
+    },
+    {
+      "event": "transport_test_fixture_errors",
+      "classification": "experimental_configuration",
+      "job_id": null,
+      "optimizer_steps": 0,
+      "failure": "Test referenced an absent baseline fixture, then tried to set computed Trace.reward.",
+      "fix": "Use immutable job190 episode fixtures; change reward components in copied serialized test objects. All 56 transport fixtures passed."
+    },
+    {
+      "event": "tensorboard_read_only_cwd",
+      "classification": "Miles_deployment_integration",
+      "job_id": 192,
+      "optimizer_steps": 0,
+      "failure": "TensorBoard creates a relative directory under the read-only Miles source mount.",
+      "fix": "Use the current run directory as writable container cwd; retain read-only baseline mounts."
+    },
+    {
+      "event": "retry_preflight_busy",
+      "classification": "experimental_configuration",
+      "job_id": null,
+      "optimizer_steps": 0,
+      "failure": "Retry preflight ran while job192 was still collecting evidence and cleaning up.",
+      "fix": "No submission occurred; waited for cleanup before a new preflight."
+    },
+    {
+      "event": "ppo_offloaded_actor_broadcast",
+      "classification": "Miles_lifecycle_suspected",
+      "job_id": 193,
+      "optimizer_steps": 0,
+      "failure": "All 16 actor workers segfaulted during process-group reload before the initial broadcast after critic initialization.",
+      "evidence": "training.log: 2026-09-04T00:39:19Z; actor and critic both loaded base checkpoint successfully.",
+      "health": "All 32 GPUs remained visible; sampled uncorrected ECC zero; no new XID/OOM lines. NVLink in-band-send warnings also occurred in the prior successful baseline.",
+      "fix": "14-line driver lifecycle change, commit 6ef4ae5581fa9e4558df22f39e92a24b67687a4b; onload non-colocated PPO actor before broadcast, offload in finally; eight CPU ordering/error-path tests passed.",
+      "causal_status": "Job195 passed the former crash point, but then failed actor-weight validity. Residency alone was insufficient; see the separate parameter-backup intervention."
+    },
+    {
+      "event": "patch_preparation_git_metadata",
+      "classification": "experimental_configuration",
+      "job_id": 194,
+      "optimizer_steps": 0,
+      "failure": "Staged Miles source was an exported tree without .git metadata.",
+      "fix": "Pin and verify the exact base-driver SHA-256, then apply the recorded patch. Standalone patch-application and lifecycle tests passed."
+    },
+    {
+      "event": "validation_metric_isolation",
+      "classification": "experimental_configuration",
+      "job_id": 195,
+      "failure": "The pre-training transport mock writes one record to generation-timing.jsonl in the frozen launcher.",
+      "fix": "Analysis excludes only the exact [34,99] mock completion with prompt length 3 and timestamp before training_start, recording the exclusion. Future test code writes to validation/ instead. Real rollout logs remain unchanged."
+    },
+    {
+      "event": "ppo_parameter_backup_disabled",
+      "classification": "Miles_lifecycle",
+      "job_id": 195,
+      "actor_step_calls": 1,
+      "valid_actor_updates": 0,
+      "critic_step_calls": 1,
+      "failure": "Actor log probabilities uniformly -12.42247; actor gradient norm zero. Stopped after first actor step rather than claiming learning.",
+      "cause": "Offload validation disables actor parameter-buffer backup; disjoint actor has no alternative TensorBackuper. Critic explicitly retains its backup.",
+      "fix": "Second driver patch commit 90c5eb3f272b736f5c91d97fe8fcb6f03605e277 preserves actor parameter backup; added pre-training uniform-policy rejection gate. Eight lifecycle/configuration cases passed.",
+      "causal_status": "Job196 passed the uniform-policy gate with 36,607 finite active-token logprobs and nonuniform generation. First base-model batch reward 0.875; actor gradient/checkpoint checks still pending."
+    },
+    {
+      "event": "cancel_cleanup_allocation_lost",
+      "classification": "experimental_configuration",
+      "job_id": 195,
+      "failure": "scancel removed allocation before coordinator srun cleanup could finish.",
+      "fix": "Read-only evidence capture then stopped only miles-ppo-195 containers through existing kubectl access; confirmed no remaining GPU processes on all four nodes. No prune/deletion."
+    }
+  ]
+}

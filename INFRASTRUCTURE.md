@@ -1,5 +1,7 @@
 # Terminal-Lego infrastructure evidence
 
+> Historical report for job 190. The current PPO comparison is in [results/REPORT.md](results/REPORT.md). Raw paths below refer to the retained archive; redundant snapshots are no longer tracked in Git. Consolidated historical JSON is in [results/legacy-evidence.json](results/legacy-evidence.json).
+
 Captured on 3 September 2026 from the four assigned GPU workers. Job 190 completed two optimizer updates and saved its checkpoint. This report documents inventory and collection methods; measured results and comparison limits are in [COMPARISON.md](COMPARISON.md).
 
 ## Placement
@@ -30,7 +32,7 @@ These are the same physical training/inference node groups used by baseline job 
 | Worker userspace | Ubuntu 26.04 LTS |
 | Slurm | 26.05.2 |
 
-Raw GPU UUIDs, PCI bus IDs, clocks, firmware, ECC/error information, CPU flags, and device topology are retained in `hardware-inventory.json` and `infra-preflight/`. No power limits, clocks, device settings or host networking were changed for this comparison.
+Raw GPU UUIDs, PCI bus IDs, clocks, firmware, ECC/error information, CPU flags, and device topology are retained in `hardware-inventory.json` and the archived `infra-preflight/` directory (raw files remain in the original local archive and prior Git history). No power limits, clocks, device settings or host networking were changed for this comparison.
 
 ## Networking
 

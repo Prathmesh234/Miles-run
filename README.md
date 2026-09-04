@@ -1,75 +1,60 @@
-# Miles / Megatron Terminal-Lego run — job 190
+# Miles: PPO versus IPO on Qwen3.6-35B-A3B
 
-Completed **3 September 2026** on **32 NVIDIA B200 GPUs**. This repository now contains the completed Miles experiment, its comparison with Prime-RL job 181, reproducibility scripts, and infrastructure evidence. It replaces the previous job-177 working tree; older work remains in Git history.
+This repository contains reproducible launch code and compact evidence for the four-node Vultr B200 experiment. The PPO repeat uses the same base model, four Terminal-Lego tasks, batch settings, and **two actor updates** as Miles IPO job 190. Prime-RL IPO job 181 is the historical comparison.
 
-## Results
+**This is a functionality/performance smoke test, not evidence of improved held-out model quality.** PPO adds a learned critic and retains zero-variance reward groups, so accepted task mixtures and generated work differ. The matched recipe is synchronous, without MTP, and uses the prior cross-node SGLang EP16 engine. It is not the earlier proposed asynchronous EP8-per-node benchmark.
 
-| Item | Result |
-| --- | --- |
-| Slurm job | **190 — COMPLETED, exit 0:0** |
-| Training | **Two optimizer updates**, 16 accepted traces each |
-| Model | Qwen3.6-35B-A3B, original base weights |
-| Backends | Miles + Megatron trainer + SGLang inference |
-| Allocation | Four nodes, 14m34s, 7.77 allocated GPU-hours |
-| Final checkpoint | `runs/job-190/checkpoints/iter_0000001` — zero-based ID, after update two |
-| Second trainer update | 19.01s; baseline approximately 19.40s with different timer boundaries |
-| Inference-ready → checkpoint | Miles 7m39.65s; baseline 5m41s |
-| Original run | Preserved; final source/config hash audit passed |
+## Results and charts
 
-This is a **two-update functionality/performance smoke test**, not a model-quality result or a controlled backend speedup benchmark. Precision, kernels, rollout scheduling and generated trajectories differ. Failed setup attempts and final shutdown warnings are documented, not omitted.
+- [Generated comparison report](results/REPORT.md), [training charts](results/training-comparison.svg), [PPO diagnostics](results/ppo-diagnostics.svg), and [infrastructure timelines](results/infrastructure-timeline.svg).
+- [Consolidated metrics](results/comparison.json): all training scalars, task-level outcomes, timing phases, GPU/node/link distributions, and collector errors.
+- [Sampled timelines](results/timeseries.csv), [provenance and archive index](results/provenance.json), and [failure/intervention log](results/interventions.json).
+- [Original job-190 report](COMPARISON.md), [infrastructure inventory](INFRASTRUCTURE.md), [pinned baseline specification](comparison-spec.json), and [consolidated historical evidence](results/legacy-evidence.json).
 
-## Start here
+Raw transcripts, TensorBoard files, NCCL/Ray logs, per-node collector output, and checkpoints remain in the checksummed local and `/shared` archives. They are not copied into hundreds of Git files. Previous published raw evidence remains in Git history at `0fa4636863b1f61b444a830f74980cb06d59c10e`; this change does not rewrite that history.
 
-- **[Comparison report](COMPARISON.md):** workload, timing, rewards, memory, failed attempts, caveats and checkpoint checks.
-- **[Infrastructure report](INFRASTRUCTURE.md):** GPU/CPU/NUMA topology, IB/RDMA, storage, resource constraints, software versions and telemetry coverage.
-- **[Final status](STATUS.md)** and **[machine-readable results](comparison-results.json)**.
-- **[Configuration and deviations](comparison-spec.json)**, including exact model, dataset and source revisions.
-- **[Checkpoint verification](evidence-job-190/job-190/checkpoint-verification.json)** and **[baseline preservation audit](baseline-preservation-after-job-190.json)**.
+## Reproduce on this cluster
 
-## Repository contents
+The cluster must already have the pinned model/conversion, baseline harness, task images, Miles source, and isolated Docker image cache described in [comparison-spec.json](comparison-spec.json). The launcher is cluster-specific, not a general installer. Supply your own kubeconfig. Submitting reserves all **32 GPUs**.
 
-| Location | Contents |
-| --- | --- |
-| Root `*.py`, `run.sbatch`, `sglang.yaml` | Campaign launch, adapters, precision patch, telemetry, analysis and validation scripts |
-| `evidence-job-190/job-190/source/` | Frozen launch-time source, distinct from later analysis additions |
-| `evidence-job-190/job-190/analysis-source/` | Frozen post-run analysis scripts |
-| `evidence-job-190/job-190/` | Training/harness logs, exact argv, resolved arguments, timelines, accepted traces and all 56 episode records |
-| `evidence-job-190/job-190/infra/` | NCCL/Ray logs, GPU/host time series, local PMA/RDMA counters, before/after snapshots, runtime constraints and precision-patch provenance |
-| `infra-preflight/` | Hardware snapshots before the experiment |
-| `baseline-*.json`, `baseline-metrics.jsonl` | Baseline metrics, task schedule and preservation evidence |
-| `publication-inputs/` | Pinned image digest, base-model conversion provenance and recorded adapter-test result |
-| `publication-manifest.json` | SHA-256 and size of every copied file, exclusions and previous repository commit |
-
-Published evidence is approximately **167 MB of uncompressed text**. Checkpoint/model weights, Docker images, archives, caches, binary rollout dumps and TensorBoard event files are not committed. The complete local/cluster archive retains those run artifacts. The reports were written against that complete archive, so references to TensorBoard and binary debug dumps describe retained evidence, not files included here.
-
-Infrastructure files intentionally include observed private network addresses, node names, device identifiers and filesystem paths. They do **not** include a kubeconfig or access credentials. This is a public evidence repository, not an access mechanism.
-
-## Reproduction scope
-
-These scripts preserve the actual campaign and its environment-specific paths. They are **not a portable one-command installer**. A fresh environment must supply the pinned base-model files, task images, original harness and the four-node Slurm/Docker infrastructure. Large inputs and the original baseline source are referenced by revision/path, not vendored into this repository.
-
-The recorded campaign root is:
-
-```text
-/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030
+```bash
+python3 launch_ppo.py --submit --kubeconfig ~/.kube/vultr-vke.yaml
 ```
 
-The execution sequence was:
+Without `--submit`, this runs only read-only inventory checks. Each submission gets a unique campaign and job directory. The launcher checks GPU inventory, Slurm/Kubernetes counts, idle allocation, image availability, fabric ports, and free space. It runs precision, configuration, PPO math, token/mask transport, and lifecycle gates before optimizer work. It never prunes shared images, alters cluster configuration, or retries automatically.
 
-1. Inventory and preserve the baseline; pin the model, dataset, harness, renderer and Miles revisions in `comparison-spec.json`.
-2. Stage the pinned Miles image in separate `fuse-overlayfs` Docker daemons; keep the original task-image daemon unchanged. See `isolated_docker.py` and `preflight_image.py`.
-3. Supply the pinned Miles checkout at the campaign's `miles/`, scripts at `code/`, and the pinned image digest at `image-digest.json`. The original model is mounted read-only. `remote.py` requires your own local kubeconfig configuration.
-4. Run the adapter fidelity checks in the original pinned harness environment. They require original accepted-episode fixtures and the job-189 errored-group fixture, which are retained on cluster but not all bundled here. The successful recorded result is in [adapter-test-result.json](publication-inputs/preflight/harness-test-v2/adapter-test-result.json).
-5. Submit `run.sbatch` to the four assigned nodes. `coordinator.py` creates a **new job-ID directory**, snapshots its source, applies and validates the job-local precision patch, validates arguments, converts or reuses original base weights, starts the harness and Ray, runs two updates, and stops only job-scoped processes.
-6. Supplement the built-in two-second collector with `capture_rdma.py`, `capture_metrics.py` and `runtime_constraints.py`, as recorded in the evidence. These additional collectors were started separately; `run.sbatch` alone does not reproduce their collection start times.
-7. Extract metrics, verify checkpoint storage ranges and sample tensors, audit baseline preservation, and compare the measured work using the included analysis scripts.
+[ppo-resident-broadcast.patch](ppo-resident-broadcast.patch) records two narrowly scoped Miles commits: retain the non-colocated PPO actor's parameter backup, restore it before broadcasting live tensors, and offload afterward. The original source and base weights stay read-only. The patched driver is generated inside each run after checking the base source SHA-256. Every attempted fix and failed launch is retained in the intervention log.
 
-**Submitting this workload reserves 32 GPUs.** No new training job was launched to publish this repository. Do not rerun against an existing job directory or use the trained baseline checkpoint as the initial model.
+After a run has finished:
 
-## Validation and limitations
+On the worker, use the pinned harness Python to run `verify_checkpoint.py RUN --base BASE_CONVERSION/release`, repeat with `--critic`, then run `finalize_evidence.py RUN`. The latter hashes all base/model/tokenizer and actor/critic checkpoint files **after** the measured window, verifies baseline source/config preservation, and records final scheduler state. Both scripts write only into the completed run directory and refuse to replace existing evidence.
 
-The completed run passed 32 exact IPO value/gradient fixtures, real TrainClient stop/length mapping, all 32 baseline trace conversions, native errored-group admission/credit tests, five GPU precision shapes and CUDA-graph replay. The final checkpoint passed metadata/range checks and three actual CPU tensor reads. **A full distributed checkpoint-resume test was not performed.**
+```bash
+python3 archive_run.py /shared/clustermax-campaigns/<campaign>/runs/job-<id> /path/to/archive/job-<id>
+python3 extract_metrics.py /path/to/archive/job-<id>
+python3 analyze_ppo.py \
+  --ipo /path/to/job-190 \
+  --ppo /path/to/archive/job-<id> \
+  --baseline /path/to/original-comparison-archive \
+  --baseline-gpu-csv /path/to/baseline-gpu-active.csv \
+  --out results
+python3 render_comparison.py results
+```
 
-Publication checks verify copied-file hashes, frozen source manifests, Python syntax, JSON/JSONL parsing and README links. These checks do not rerun GPU training or replace the recorded fidelity tests. Credential-pattern screening found no credentials after reviewing the SGLang `IP:port@DP-rank` URL notation; pattern-based screening is not an exhaustive security guarantee.
+`archive_run.py` verifies each downloaded file against a SHA-256 manifest and excludes large checkpoint shards. `extract_metrics.py` requires TensorBoard. Plotting uses Matplotlib 3.9.4 and NumPy 2.0.2; the full analysis package lock is recorded in provenance. The Markdown and charts are generated from the JSON/CSV, not manually entered measurements.
 
-See [third-party notices](THIRD_PARTY_NOTICES.md) for the retained SGLang/vLLM source snapshots.
+## Local checks
+
+```bash
+python3 -m unittest test_analysis -v
+```
+
+`test_ppo.py` runs against the pinned Miles/harness environments inside the allocation. It checks native policy/value loss gradients, masked GAE, raw rewards, zero-reward admission, sampled IDs/logprobs/tool masks, and the patched lifecycle. Checkpoints match the original weights-only policy; a full optimizer/RNG resume is not claimed.
+
+## Environment compatibility
+
+The online environment is the original pinned Verifiers **v1 API** Terminal-Lego harness in a separate process, connected through exact token-ID/logprob/mask transport to Miles. It is not Miles' stock Verifiers plugin, nor a forced Verifiers package upgrade. The baseline specification records the Verifiers and renderer commits; provenance records both environment package inventories. All 56 archived baseline trajectory fixtures exercise the transport contract, and the PPO tests cover native policy/value gradients and masked GAE.
+
+Strict in-process Miles plus Verifiers 0.3.1 remains **blocked/unvalidated**: the documented Miles 0.2.x/OpenAI 2.6.1 dependency set conflicts with the newer Verifiers/Harbor requirements. This run does not claim to resolve that dependency conflict. No TB2.1 evaluation or Terminal-Bench training data is used in this matched Terminal-Lego smoke test.
+
+No credentials, kubeconfigs, model weights, private ClusterMAX source, or Terminal-Bench hidden tests are published. [Third-party notices](THIRD_PARTY_NOTICES.md) describe retained source provenance.

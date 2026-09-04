@@ -8,7 +8,7 @@
 #SBATCH --exclusive
 #SBATCH --time=04:00:00
 #SBATCH --signal=B:TERM@300
-#SBATCH --output=/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/preflight/slurm-%j.out
 
 set -eu
-exec python3 /shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/code/coordinator.py
+: "${MILES_CAMPAIGN_ROOT:?Set the unique campaign directory; pass --output to sbatch}"
+exec python3 "${MILES_CAMPAIGN_ROOT}/code/coordinator.py"

@@ -1,257 +1,0 @@
-:job_id:01000000
-:actor_name:MegatronTrainRayActor
-[2026-09-03 21:59:32.823 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=init phase=start
-[2026-09-03 21:59:32.823 actor_cell0_rank0] reloadable_process_group.py:21 - Applying monkey patch to torch.distributed
-[2026-09-03 21:59:56.767 actor_cell0_rank0] train_actor.py:132 - Set NUMA affinity for GPU 0
-[2026-09-03 21:59:57.218 actor_cell0_rank0] initialize.py:95 - > setting random seeds to 1234 ...
-[2026-09-03 21:59:57.666 actor_cell0_rank0] base.py:172 - Initialising tracking backend: tensorboard
-[2026-09-03 21:59:57.673 actor_cell0_rank0] tensorboard_utils.py:44 - Saving tensorboard log to tensorboard_log//campaign/runs/job-190/tensorboard/miles.
-/root/Megatron-LM/megatron/core/transformer/transformer_config.py:2278: UserWarning: If you are using transformer_engine as the transformer implementation, the core_attn is from transformer_engine and may be the fused version. For fused attention, you have no need to set 'core_attn' to recompute. Please check that the core_attn recompute is really needed.
-  warnings.warn(
-[2026-09-03 22:00:10.750 actor_cell0_rank0] fp32_param_utils.py:51 - Enforced marked parameter dtypes for 30 tensors.
-/root/Megatron-LM/megatron/core/models/mimo/config/base_configs.py:12: UserWarning: MimoModelConfig is experimental and still under active development. The API may change without notice in future releases.
-  class MimoModelConfig:
-/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/utils.py:485: UserWarning: torch.distributed is disabled, unavailable or uninitialized, assuming the intent is to load in a single process.
-  return func(*args, **kwargs)
-[2026-09-03 22:00:23.956 actor_cell0_rank0] utils.py:996 - make_tp_sharded_tensor_for_checkpoint received extra kwargs: ['allow_shape_mismatch']
-/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/logger.py:90: UserWarning: The argument order of load has been changed. Please check the document to avoid future breakages.
-  result = func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/utils.py:483: UserWarning: torch.distributed is disabled, unavailable or uninitialized, assuming the intent is to load in a single process.
-  return func(args[0], **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/planner_helpers.py:489: FutureWarning: Please use DTensor instead and we are deprecating ShardedTensor.
-  device = getattr(value, "device", None)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/checkpoint/default_planner.py:503: FutureWarning: Please use DTensor instead and we are deprecating ShardedTensor.
-  and md.size != obj.size()
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
-  return func(*args, **kwargs)
-[2026-09-03 22:00:57.344 actor_cell0_rank0] timer.py:31 - Timer train_wait start
-[2026-09-03 22:00:57.345 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=init phase=end ok=true elapsed_s=84.5
-[2026-09-03 22:02:14.268 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=update_weights phase=start
-[2026-09-03 22:02:14.269 actor_cell0_rank0] timer.py:31 - Timer update_weights start
-[2026-09-03 22:02:14.296 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage before update_weights: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 139.31, 'used_GB': 39.03, 'allocated_GB': 36.18, 'reserved_GB': 36.19}
-[2026-09-03 22:02:14.313 actor_cell0_rank0] timer.py:31 - Timer update_weights_implementation start
-[miles-pp_0] Update weights: 0it [00:00, ?it/s]
-Update weights:   0%|          | 0/128 [00:00<?, ?it/s][A[miles-pp_0] Update weights: 1it [00:18, 18.38s/it]
-Update weights:   2%|▏         | 2/128 [00:18<19:17,  9.18s/it][A[miles-pp_0] Update weights: 8it [00:19,  1.85s/it]
-Update weights:   7%|▋         | 9/128 [00:19<03:22,  1.70s/it][A[miles-pp_0] Update weights: 12it [00:19,  1.07s/it]
-Update weights:  10%|█         | 13/128 [00:19<01:57,  1.02s/it][A[miles-pp_0] Update weights: 17it [00:19,  1.62it/s]
-Update weights:  14%|█▍        | 18/128 [00:19<01:06,  1.66it/s][A[miles-pp_0] Update weights: 22it [00:20,  2.56it/s]
-Update weights:  18%|█▊        | 23/128 [00:20<00:40,  2.60it/s][A[miles-pp_0] Update weights: 27it [00:20,  3.84it/s]
-Update weights:  22%|██▏       | 28/128 [00:20<00:25,  3.88it/s][A[miles-pp_0] Update weights: 32it [00:20,  5.54it/s]
-Update weights:  26%|██▌       | 33/128 [00:20<00:17,  5.58it/s][A[miles-pp_0] Update weights: 37it [00:20,  7.72it/s]
-Update weights:  30%|██▉       | 38/128 [00:20<00:11,  7.74it/s][A[miles-pp_0] Update weights: 42it [00:20, 10.33it/s]
-Update weights:  34%|███▎      | 43/128 [00:20<00:08, 10.32it/s][A[miles-pp_0] Update weights: 47it [00:20, 13.31it/s]
-Update weights:  38%|███▊      | 48/128 [00:20<00:06, 13.30it/s][A[miles-pp_0] Update weights: 52it [00:20, 16.82it/s]
-Update weights:  41%|████▏     | 53/128 [00:20<00:04, 16.92it/s][A[miles-pp_0] Update weights: 57it [00:20, 20.94it/s]
-Update weights:  45%|████▌     | 58/128 [00:20<00:03, 21.05it/s][A[miles-pp_0] Update weights: 62it [00:21, 25.16it/s]
-Update weights:  49%|████▉     | 63/128 [00:21<00:02, 25.24it/s][A[miles-pp_0] Update weights: 67it [00:21, 29.27it/s]
-Update weights:  53%|█████▎    | 68/128 [00:21<00:02, 29.33it/s][A[miles-pp_0] Update weights: 72it [00:21, 32.86it/s]
-Update weights:  57%|█████▋    | 73/128 [00:21<00:01, 33.01it/s][A[miles-pp_0] Update weights: 77it [00:21, 36.00it/s]
-Update weights:  61%|██████    | 78/128 [00:21<00:01, 36.08it/s][A[miles-pp_0] Update weights: 82it [00:21, 38.64it/s]
-Update weights:  65%|██████▍   | 83/128 [00:21<00:01, 38.62it/s][A[miles-pp_0] Update weights: 87it [00:21, 40.46it/s]
-Update weights:  69%|██████▉   | 88/128 [00:21<00:00, 40.60it/s][A[miles-pp_0] Update weights: 92it [00:21, 41.84it/s]
-Update weights:  73%|███████▎  | 93/128 [00:21<00:00, 41.95it/s][A[miles-pp_0] Update weights: 97it [00:21, 43.12it/s]
-Update weights:  77%|███████▋  | 98/128 [00:21<00:00, 43.00it/s][A[miles-pp_0] Update weights: 102it [00:21, 43.90it/s]
-Update weights:  80%|████████  | 103/128 [00:21<00:00, 43.96it/s][A[miles-pp_0] Update weights: 107it [00:21, 44.36it/s]
-Update weights:  84%|████████▍ | 108/128 [00:22<00:00, 44.39it/s][A[miles-pp_0] Update weights: 112it [00:22, 45.03it/s]
-Update weights:  88%|████████▊ | 113/128 [00:22<00:00, 44.96it/s][A[miles-pp_0] Update weights: 117it [00:22, 45.22it/s]
-Update weights:  92%|█████████▏| 118/128 [00:22<00:00, 45.35it/s][A[miles-pp_0] Update weights: 122it [00:22, 45.21it/s]
-Update weights:  96%|█████████▌| 123/128 [00:22<00:00, 45.32it/s][A[miles-pp_0] Update weights: 127it [00:22, 45.70it/s]
-Update weights: 100%|██████████| 128/128 [00:22<00:00, 45.56it/s][AUpdate weights: 100%|██████████| 128/128 [00:22<00:00,  5.70it/s]
-[2026-09-03 22:02:36.777 actor_cell0_rank0] timer.py:42 - Timer update_weights_implementation end (elapsed: 22.5s)
-[2026-09-03 22:02:36.777 actor_cell0_rank0] timer.py:31 - Timer finalize_and_resume_engines start
-[2026-09-03 22:02:36.787 actor_cell0_rank0] timer.py:42 - Timer finalize_and_resume_engines end (elapsed: 0.0s)
-[miles-pp_0] Update weights: 129it [00:22,  5.74it/s]
-[2026-09-03 22:02:36.788 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage after update_weights: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 136.08, 'used_GB': 42.26, 'allocated_GB': 36.18, 'reserved_GB': 37.92}
-[2026-09-03 22:02:36.790 actor_cell0_rank0] timer.py:42 - Timer update_weights end (elapsed: 22.5s)
-[2026-09-03 22:02:36.790 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=update_weights phase=end ok=true elapsed_s=22.5
-[2026-09-03 22:05:00.240 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train phase=start
-[2026-09-03 22:05:00.241 actor_cell0_rank0] timer.py:31 - Timer data_preprocess start
-[2026-09-03 22:05:00.275 actor_cell0_rank0] timer.py:42 - Timer data_preprocess end (elapsed: 0.0s)
-[2026-09-03 22:05:00.275 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train_actor phase=start
-[2026-09-03 22:05:00.275 actor_cell0_rank0] timer.py:42 - Timer train_wait end (elapsed: 242.9s)
-[2026-09-03 22:05:00.276 actor_cell0_rank0] timer.py:31 - Timer train start
-[2026-09-03 22:05:00.293 actor_cell0_rank0] log_utils.py:100 - ft op=cross_cell phase=start kind=log_gather rank=0
-[2026-09-03 22:05:00.312 actor_cell0_rank0] log_utils.py:106 - ft op=cross_cell phase=end kind=log_gather rank=0 success=true
-[2026-09-03 22:05:00.312 actor_cell0_rank0] log_utils.py:123 - rollout 0: {'rollout/response_lengths': 3904.5, 'rollout/rewards': 0.0, 'rollout/truncated': 0.5, 'rollout/rollout_log_probs': -0.19336325395852327, 'rollout/raw_reward': 0.5, 'rollout/total_lengths': 5256.0, 'rollout/advantages': 0.0, 'rollout/returns': 0.0}
-[2026-09-03 22:05:00.315 actor_cell0_rank0] timer.py:31 - Timer actor_train start
-[WARNING] Field "span" in type "ir.TupleType" duplicates an ancestor field in "ir.Type". Child types should not re-register inherited fields.
-[WARNING] Field "span" in type "ir.FuncType" duplicates an ancestor field in "ir.Type". Child types should not re-register inherited fields.
-[WARNING] Field "span" in type "ir.TensorMapType" duplicates an ancestor field in "ir.Type". Child types should not re-register inherited fields.
-[WARNING] Field "binding_blocks" in type "script.ir_builder.relax.FunctionFrame" duplicates an ancestor field in "script.ir_builder.relax.SeqExprFrame". Child types should not re-register inherited fields.
-[WARNING] Field "output" in type "script.ir_builder.relax.FunctionFrame" duplicates an ancestor field in "script.ir_builder.relax.SeqExprFrame". Child types should not re-register inherited fields.
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'span' in 'ir.TupleType' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'span' in 'ir.FuncType' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'span' in 'ir.TensorMapType' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'name' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'tag' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'attrs' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'shape' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'dtype' in 'relax.TEPlaceholderOp' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-[WARNING] Field "policy_type" in type "tl.GemmSPWarpPolicy" duplicates an ancestor field in "tl.GemmWarpPolicy". Child types should not re-register inherited fields.
-[WARNING] Field "m_warp" in type "tl.GemmSPWarpPolicy" duplicates an ancestor field in "tl.GemmWarpPolicy". Child types should not re-register inherited fields.
-[WARNING] Field "n_warp" in type "tl.GemmSPWarpPolicy" duplicates an ancestor field in "tl.GemmWarpPolicy". Child types should not re-register inherited fields.
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'policy_type' in 'tl.GemmSPWarpPolicy' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'm_warp' in 'tl.GemmSPWarpPolicy' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-/usr/local/lib/python3.12/dist-packages/tvm_ffi/registry.py:85: UserWarning: Field 'n_warp' in 'tl.GemmSPWarpPolicy' duplicates an ancestor field. Child types should not re-register inherited fields.
-  info = core._register_object_by_index(type_index, cls)
-[2026-09-03 22:05:21.490 actor_cell0_rank0] __init__.py:209 - [FLA Backend] gated_delta_rule.chunk_gated_delta_rule -> flash_qla
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/nvidia_cutlass_dsl/dsl_packages/cutlass/base_dsl/dsl.py:2309: UserWarning: Argument aux_data (position 18) cannot be converted to a JitArgument for function 'cutlass___call___flash_attncutesm100_hd256_2cta_fmha_forwardBlackwellFusedMultiHeadAttentionForward_object_at__Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi'. Its type `<class 'flash_attn.cute.utils.AuxData'>` is not supported. If the value is known at compile time, annotate it: `aux_data: Constexpr`. Otherwise, implement the `JitArgument` or `DynamicExpression` protocol for type `<class 'flash_attn.cute.utils.AuxData'>`, or register a custom argument adapter.
-  exe_args, func_types, adapted_args = self.generate_mlir_function_types(
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/campaign/miles/miles/backends/training_utils/loss.py:218: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
-  torch.tensor(num_tokens if args.calculate_per_token_loss else 1, device=logits.device),
-/usr/local/lib/python3.12/dist-packages/nvidia_cutlass_dsl/dsl_packages/cutlass/base_dsl/dsl.py:2309: UserWarning: Argument aux_data (position 21) cannot be converted to a JitArgument for function 'cutlass___call___flash_attncutesm100_hd256_2cta_fmha_backwardBlackwellFusedMultiHeadAttentionBackward_object_at__Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmemoi64i641_Tensorgmem'. Its type `<class 'flash_attn.cute.utils.AuxData'>` is not supported. If the value is known at compile time, annotate it: `aux_data: Constexpr`. Otherwise, implement the `JitArgument` or `DynamicExpression` protocol for type `<class 'flash_attn.cute.utils.AuxData'>`, or register a custom argument adapter.
-  exe_args, func_types, adapted_args = self.generate_mlir_function_types(
-/root/Megatron-LM/megatron/core/pipeline_parallel/schedules.py:220: UserWarning: The AccumulateGrad node's stream does not match the stream of the node that produced the incoming gradient. This may incur unnecessary synchronization and break CUDA graph capture if the AccumulateGrad node's stream is the default stream. This mismatch is caused by an AccumulateGrad node created prior to the current iteration being kept alive. This can happen if the autograd graph is still being kept alive by tensors such as the loss, or if you are using DDP, which will stash a reference to the node. To resolve the mismatch, delete all references to the autograd graph or ensure that DDP initialization is performed under the same stream as subsequent forwards. If the mismatch is intentional, you can use torch.autograd.graph.set_warn_on_accumulate_grad_stream_mismatch(False) to suppress this warning. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/input_buffer.cpp:310.)
-  Variable._execution_engine.run_backward(
-[2026-09-03 22:06:56.543 actor_cell0_rank0] _rank_utils.py:89 - Implicit initialization of Rerun State Machine!
-[2026-09-03 22:06:56.543 actor_cell0_rank0] _rank_utils.py:89 - RerunStateMachine initialized in mode RerunMode.DISABLED
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-[2026-09-03 22:07:09.271 actor_cell0_rank0] model.py:642 - ft op=train_step rollout=0 step=0 attempt=0 outcome=NORMAL valid_step=true
-[2026-09-03 22:07:09.507 actor_cell0_rank0] log_utils.py:544 - step 0: {'train/loss': 0.0005020359883279444, 'train/mismatch_kl': 0.0010029280907542897, 'train/ipo_masked_fraction': 0.0026455026455026454, 'train/entropy': 0.17331999865275327, 'train/grad_norm': 0.38928017020225525, 'train/lr-pg_0': 1e-06, 'train/lr-pg_1': 1e-06, 'train/lr-pg_2': 1e-06, 'train/step': 0}
-[2026-09-03 22:07:09.508 actor_cell0_rank0] model.py:861 - step 0: {'train/loss': 0.0005020359883279444, 'train/mismatch_kl': 0.0010029280907542897, 'train/ipo_masked_fraction': 0.0026455026455026454, 'train/entropy': 0.17331999865275327, 'train/grad_norm': 0.38928017020225525, 'train/lr-pg_0': 1e-06, 'train/lr-pg_1': 1e-06, 'train/lr-pg_2': 1e-06, 'train/step': 0}
-[2026-09-03 22:07:09.508 actor_cell0_rank0] timer.py:42 - Timer actor_train end (elapsed: 129.2s)
-[2026-09-03 22:07:09.508 actor_cell0_rank0] timer.py:42 - Timer train end (elapsed: 129.2s)
-[2026-09-03 22:07:09.508 actor_cell0_rank0] timer.py:31 - Timer train_wait start
-[2026-09-03 22:07:09.508 actor_cell0_rank0] train_metric_utils.py:56 - perf 0: {'perf/update_weights_implementation_time': 22.46371865272522, 'perf/finalize_and_resume_engines_time': 0.010435342788696289, 'perf/update_weights_time': 22.520928859710693, 'perf/data_preprocess_time': 0.03470158576965332, 'perf/train_wait_time': 242.93124294281006, 'perf/actor_train_time': 129.1923041343689, 'perf/train_time': 129.2321960926056, 'perf/actor_train_tflops': 0.665276493761792, 'perf/actor_train_tok_per_s': 650.9366061970252, 'perf/mfu_peak_tflops': 2250.0, 'perf/actor_train_mfu': 0.00029567844167190755, 'perf/step_time': 372.16343903541565, 'perf/wait_time_ratio': 0.6527541866349004}
-[2026-09-03 22:07:09.512 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train_actor phase=end ok=true elapsed_s=129.2
-[2026-09-03 22:07:09.512 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train phase=end ok=true elapsed_s=129.3
-[2026-09-03 22:07:09.516 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage before TrainRayActor.clear_memory: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 55.13, 'used_GB': 123.21, 'allocated_GB': 38.39, 'reserved_GB': 110.11}
-[2026-09-03 22:07:10.839 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage after TrainRayActor.clear_memory: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 107.78, 'used_GB': 70.57, 'allocated_GB': 38.39, 'reserved_GB': 57.47}
-[2026-09-03 22:07:10.980 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=update_weights phase=start
-[2026-09-03 22:07:10.980 actor_cell0_rank0] timer.py:31 - Timer update_weights start
-[2026-09-03 22:07:10.987 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage before update_weights: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 107.78, 'used_GB': 70.57, 'allocated_GB': 38.39, 'reserved_GB': 57.47}
-[2026-09-03 22:07:11.034 actor_cell0_rank0] timer.py:31 - Timer update_weights_implementation start
-[miles-pp_0] Update weights: 0it [00:00, ?it/s]
-Update weights:   0%|          | 0/128 [00:00<?, ?it/s][A[miles-pp_0] Update weights: 2it [00:00, 19.78it/s]
-Update weights:   4%|▍         | 5/128 [00:00<00:02, 43.71it/s][A[miles-pp_0] Update weights: 9it [00:00, 46.80it/s]
-Update weights:   8%|▊         | 10/128 [00:00<00:02, 43.38it/s][A[miles-pp_0] Update weights: 14it [00:00, 43.73it/s]
-Update weights:  12%|█▎        | 16/128 [00:00<00:02, 45.00it/s][A[miles-pp_0] Update weights: 19it [00:00, 44.65it/s]
-Update weights:  16%|█▋        | 21/128 [00:00<00:02, 45.24it/s][A[miles-pp_0] Update weights: 24it [00:00, 44.80it/s]
-Update weights:  20%|██        | 26/128 [00:00<00:02, 45.05it/s][A[miles-pp_0] Update weights: 29it [00:00, 45.01it/s]
-Update weights:  24%|██▍       | 31/128 [00:00<00:02, 45.65it/s][A[miles-pp_0] Update weights: 34it [00:00, 45.28it/s]
-Update weights:  28%|██▊       | 36/128 [00:00<00:02, 45.65it/s][A[miles-pp_0] Update weights: 39it [00:00, 45.18it/s]
-Update weights:  32%|███▏      | 41/128 [00:00<00:01, 45.38it/s][A[miles-pp_0] Update weights: 44it [00:00, 44.83it/s]
-Update weights:  36%|███▌      | 46/128 [00:01<00:01, 45.01it/s][A[miles-pp_0] Update weights: 49it [00:01, 45.14it/s]
-Update weights:  40%|███▉      | 51/128 [00:01<00:01, 44.95it/s][A[miles-pp_0] Update weights: 54it [00:01, 45.19it/s]
-Update weights:  44%|████▍     | 56/128 [00:01<00:01, 44.58it/s][A[miles-pp_0] Update weights: 59it [00:01, 44.29it/s]
-Update weights:  48%|████▊     | 61/128 [00:01<00:01, 44.92it/s][A[miles-pp_0] Update weights: 64it [00:01, 44.53it/s]
-Update weights:  52%|█████▏    | 66/128 [00:01<00:01, 44.19it/s][A[miles-pp_0] Update weights: 69it [00:01, 44.68it/s]
-Update weights:  55%|█████▌    | 71/128 [00:01<00:01, 44.26it/s][A[miles-pp_0] Update weights: 74it [00:01, 42.47it/s]
-Update weights:  59%|█████▉    | 76/128 [00:01<00:01, 43.83it/s][A[miles-pp_0] Update weights: 79it [00:01, 43.40it/s]
-Update weights:  63%|██████▎   | 81/128 [00:01<00:01, 43.98it/s][A[miles-pp_0] Update weights: 84it [00:01, 44.03it/s]
-Update weights:  67%|██████▋   | 86/128 [00:01<00:00, 44.07it/s][A[miles-pp_0] Update weights: 89it [00:02, 43.90it/s]
-Update weights:  71%|███████   | 91/128 [00:02<00:00, 44.49it/s][A[miles-pp_0] Update weights: 94it [00:02, 44.17it/s]
-Update weights:  75%|███████▌  | 96/128 [00:02<00:00, 44.50it/s][A[miles-pp_0] Update weights: 99it [00:02, 44.40it/s]
-Update weights:  79%|███████▉  | 101/128 [00:02<00:00, 43.49it/s][A[miles-pp_0] Update weights: 104it [00:02, 43.75it/s]
-Update weights:  83%|████████▎ | 106/128 [00:02<00:00, 44.41it/s][A[miles-pp_0] Update weights: 109it [00:02, 43.62it/s]
-Update weights:  87%|████████▋ | 111/128 [00:02<00:00, 44.08it/s][A[miles-pp_0] Update weights: 114it [00:02, 44.12it/s]
-Update weights:  91%|█████████ | 116/128 [00:02<00:00, 44.10it/s][A[miles-pp_0] Update weights: 119it [00:02, 44.08it/s]
-Update weights:  95%|█████████▍| 121/128 [00:02<00:00, 44.53it/s][A[miles-pp_0] Update weights: 124it [00:02, 44.75it/s]
-Update weights:  98%|█████████▊| 126/128 [00:02<00:00, 44.56it/s][AUpdate weights: 100%|██████████| 128/128 [00:02<00:00, 44.44it/s]
-[miles-pp_0] Update weights: 129it [00:02, 45.40it/s][2026-09-03 22:07:13.951 actor_cell0_rank0] timer.py:42 - Timer update_weights_implementation end (elapsed: 2.9s)
-[2026-09-03 22:07:13.951 actor_cell0_rank0] timer.py:31 - Timer finalize_and_resume_engines start
-[2026-09-03 22:07:13.961 actor_cell0_rank0] timer.py:42 - Timer finalize_and_resume_engines end (elapsed: 0.0s)
-[miles-pp_0] Update weights: 129it [00:02, 44.08it/s]
-[2026-09-03 22:07:13.962 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage after update_weights: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 107.78, 'used_GB': 70.57, 'allocated_GB': 38.39, 'reserved_GB': 57.47}
-[2026-09-03 22:07:13.964 actor_cell0_rank0] timer.py:42 - Timer update_weights end (elapsed: 3.0s)
-[2026-09-03 22:07:13.964 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=update_weights phase=end ok=true elapsed_s=3.0
-[2026-09-03 22:09:17.747 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train phase=start
-[2026-09-03 22:09:17.747 actor_cell0_rank0] timer.py:31 - Timer data_preprocess start
-[2026-09-03 22:09:17.752 actor_cell0_rank0] timer.py:42 - Timer data_preprocess end (elapsed: 0.0s)
-[2026-09-03 22:09:17.752 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=train_actor phase=start
-[2026-09-03 22:09:17.752 actor_cell0_rank0] timer.py:42 - Timer train_wait end (elapsed: 128.2s)
-[2026-09-03 22:09:17.752 actor_cell0_rank0] timer.py:31 - Timer train start
-[2026-09-03 22:09:17.753 actor_cell0_rank0] log_utils.py:100 - ft op=cross_cell phase=start kind=log_gather rank=0
-[2026-09-03 22:09:17.757 actor_cell0_rank0] log_utils.py:106 - ft op=cross_cell phase=end kind=log_gather rank=0 success=true
-[2026-09-03 22:09:17.757 actor_cell0_rank0] log_utils.py:123 - rollout 1: {'rollout/response_lengths': 4008.5625, 'rollout/rewards': 0.0, 'rollout/truncated': 0.8125, 'rollout/rollout_log_probs': -0.2222215987276286, 'rollout/raw_reward': 0.5625, 'rollout/total_lengths': 5360.0625, 'rollout/advantages': 0.0, 'rollout/returns': 0.0}
-[2026-09-03 22:09:17.758 actor_cell0_rank0] timer.py:31 - Timer actor_train start
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-/campaign/miles/miles/backends/training_utils/loss.py:218: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
-  torch.tensor(num_tokens if args.calculate_per_token_loss else 1, device=logits.device),
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.reduce_scatter_tensor` is deprecated. Please use `torch.distributed.reduce_scatter_single` instead.
-  return func(*args, **kwargs)
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: FutureWarning: `torch.distributed.all_gather_into_tensor` is deprecated. Please use `torch.distributed.all_gather_single` instead.
-  return func(*args, **kwargs)
-[2026-09-03 22:09:36.641 actor_cell0_rank0] model.py:642 - ft op=train_step rollout=1 step=0 attempt=0 outcome=NORMAL valid_step=true
-[2026-09-03 22:09:36.763 actor_cell0_rank0] log_utils.py:544 - step 1: {'train/loss': 0.008071672697399833, 'train/mismatch_kl': 0.001021235371914546, 'train/ipo_masked_fraction': 0.0027882815782437646, 'train/entropy': 0.2052273453613785, 'train/grad_norm': 0.4661138653755188, 'train/lr-pg_0': 1e-06, 'train/lr-pg_1': 1e-06, 'train/lr-pg_2': 1e-06, 'train/step': 1}
-[2026-09-03 22:09:36.764 actor_cell0_rank0] model.py:861 - step 1: {'train/loss': 0.008071672697399833, 'train/mismatch_kl': 0.001021235371914546, 'train/ipo_masked_fraction': 0.0027882815782437646, 'train/entropy': 0.2052273453613785, 'train/grad_norm': 0.4661138653755188, 'train/lr-pg_0': 1e-06, 'train/lr-pg_1': 1e-06, 'train/lr-pg_2': 1e-06, 'train/step': 1}
-[2026-09-03 22:09:36.764 actor_cell0_rank0] timer.py:42 - Timer actor_train end (elapsed: 19.0s)
-[2026-09-03 22:09:36.764 actor_cell0_rank0] timer.py:42 - Timer train end (elapsed: 19.0s)
-[2026-09-03 22:09:36.764 actor_cell0_rank0] timer.py:31 - Timer train_wait start
-[2026-09-03 22:09:36.764 actor_cell0_rank0] train_metric_utils.py:56 - perf 1: {'perf/update_weights_implementation_time': 2.916782855987549, 'perf/finalize_and_resume_engines_time': 0.010178089141845703, 'perf/update_weights_time': 2.9838712215423584, 'perf/data_preprocess_time': 0.005137443542480469, 'perf/train_wait_time': 128.24434852600098, 'perf/actor_train_time': 19.005602836608887, 'perf/train_time': 19.011590242385864, 'perf/actor_train_tflops': 4.62350650791558, 'perf/actor_train_tok_per_s': 4512.40619607213, 'perf/mfu_peak_tflops': 2250.0, 'perf/actor_train_mfu': 0.0020548917812958133, 'perf/step_time': 147.25593876838684, 'perf/wait_time_ratio': 0.870894237601592}
-[2026-09-03 22:09:36.767 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train_actor phase=end ok=true elapsed_s=19.0
-[2026-09-03 22:09:36.767 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=train phase=end ok=true elapsed_s=19.0
-[2026-09-03 22:09:36.769 actor_cell0_rank0] timer.py:31 - Timer save_model start
-[2026-09-03 22:09:36.773 actor_cell0_rank0] utils.py:996 - make_tp_sharded_tensor_for_checkpoint received extra kwargs: ['allow_shape_mismatch']
-[2026-09-03 22:09:41.534 actor_cell0_rank0] torch.py:763 - MCore's async save is deprecated and will be removed in the future releases. Please, use NVRx async solution by setting `async_strategy` to `nvrx`.
-/usr/local/lib/python3.12/dist-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
-  return func(*args, **kwargs)
-[2026-09-03 22:09:53.881 actor_cell0_rank0] timer.py:42 - Timer save_model end (elapsed: 17.1s)
-[2026-09-03 22:09:53.899 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage before TrainRayActor.clear_memory: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 58.29, 'used_GB': 120.05, 'allocated_GB': 38.3, 'reserved_GB': 106.64}
-[2026-09-03 22:09:56.050 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage after TrainRayActor.clear_memory: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 106.9, 'used_GB': 71.45, 'allocated_GB': 38.3, 'reserved_GB': 58.03}
-[2026-09-03 22:09:56.055 actor_cell0_rank0] structured_log.py:23 - ft cls=MegatronTrainRayActor fn=update_weights phase=start
-[2026-09-03 22:09:56.055 actor_cell0_rank0] timer.py:31 - Timer update_weights start
-[2026-09-03 22:09:56.055 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage before update_weights: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 106.9, 'used_GB': 71.45, 'allocated_GB': 38.3, 'reserved_GB': 58.03}
-[2026-09-03 22:09:57.225 actor_cell0_rank0] timer.py:31 - Timer update_weights_implementation start
-[miles-pp_0] Update weights: 0it [00:00, ?it/s]
-Update weights:   0%|          | 0/128 [00:00<?, ?it/s][A[miles-pp_0] Update weights: 3it [00:00, 26.45it/s]
-Update weights:   3%|▎         | 4/128 [00:00<00:03, 37.84it/s][A[miles-pp_0] Update weights: 10it [00:00, 43.94it/s]
-Update weights:   8%|▊         | 10/128 [00:00<00:02, 43.68it/s][A[miles-pp_0] Update weights: 15it [00:00, 43.00it/s]
-Update weights:  12%|█▏        | 15/128 [00:00<00:02, 42.84it/s][A[miles-pp_0] Update weights: 20it [00:00, 42.65it/s]
-Update weights:  16%|█▌        | 20/128 [00:00<00:02, 42.54it/s][A[miles-pp_0] Update weights: 25it [00:00, 42.60it/s]
-Update weights:  20%|█▉        | 25/128 [00:00<00:02, 42.54it/s][A[miles-pp_0] Update weights: 30it [00:00, 42.17it/s]
-Update weights:  23%|██▎       | 30/128 [00:00<00:02, 42.11it/s][A[miles-pp_0] Update weights: 35it [00:00, 42.95it/s]
-Update weights:  27%|██▋       | 35/128 [00:00<00:02, 42.92it/s][A[miles-pp_0] Update weights: 40it [00:00, 43.82it/s]
-Update weights:  31%|███▏      | 40/128 [00:00<00:02, 43.81it/s][A[miles-pp_0] Update weights: 45it [00:01, 42.59it/s]
-Update weights:  35%|███▌      | 45/128 [00:01<00:01, 42.58it/s][A[miles-pp_0] Update weights: 50it [00:01, 43.35it/s]
-Update weights:  39%|███▉      | 50/128 [00:01<00:01, 43.34it/s][A[miles-pp_0] Update weights: 55it [00:01, 43.80it/s]
-Update weights:  43%|████▎     | 55/128 [00:01<00:01, 43.79it/s][A[miles-pp_0] Update weights: 60it [00:01, 43.22it/s]
-Update weights:  47%|████▋     | 60/128 [00:01<00:01, 43.21it/s][A[miles-pp_0] Update weights: 65it [00:01, 42.74it/s]
-Update weights:  51%|█████     | 65/128 [00:01<00:01, 42.72it/s][A[miles-pp_0] Update weights: 70it [00:01, 42.35it/s]
-Update weights:  55%|█████▍    | 70/128 [00:01<00:01, 42.34it/s][A[miles-pp_0] Update weights: 75it [00:01, 42.88it/s]
-Update weights:  59%|█████▊    | 75/128 [00:01<00:01, 42.87it/s][A[miles-pp_0] Update weights: 80it [00:01, 43.62it/s]
-Update weights:  62%|██████▎   | 80/128 [00:01<00:01, 43.61it/s][A[miles-pp_0] Update weights: 85it [00:01, 43.03it/s]
-Update weights:  66%|██████▋   | 85/128 [00:01<00:00, 43.03it/s][A[miles-pp_0] Update weights: 90it [00:02, 42.51it/s]
-Update weights:  70%|███████   | 90/128 [00:02<00:00, 42.51it/s][A[miles-pp_0] Update weights: 95it [00:02, 41.47it/s]
-Update weights:  74%|███████▍  | 95/128 [00:02<00:00, 41.46it/s][A[miles-pp_0] Update weights: 100it [00:02, 41.36it/s]
-Update weights:  78%|███████▊  | 100/128 [00:02<00:00, 41.36it/s][A[miles-pp_0] Update weights: 105it [00:02, 42.24it/s]
-Update weights:  82%|████████▏ | 105/128 [00:02<00:00, 42.23it/s][A[miles-pp_0] Update weights: 110it [00:02, 41.96it/s]
-Update weights:  86%|████████▌ | 110/128 [00:02<00:00, 41.96it/s][A[miles-pp_0] Update weights: 115it [00:02, 42.52it/s]
-Update weights:  90%|████████▉ | 115/128 [00:02<00:00, 42.52it/s][A[miles-pp_0] Update weights: 120it [00:02, 42.93it/s]
-Update weights:  94%|█████████▍| 120/128 [00:02<00:00, 42.93it/s][A[miles-pp_0] Update weights: 125it [00:02, 42.49it/s]
-Update weights:  98%|█████████▊| 125/128 [00:02<00:00, 42.49it/s][AUpdate weights: 100%|██████████| 128/128 [00:02<00:00, 42.67it/s]
-[2026-09-03 22:10:00.247 actor_cell0_rank0] timer.py:42 - Timer update_weights_implementation end (elapsed: 3.0s)
-[2026-09-03 22:10:00.247 actor_cell0_rank0] timer.py:31 - Timer finalize_and_resume_engines start
-[2026-09-03 22:10:00.283 actor_cell0_rank0] timer.py:42 - Timer finalize_and_resume_engines end (elapsed: 0.0s)
-[miles-pp_0] Update weights: 129it [00:03, 42.19it/s]
-[2026-09-03 22:10:00.283 actor_cell0_rank0] memory_utils.py:41 - [Rank 0] Memory-Usage after update_weights: {'gpu': '0', 'total_GB': 178.34, 'free_GB': 106.9, 'used_GB': 71.45, 'allocated_GB': 38.3, 'reserved_GB': 58.03}
-[2026-09-03 22:10:00.285 actor_cell0_rank0] timer.py:42 - Timer update_weights end (elapsed: 4.2s)
-[2026-09-03 22:10:00.285 actor_cell0_rank0] structured_log.py:27 - ft cls=MegatronTrainRayActor fn=update_weights phase=end ok=true elapsed_s=4.2
-[rank0]:[W903 22:10:03.821282162 ProcessGroupNCCL.cpp:1624] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

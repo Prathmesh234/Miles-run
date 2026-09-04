@@ -101,7 +101,10 @@ def convert_group(episodes, task_name):
     if not traces:
         return []
     rewards = torch.tensor([t.reward for t in traces], dtype=torch.float32)
-    advantages = (rewards - rewards.mean()).tolist()
+    is_ppo = os.environ.get("MILES_ALGORITHM", "ipo") == "ppo"
+    # Unit credit only preserves native action masks during transport. PPO's
+    # actual per-token GAE is computed by Miles from RAW reward and critic values.
+    advantages = [1.0] * len(traces) if is_ppo else (rewards - rewards.mean()).tolist()
     if not any(advantages):
         # Prime-RL prunes groups with no nonzero advantages before filling its
         # constant 16-trace training batch. Advance the same cyclic task source.
@@ -127,6 +130,8 @@ def convert_group(episodes, task_name):
                        "reward": float(trace.reward), "response": "", "truncated": trace.is_truncated or len(sample.token_ids) > 8192,
                        "metadata": {"task": task_name, "trace_id": str(trace.id), "turns": trace.num_turns,
                                     "full_tokens": len(sample.token_ids), "advantage": advantage,
+                                    "credit_kind": "transport_only" if is_ppo else "group_centered",
+                                    "policy_version": STATE.get("policy_version", 0),
                                     "trace_truncated": trace.is_truncated, "stop_condition": trace.stop_condition,
                                     "packing_truncated": len(sample.token_ids) > 8192}})
     return result
@@ -137,6 +142,7 @@ async def rollout(request: Request):
     body = await request.json()
     async with LOCK:
         rollout_id = int(body["rollout_id"])
+        STATE["policy_version"] = rollout_id
         if rollout_id not in [0, 1]:
             raise ValueError("Only the two baseline training steps are authorized")
         STATE["router"] = body["router"]

@@ -12,7 +12,8 @@ import subprocess
 import time
 import urllib.request
 
-C = Path("/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030")
+C = Path(os.environ.get("MILES_CAMPAIGN_ROOT", "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030"))
+REUSE = Path(os.environ.get("MILES_REUSE_CAMPAIGN", str(C)))
 BASE = Path("/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00")
 MODEL = BASE / "model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0"
 PYTHON = BASE / "prime-rl/.venv/bin/python"
@@ -22,7 +23,7 @@ RUN = C / "runs" / f"job-{JID}"
 CONTAINER_RUN = "/campaign/runs/" + RUN.name
 CODE = RUN / "source"
 CONTAINER_CODE = CONTAINER_RUN + "/source"
-NAME = "miles-terminal-lego-" + JID
+NAME = "miles-" + os.environ.get("MILES_ALGORITHM", "ipo") + "-" + JID
 HEAD_PORT = 16379
 DASHBOARD_PORT = 18265
 BRIDGE_PORT = 18981
@@ -65,10 +66,16 @@ def docker_env():
             "NCCL_DEBUG_FILE":CONTAINER_RUN+"/infra/nccl-%h-%p.log", "WANDB_MODE":"disabled",
             "HF_HUB_OFFLINE":"1", "TOKENIZERS_PARALLELISM":"false", "OMP_NUM_THREADS":"8",
             "MILES_HARNESS_URL":f"http://{socket.gethostbyname('gpu-nodes-3')}:{BRIDGE_PORT}",
-            "RAY_ADDRESS":f"{socket.gethostbyname('gpu-nodes-0')}:{HEAD_PORT}"}
+            "RAY_ADDRESS":f"{socket.gethostbyname('gpu-nodes-0')}:{HEAD_PORT}",
+            "MILES_ALGORITHM":os.environ.get("MILES_ALGORITHM", "ipo"),
+            "MILES_CAMPAIGN_ROOT":str(C)}
 
 
 def main():
+    if not C.is_relative_to(Path("/shared/clustermax-campaigns")):
+        raise ValueError("Run root must be under /shared/clustermax-campaigns")
+    if shutil.disk_usage(C).free < 512 * 1024**3:
+        raise RuntimeError("Free-space guard: less than 512 GiB remains")
     RUN.mkdir(exist_ok=False)
     (RUN/"infra").mkdir()
     (RUN/"tensorboard").mkdir()
@@ -82,7 +89,7 @@ def main():
     image = json.loads((C/"image-digest.json").read_text())[0]
     (RUN/"image.txt").write_text(image+"\n")
     started_containers = []
-    monitor = bridge = None
+    monitor = bridge = rdma = prometheus = health_monitor = None
     code = 1
     def interrupted(signum, frame):
         raise InterruptedError(f"Received signal {signum}")
@@ -92,10 +99,15 @@ def main():
         execute(["srun", "--overlap", "--ntasks-per-node=1", "python3", str(CODE/"capture_infra.py"), str(RUN/"infra"), "before"], "infra-before", 180)
         monitor_log = (RUN/"monitor.log").open("w")
         monitor = subprocess.Popen(["srun", "--overlap", "--ntasks-per-node=1", "python3", str(CODE/"capture_infra.py"), str(RUN/"infra"), "monitor"], stdout=monitor_log, stderr=subprocess.STDOUT)
+        health_monitor = subprocess.Popen(["srun", "--overlap", "--ntasks-per-node=1", "python3", str(CODE/"capture_health.py"), str(RUN)],
+                                          stdout=(RUN/"health-collector.log").open("w"), stderr=subprocess.STDOUT)
         for host in hosts:
             args = ["docker", "run", "-d", "--name", NAME, "--gpus", "all", "--network", "host", "--ipc", "host",
                     "--ulimit", "memlock=-1", "--ulimit", "stack=67108864", "--device", "/dev/infiniband",
-                    "-v", str(C)+":/campaign", "-v", str(MODEL)+":"+str(MODEL)+":ro", "-w", "/campaign/miles"]
+                    "-v", str(C)+":/campaign", "-v", str(MODEL)+":"+str(MODEL)+":ro", "-w", CONTAINER_RUN]
+            if REUSE != C:
+                args += ["-v", str(REUSE/"miles")+":/campaign/miles:ro",
+                         "-v", str(REUSE/"converted-model")+":/campaign/converted-model:ro"]
             for k,v in docker_env().items():
                 args += ["-e", k+"="+v]
             args += [image, "sleep", "14400"]
@@ -103,17 +115,28 @@ def main():
             started_containers.append(host)
             execute(on(host,["docker","exec",NAME,"python",CONTAINER_CODE+"/install_precision_patch.py"]), "precision-patch-"+host, 30)
         execute(on("gpu-nodes-0", ["docker","exec",NAME,"python",CONTAINER_CODE+"/sglang_precision.py"]), "precision-gpu-validation", 120)
+        if os.environ.get("MILES_ALGORITHM") == "ppo":
+            execute(on("gpu-nodes-0", ["docker","exec",NAME,"python",CONTAINER_CODE+"/prepare_ppo_driver.py"]), "ppo-driver-patch", 30)
         execute(on("gpu-nodes-0", ["docker","exec",NAME,"python",CONTAINER_CODE+"/training_entry.py","validate"]), "argument-validation", 180)
-        if not (C/"converted-model/conversion-complete.json").exists():
+        if not (REUSE/"converted-model/conversion-complete.json").exists():
+            if REUSE != C:
+                raise RuntimeError("Pinned reusable base conversion is missing; do not repair it in place")
             execute(on("gpu-nodes-0", ["docker","exec",NAME,"python",CONTAINER_CODE+"/training_entry.py","convert"]), "checkpoint-conversion", 2400)
             assert (C/"converted-model/release").is_dir()
             (C/"converted-model/conversion-complete.json").write_text(json.dumps({"job_id":JID,"source":str(MODEL),"image":image}))
         else:
-            event("checkpoint_conversion_reused", path=str(C/"converted-model"))
+            event("checkpoint_conversion_reused", path=str(REUSE/"converted-model"))
+        if os.environ.get("MILES_ALGORITHM") == "ppo":
+            execute(on("gpu-nodes-0", ["docker", "exec", NAME, "python", CONTAINER_CODE+"/test_ppo.py", "native"]), "ppo-native-tests", 300)
+            test_env = ["env", "PYTHONDONTWRITEBYTECODE=1", "CUDA_VISIBLE_DEVICES=", "HF_HUB_OFFLINE=1",
+                        "MILES_ALGORITHM=ppo", "MILES_RUN_DIR="+str(RUN),
+                        "PYTHONPATH="+str(CODE)+":"+str(TASK_CODE), str(PYTHON), str(CODE/"test_ppo.py"), "transport"]
+            execute(on("gpu-nodes-3", test_env), "ppo-transport-tests", 300)
         bridge_log = (RUN/"harness.log").open("w")
         bridge_env = ["env", "PYTHONDONTWRITEBYTECODE=1", "CUDA_VISIBLE_DEVICES=", "HF_HUB_OFFLINE=1",
                       "PYTHONPATH="+str(CODE)+":"+str(TASK_CODE), "MILES_RUN_DIR="+str(RUN),
                       "MILES_HARNESS_PORT="+str(BRIDGE_PORT), "XDG_CACHE_HOME="+str(RUN/"harness-cache"),
+                      "MILES_ALGORITHM="+os.environ.get("MILES_ALGORITHM", "ipo"),
                       str(PYTHON), str(CODE/"harness_bridge.py")]
         bridge = subprocess.Popen(on("gpu-nodes-3",bridge_env), stdout=bridge_log, stderr=subprocess.STDOUT)
         health = docker_env()["MILES_HARNESS_URL"]+"/health"
@@ -129,6 +152,11 @@ def main():
         else:
             raise RuntimeError("Harness did not become ready")
         event("harness_ready")
+        rdma = subprocess.Popen(["srun", "--overlap", "--ntasks-per-node=1", "python3", str(CODE/"capture_rdma.py"), str(RUN)],
+                                stdout=(RUN/"rdma-collector.log").open("w"), stderr=subprocess.STDOUT)
+        prometheus = subprocess.Popen(["python3", str(CODE/"capture_metrics.py"), str(RUN),
+                                       f"http://{socket.gethostbyname('gpu-nodes-3')}:15000/metrics"],
+                                      stdout=(RUN/"prometheus-collector.log").open("w"), stderr=subprocess.STDOUT)
         for host in hosts:
             ip = socket.gethostbyname(host)
             args = ["docker","exec",NAME,"ray","start","--node-ip-address="+ip,"--num-gpus=8","--num-cpus=64",
@@ -153,7 +181,7 @@ def main():
             # containers and all artifacts for postmortem inspection.
             cleanup(on(host,["docker","exec",NAME,"python",CONTAINER_CODE+"/container_evidence.py",CONTAINER_RUN]), "container-evidence-"+host, 120)
             cleanup(on(host,["docker","stop","--time","5",NAME]), "container-stop-"+host, 60)
-        for p in [bridge, monitor]:
+        for p in [bridge, monitor, rdma, prometheus, health_monitor]:
             if p is not None and p.poll() is None:
                 p.terminate()
                 try:

@@ -1,5 +1,7 @@
 # Terminal-Lego: Prime-RL versus Miles
 
+> Historical report for job 190. The current PPO comparison is in [results/REPORT.md](results/REPORT.md). Raw paths below refer to the retained archive; redundant snapshots are no longer tracked in Git. Consolidated historical JSON is in [results/legacy-evidence.json](results/legacy-evidence.json).
+
 ## Result
 
 **Miles job 190 completed two optimizer updates and saved its checkpoint.** Slurm reports `COMPLETED`, exit `0:0`, from **21:57:12 to 22:11:46 UTC on 3 September 2026**. This reproduces the baseline model, task suite, two-update workload and objective using the approved Megatron trainer, but is **not an identical-backend or identical-trajectory experiment**.
@@ -96,4 +98,4 @@ Final checkpoint: `runs/job-190/checkpoints/iter_0000001`. **The suffix is the z
 
 Local `evidence-job-190/job-190/` contains the downloaded non-checkpoint evidence: exact argv and resolved arguments, frozen launch/analysis source and hashes, training/harness/Ray/NCCL logs, all episodes and accepted token traces, TensorBoard, timelines, before/after snapshots, two-second host/GPU telemetry, ten-second PMA/RDMA counters and checkpoint verification. The large checkpoint was intentionally not downloaded.
 
-Machine-readable results are in `comparison-results.json`; inputs and deviations in `comparison-spec.json`; final baseline preservation in `baseline-preservation-after-job-190.json`; and idle-process checks in `final-runtime-check.json`. The remote run's frozen prelaunch specification is retained as-is, alongside the final reports.
+Machine-readable results are in `comparison-results.json`; inputs and deviations in `comparison-spec.json`; final baseline preservation and idle-process checks in `results/legacy-evidence.json` under their original source filenames. The remote run's frozen prelaunch specification is retained as-is, alongside the final reports.

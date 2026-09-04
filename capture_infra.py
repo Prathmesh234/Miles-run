@@ -93,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("out", type=pathlib.Path)
     parser.add_argument("mode", choices=["before", "after", "preflight", "monitor"])
     args = parser.parse_args()
-    if not str(args.out).startswith("/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/"):
+    if not args.out.resolve().is_relative_to(pathlib.Path("/shared/clustermax-campaigns")):
         raise ValueError("Evidence must go in the new campaign")
     args.out.mkdir(parents=True, exist_ok=True)
     monitor(args.out) if args.mode == "monitor" else snapshot(args.out, args.mode)

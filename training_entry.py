@@ -20,7 +20,7 @@ def model_args():
 
 
 def training_args(run):
-    return model_args() + [
+    result = model_args() + [
         "--train-backend", "megatron", "--hf-checkpoint", MODEL,
         "--ref-load", str(ROOT/"converted-model"), "--save", str(run/"checkpoints"), "--save-interval", "2",
         "--no-save-optim", "--no-save-rng", "--no-load-optim", "--no-load-rng",
@@ -58,6 +58,22 @@ def training_args(run):
         "--save-debug-event-data", str(run/"events"),
         "--log-interval", "1",
     ]
+    if os.environ.get("MILES_ALGORITHM", "ipo") == "ppo":
+        # Keep the job-190 workload. PPO replaces both IPO's objective and
+        # group-centered credit, and trains a colocated value model.
+        for flag in ["--custom-loss-function-path", "--custom-reward-post-process-path"]:
+            index = result.index(flag)
+            del result[index:index+2]
+        result.remove("--disable-grpo-std-normalization")
+        result[result.index("--advantage-estimator")+1] = "ppo"
+        result[result.index("--loss-type")+1] = "policy_loss"
+        result += ["--disable-rewards-normalization", "--offload-train",
+                   "--critic-lr", "1e-5", "--num-critic-only-steps", "0",
+                   "--eps-clip", "0.2", "--eps-clip-high", "0.2",
+                   "--value-clip", "0.2", "--gamma", "1", "--lambd", "1",
+                   "--normalize-advantages", "--observe-training-entropy",
+                   "--update-weight-transfer-mode", "broadcast"]
+    return result
 
 
 def main():
@@ -67,7 +83,8 @@ def main():
         argv = ["torchrun", "--standalone", "--nproc-per-node", "8", str(ROOT/"miles/tools/convert_hf_to_torch_dist.py"),
                 *model_args(), "--hf-checkpoint", MODEL, "--save", str(ROOT/"converted-model"), "--bf16"]
     else:
-        argv = [sys.executable, str(ROOT/"miles/train.py"), *training_args(run)]
+        driver = Path(__file__).parent/"train_ppo.py" if os.environ.get("MILES_ALGORITHM") == "ppo" else ROOT/"miles/train.py"
+        argv = [sys.executable, str(driver), *training_args(run)]
     (run/(mode+"-argv.json")).write_text(json.dumps(argv, indent=2)+"\n")
     if mode == "args":
         print(shlex.join(argv))

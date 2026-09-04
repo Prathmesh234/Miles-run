@@ -10,7 +10,7 @@ import sys
 import time
 
 root = Path(sys.argv[1])
-assert str(root).startswith('/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/runs/job-')
+assert root.resolve().is_relative_to(Path('/shared/clustermax-campaigns')) and root.name.startswith('job-')
 ports = [(p.parents[1].name,p.name) for p in Path('/sys/class/infiniband').glob('*/ports/*')
          if (p/'link_layer').read_text().strip() == 'InfiniBand']
 stop = False
@@ -31,6 +31,7 @@ with out.open('x',buffering=1) as f, concurrent.futures.ThreadPoolExecutor(max_w
     while not stop and time.monotonic()<deadline and not (root/'exit-code.txt').exists():
         started=time.monotonic()
         row={'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+             'monotonic':started, 'hostname':socket.gethostname(),
              'scope':'local worker ports; PMA extended counters, no reset flags or remote destination',
              'rdma':command(['rdma','-j','statistic','show']),
              'ports':list(pool.map(command, [['perfquery','-C',d,'-P',p,'-x','-t','1000'] for d,p in ports]))}

@@ -1,5 +1,8 @@
 """Miles rollout hook that uses the unchanged, pinned Terminal-Lego harness."""
+import json
+import math
 import os
+from pathlib import Path
 import time
 import httpx
 from miles.rollout.base_types import RolloutFnTrainOutput
@@ -9,6 +12,24 @@ from miles.utils.types import Sample
 def rewards_with_baseline_credit(args, samples):
     """Credit was computed over native surviving groups before batch cutting."""
     return [s.reward for s in samples], [s.metadata["advantage"] for s in samples]
+
+
+def validate_policy(payload, vocab_size, output=None):
+    """Fail before optimizer work if the actor produces the job-195 zero-weight signature."""
+    active = [lp for group in payload["groups"] for row in group
+              for lp, mask in zip(row["logprobs"], row["loss_mask"]) if mask]
+    valid = bool(active) and all(math.isfinite(x) for x in active)
+    uniform = bool(active) and all(abs(x + math.log(vocab_size)) < .01 for x in active)
+    result = {"status": "passed" if valid and not uniform else "failed",
+              "active_tokens": len(active), "uniform_distribution_signature": uniform,
+              "finite_logprobs": valid, "vocab_size": vocab_size}
+    if output:
+        temp = output.with_suffix('.tmp')
+        temp.write_text(json.dumps(result, indent=2)+'\n')
+        temp.replace(output)
+    if not valid or uniform:
+        raise RuntimeError("Policy validity gate failed; preserve artifacts and inspect actor weights")
+    return result
 
 
 class Rollout:
@@ -27,6 +48,11 @@ class Rollout:
                                          json={"rollout_id": input.rollout_id, "router": f"http://{ip}:{port}"})
             response.raise_for_status()
             payload = response.json()
+        if os.environ.get("MILES_ALGORITHM") == "ppo":
+            model_config = json.loads((Path(args.hf_checkpoint)/"config.json").read_text())
+            vocab_size = model_config.get('text_config', model_config)['vocab_size']
+            validate_policy(payload, vocab_size,
+                            Path(os.environ["MILES_RUN_DIR"])/f"policy-validity-{input.rollout_id}.json")
         groups = []
         sample_index = input.rollout_id * 16
         for group_index, group in enumerate(payload["groups"]):
