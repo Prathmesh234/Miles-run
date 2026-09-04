@@ -77,7 +77,7 @@
       "failure": "Actor log probabilities uniformly -12.42247; actor gradient norm zero. Stopped after first actor step rather than claiming learning.",
       "cause": "Offload validation disables actor parameter-buffer backup; disjoint actor has no alternative TensorBackuper. Critic explicitly retains its backup.",
       "fix": "Second driver patch commit 90c5eb3f272b736f5c91d97fe8fcb6f03605e277 preserves actor parameter backup; added pre-training uniform-policy rejection gate. Eight lifecycle/configuration cases passed.",
-      "causal_status": "Job196 passed the uniform-policy gate with 36,607 finite active-token logprobs and nonuniform generation. First base-model batch reward 0.875; actor gradient/checkpoint checks still pending."
+      "causal_status": "Corrected job196 completed two actor and two critic updates. Both policy gates passed, actor gradient norms were 1.9636 and 1.0630, and six finite sampled checkpoint tensors per model contained 187 changed elements versus base. Slurm COMPLETED 0:0. This supports the lifecycle diagnosis on this configuration."
     },
     {
       "event": "cancel_cleanup_allocation_lost",
@@ -85,6 +85,51 @@
       "job_id": 195,
       "failure": "scancel removed allocation before coordinator srun cleanup could finish.",
       "fix": "Read-only evidence capture then stopped only miles-ppo-195 containers through existing kubectl access; confirmed no remaining GPU processes on all four nodes. No prune/deletion."
+    },
+    {
+      "event": "concurrent_chart_publication",
+      "classification": "publication_integration",
+      "remote_commit": "f7ec463e3c28429578118a0aba9ddff3e13a9684",
+      "action": "Preserve all ten independently published PNGs; merge README links and add archive-path options to the original renderer. Renderer successfully regenerated all ten images in an ignored validation directory."
+    },
+    {
+      "event": "patch_whitespace_check",
+      "classification": "publication_validation",
+      "failure": "git diff --check flagged required context-line/mail-signature whitespace inside git-format-patch output.",
+      "action": "Retain patch bytes unchanged; disable whitespace lint only for *.patch via .gitattributes. Full source and index diff checks then passed."
+    },
+    {
+      "event": "post_run_wait_expired",
+      "classification": "verification_scheduling",
+      "job_id": 196,
+      "failure": "A read-only 180-second wait ended just before coordinator cleanup finished; no verification was started.",
+      "action": "Confirmed Slurm COMPLETED 0:0, then ran post-run checks. No training retry or data mutation."
+    },
+    {
+      "event": "subsequent_independent_allocation",
+      "classification": "publication_validation_scope",
+      "job_id": 196,
+      "other_job_id": 197,
+      "failure": "Final artifact test incorrectly required globally IDLE nodes, but another miles-async-ppo job allocated all nodes after job196 completed.",
+      "action": "Leave job197 untouched. Check job196 COMPLETED 0:0 and absent from queue plus its own stopped containers; preserve the global ALLOCATED state in evidence.",
+      "measurement_scope": "Post-run hash phase 01:14:40.944\u201301:15:36.579Z overlaps job197 allocation, not job196 training. Do not treat job197 startup as isolated from this read-only IO."
+    },
+    {
+      "event": "generated_artifact_normalization",
+      "classification": "publication_validation",
+      "findings": [
+        "Historical checkpoint deltas not measured must be absent, not reported as zero.",
+        "PMA error totals should use the same plotting window as other collector errors.",
+        "Default CSV CRLF and Matplotlib SVG trailing spaces produced whitespace diagnostics."
+      ],
+      "action": "Fixed renderer missing-data wording and PMA error-window filtering. Emit LF CSV and normalize SVG line endings without changing numbers. Tests, JSON/XML parsing, link checks and whitespace checks passed before publication."
+    },
+    {
+      "event": "concurrent_async_publication",
+      "classification": "publication_isolation",
+      "remote_commit": "6fe7a43e4a818c2f9a239e725222cb7c46e467fd",
+      "new_files_or_changes": 1357,
+      "action": "Publish the completed compact job196 bundle on ppo-job-196-compact. Do not overwrite main or touch independent running job197. Original f7ec463 chart additions remain preserved on this branch."
     }
   ]
 }

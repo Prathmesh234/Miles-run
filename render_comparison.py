@@ -142,7 +142,19 @@ def main():
     if args.preview: figure.savefig(out/'infrastructure-timeline.png',dpi=120)
     plt.close(figure)
 
-    report=['# PPO comparison with the previous Miles run','',data['scope']+'.','',
+    ipo=next(r for r in runs if r['algorithm']=='ipo')
+    complete_timing=ppo['ready_to_checkpoint_s'] is not None and ipo['ready_to_checkpoint_s'] is not None
+    change=(ppo['ready_to_checkpoint_s']/ipo['ready_to_checkpoint_s']-1)*100 if complete_timing else None
+    critic_seconds=sum(t['seconds'] for t in ppo['timers'] if t['role']=='critic' and t['name']=='critic_train')
+    residency_seconds=sum(t['seconds'] for t in ppo['timers'] if t['name'] in ['sleep','wake_up'])
+    headline=(f"The PPO repeat logged **{ppo['completed_actor_updates']} actor and {ppo['completed_critic_updates']} critic updates**. Inference-ready to final checkpoint was **{ppo['ready_to_checkpoint_s']:.2f} s**, "
+            f"versus **{ipo['ready_to_checkpoint_s']:.2f} s** for Miles IPO ({change:+.1f}%). This is an observed run difference, not an isolated PPO-versus-IPO speed penalty.",'',
+            f"PPO generated {ppo['accounting']['generated']} episodes / {ppo['accounting']['output_tokens']:,} output tokens; IPO generated "
+            f"{ipo['accounting']['generated']} / {ipo['accounting']['output_tokens']:,}. Both consumed 32 accepted traces. "
+            f"PPO added {critic_seconds:.2f} s of logged critic compute and {residency_seconds:.2f} s of model sleep/wake transitions across the full driver lifecycle. "
+            'These timers have different boundaries and are not an additive critical-path decomposition.') if complete_timing else (
+            f"PPO attempt status: **{ppo['status']}**. No complete checkpoint timing comparison is available.",)
+    report=['# PPO comparison with the previous Miles run','',data['scope']+'.','',*headline,'',
             '## Results','', 'The plots and this report are generated from [comparison.json](comparison.json) and [timeseries.csv](timeseries.csv).', '',
             '![Training comparison](training-comparison.svg)','',
             '![Infrastructure timelines](infrastructure-timeline.svg)','',
@@ -179,11 +191,12 @@ def main():
         for key in ['checkpoints','critic_checkpoint']:
             checkpoint=run.get(key)
             if checkpoint:
-                changed=sum(v['changed_elements'] for v in checkpoint.get('selected_tensors_vs_base',{}).values())
-                report += ['',f"{checkpoint.get('role',key)} checkpoint: {sum(checkpoint['shard_files'].values())/1024**3:.2f} GiB, "
-                    f"{len(checkpoint['sampled_tensor_reads'])} finite small tensors loaded on CPU; {changed} changed elements in sampled tensors versus base. "
+                comparison=checkpoint.get('selected_tensors_vs_base')
+                delta=f"{sum(v['changed_elements'] for v in comparison.values())} changed elements in sampled tensors versus base." if comparison else 'Base-weight deltas were not measured for this historical checkpoint.'
+                report += ['',f"{checkpoint.get('role','actor' if key=='checkpoints' else 'critic')} checkpoint: {sum(checkpoint['shard_files'].values())/1024**3:.2f} GiB, "
+                    f"{len(checkpoint['sampled_tensor_reads'])} finite small tensors loaded on CPU; {delta} "
                     'This is structural/sample validation, not full-state resume validation.']
-        report += ['',f"Collector-error counts: `{json.dumps(run['telemetry']['collector_errors'],sort_keys=True)}`.",'']
+        report += ['',f"Collector-error counts inside the plotted window: `{json.dumps(run['telemetry']['collector_errors'],sort_keys=True)}`.",'']
     report += ['## Failures and attribution','',
         'The successful comparison excludes failed attempts; their cost and failure phases remain in the JSON and [intervention log](interventions.json). '
         'Job 195 reached a critic step but had a zero-gradient, uniform-output actor and was deliberately stopped. '
@@ -198,13 +211,19 @@ def main():
     provenance=json.loads((out/'provenance.json').read_text())
     runtime=provenance.get('final_runtime') or {}
     for command in runtime.get('commands',[]):
+        if command['argv'][0]=='squeue' and command['stdout'].strip():
+            report += ['### Other allocation after this run','',
+                f"The post-run queue snapshot was `{command['stdout'].strip()}`. This is not the completed PPO allocation. "
+                'Our job containers were stopped and GPU UUIDs reconciled. The cluster was subsequently allocated to another job; '
+                'do not claim it remained globally idle. Post-run hashing is outside this run\'s measured window but can overlap another allocation\'s startup.','']
+    for command in runtime.get('commands',[]):
         if command['argv'][0]=='sacct' and command['exit_code']==0:
             report += ['### Allocation accounting','',
                 'Slurm allocation durations include startup and cleanup. Failed attempts are not included in the successful-run charts.','']
             records=list(csv.DictReader(command['stdout'].splitlines(),delimiter='|'))
             for row in records:
                 report += [f"- Job {row['JobID']}: {row['State']}, elapsed {row['Elapsed']}, exit {row['ExitCode']}."]
-    report += ['## Interpretation and limits','']
+    report += ['', '## Interpretation and limits','']
     report += [f'- **{name}:** {description}' for name,description in data['metric_semantics'].items()]
     report += ['', '## Missing or unperformed measurements','']+['- '+gap for gap in data['coverage_gaps']]
     report += ['', '## Evidence retention','',
@@ -214,6 +233,10 @@ def main():
         'and raw collector output remain in checksummed local and cluster archives, outside Git. '
         'No held-out improvement is inferred from these two training rewards.','']
     (out/'REPORT.md').write_text('\n'.join(report))
+    # Matplotlib emits trailing spaces inside multiline SVG path attributes.
+    # Newline separators preserve those paths while keeping generated diffs clean.
+    for path in out.glob('*.svg'):
+        path.write_text('\n'.join(line.rstrip() for line in path.read_text().splitlines())+'\n')
     print(out/'REPORT.md')
 
 

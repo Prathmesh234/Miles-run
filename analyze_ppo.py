@@ -72,6 +72,11 @@ def phase_results(root):
     phases = []
     for row in lines(root/'timeline.jsonl'):
         event = row['event']
+        if event=='checkpoint_conversion_reused':
+            phases.append({'schema_version':1,'runner':'checkpoint-conversion','status':'skip',
+                'started_at':row['time'],'ended_at':row['time'],'duration_s':0.,
+                'exit_code':None,'reason_code':'pinned_base_conversion_reused_read_only',
+                'metadata':{'path':row['path']},'results':[],'log_relpath':None,'log_sha256':None})
         if event.endswith('_start'):
             starts[event[:-6]] = row
         elif event.endswith('_end') and event[:-4] in starts:
@@ -97,6 +102,15 @@ def phase_results(root):
             'exit_code':None,'timeout':False,'metadata':{'argv':start.get('argv')},'results':[],
             'failure_summary':'No completion event; run interrupted or command raised',
             'log_relpath':log.name if log.exists() else None,'log_sha256':sha(log) if log.exists() else None})
+    for row in load(root/'post-verification-commands.json',[]):
+        log=root/(row['stage']+'.out');err=root/(row['stage']+'.err')
+        phases.append({'schema_version':1,'runner':row['stage'],'status':'ok' if row['exit_code']==0 else 'fail',
+            'started_at':dt.datetime.fromtimestamp(row['start_epoch'],dt.timezone.utc).isoformat(),
+            'ended_at':dt.datetime.fromtimestamp(row['end_epoch'],dt.timezone.utc).isoformat(),
+            'duration_s':row['end_epoch']-row['start_epoch'],'exit_code':row['exit_code'],
+            'timeout':False,'metadata':{'argv':row['argv'],'outside_measured_window':True},'results':[],
+            'log_relpath':log.name,'log_sha256':sha(log),
+            'stderr_relpath':err.name,'stderr_sha256':sha(err)})
     return phases
 
 
@@ -193,7 +207,8 @@ def telemetry(root, start, end):
             for port in row['ports']:
                 device = port['argv'][2]
                 if port.get('status') != 0:
-                    errors[host+':rdma:'+device] += 1; continue
+                    if start <= t <= end: errors[host+':rdma:'+device] += 1
+                    continue
                 counters = {k:int(v) for k,v in re.findall(r'^([A-Za-z0-9]+):\.+([0-9]+)', port['stdout'], re.M)}
                 if device in last and start <= t <= end:
                     t0, old = last[device]
@@ -329,7 +344,7 @@ def miles_run(root, job, algorithm):
             'request_to_prefill_finish_s':meta['prefill_finished_time']-meta['request_received_ts'] if 'prefill_finished_time' in meta and 'request_received_ts' in meta else None})
     archive=load(root/'archive-manifest.json',{})
     return {'job_id':job, 'algorithm':algorithm, 'label':f'Miles {algorithm.upper()} ({job})',
-            'raw_archive':archive.get('remote_run',str(root)), 'local_archive':str(root.resolve()),
+            'raw_archive':archive.get('remote_run',extracted.get('run',str(root))), 'local_archive':str(root.resolve()),
             'window_epoch':[start,end], 'window_definition':window_definition,
             'coordinator_window_epoch':allocation_window, 'ready_to_checkpoint_s':end-start if ready and saved else None,
             'status':'ok' if exit_code == 0 else 'fail' if exit_code is not None else 'running',
@@ -472,11 +487,23 @@ def main():
         'native_tests':load(args.ppo/'ppo-native-tests.json'),'transport_tests':load(args.ppo/'ppo-transport-tests.json'),
         'policy_validity':[load(p) for p in sorted(args.ppo.glob('policy-validity-*.json'))],
         'final_runtime':load(args.ppo/'final-runtime.json'),
+        'node_post_runtime':[{'source':str(p.relative_to(args.ppo)),'sha256':sha(p),
+            'hostname':load(p)['hostname'],'summary':load(p)['summary'],
+            'gpu_uuids':[line.split(',')[0].strip() for line in load(p)['commands']['gpus']['stdout'].splitlines()],
+            'slurm_state':re.search(r'State=(\S+)',load(p)['commands']['slurm']['stdout']).group(1),
+            'command_exit_codes':{k:v['exit_code'] for k,v in load(p)['commands'].items()}}
+            for p in sorted((args.ppo/'infra').glob('*-post-runtime.json'))],
         'analysis_versions':{'python':sys.version,'package_lock':subprocess.check_output([sys.executable,'-m','pip','freeze'],text=True).splitlines()}}
+    kube=load(args.ppo/'infra/kubernetes-after.json')
+    if kube:
+        provenance['kubernetes_after']={'source_sha256':sha(args.ppo/'infra/kubernetes-after.json'),
+            'captured_at':kube['captured_utc'],'nodes':[{'name':n['name'],
+                'allocatable_gpus':n['status']['allocatable'].get('nvidia.com/gpu'),
+                'conditions':{c['type']:c['status'] for c in n['status']['conditions']}} for n in kube['nodes']]}
     (args.out/'provenance.json').write_text(json.dumps(provenance,indent=2,allow_nan=False)+'\n')
     with (args.out/'timeseries.csv').open('w') as stream:
         fields = ['job_id','time','time_utc','monotonic','source','elapsed_s','hostname','role','metric','value','unit','device']
-        writer = csv.DictWriter(stream, fieldnames=fields); writer.writeheader()
+        writer = csv.DictWriter(stream, fieldnames=fields, lineterminator='\n'); writer.writeheader()
         writer.writerows(baseline_series)
         for run in runs:
             writer.writerows({'job_id':run['job_id'], **r} for r in run['telemetry'].pop('series'))

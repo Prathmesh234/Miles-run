@@ -1,0 +1,3333 @@
+{
+  "schema_version": 1,
+  "launch_manifest": {
+    "schema_version": 1,
+    "status": "preflight_passed",
+    "created_at": "20260904T005533Z",
+    "campaign": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z",
+    "baseline_jobs": [
+      181,
+      190
+    ],
+    "reused_campaign_read_only": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030",
+    "algorithm": "ppo",
+    "image": "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d",
+    "miles_sha": "70b89e11770fc9bac984e22cfff89c51cca44203",
+    "clustermax_sha": "fed871df5321d42706c98701522cc3ccd55898d5",
+    "publication_parent_sha": "0fa4636863b1f61b444a830f74980cb06d59c10e",
+    "matched_workload": {
+      "model": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0",
+      "model_revision": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+      "initial_weights": "original base-model checkpoint, not the trained step_2 checkpoint",
+      "tasks": [
+        "task_06652",
+        "task_14118",
+        "task_10753",
+        "task_09467"
+      ],
+      "dataset_revision": "9c197f1c2e87b64cc316b1a5bfcef57b584929f0",
+      "task_file_hashes": "baseline/code-git/scripts/2-performance/training/prime-rl-terminal-lego/workload/task-files.sha256",
+      "train_nodes": 2,
+      "inference_nodes": 2,
+      "gpus_per_node": 8,
+      "gpu_type": "NVIDIA B200",
+      "steps": 2,
+      "sequences_per_batch": 16,
+      "samples_per_task_group": 8,
+      "max_context_tokens": 8192,
+      "max_completion_tokens_per_turn": 2048,
+      "max_agent_turns": 8,
+      "rollout_timeout_seconds": 1200,
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": -1,
+      "min_p": 0.0,
+      "concurrent_episodes": 16,
+      "max_off_policy_steps": 0,
+      "optimizer": {
+        "lr": 1e-06,
+        "weight_decay": 0.0,
+        "max_norm": 1.0,
+        "type": "adamw",
+        "betas1": 0.9,
+        "betas2": 0.999
+      },
+      "scheduler": {
+        "type": "constant"
+      },
+      "trainer_loss": {
+        "type": "ipo",
+        "eps": 0.1,
+        "adv_tau": 1.0,
+        "kl_tau": 0.001
+      },
+      "advantages": "reward minus group mean, without dividing by group standard deviation",
+      "loss_reduction": "global active-token mean",
+      "no_reference_kl": true,
+      "optimization_dtype": "bfloat16",
+      "gradient_reduction_dtype": "bfloat16",
+      "trainer_ep": 8,
+      "trainer_cp": 1,
+      "inference_tp": 8,
+      "inference_dp": 2,
+      "inference_gpu_memory_fraction": 0.85,
+      "freeze_vision_encoder": true,
+      "no_mtp_training": true,
+      "no_speculative_decoding": true,
+      "checkpoint_interval": 2,
+      "save_optimizer": false,
+      "verifiers_commit": "c1547418f6126b431a85ce4d46f1fbd0afe58e92",
+      "renderers_commit": "f91c3e7061ce50ea405cdf54fd419a45cb51a152",
+      "harness": "bash",
+      "runtime": "docker",
+      "renderer": "qwen3.6",
+      "inference_fp32_lm_head": true,
+      "inference_fp32_router_logits": true
+    },
+    "inherited_backend_deviations": {
+      "gradient_reduction_dtype": {
+        "baseline": "bfloat16",
+        "miles": "float32",
+        "reason": "Megatron BF16 training validation requires FP32 gradient accumulation/reduction"
+      },
+      "inference_parallelism_notation": {
+        "baseline": "vLLM TP8, DP2, global EP16",
+        "miles": "SGLang global TP16, attention DP2 with attention TP8, EP16"
+      },
+      "prefill_cuda_graphs": {
+        "miles": "disabled",
+        "reason": "Pinned SGLang breakable prefill graph shape error in job187"
+      },
+      "cpu_numa_binding": {
+        "miles": "SGLang automatic NUMA affinity skipped in inner container; all CPUs and both NUMA nodes allowed"
+      },
+      "schedule": {
+        "baseline": "asynchronous group prefetch and zero-advantage filtering",
+        "miles": "synchronous two-step, cyclic same four tasks, zero-advantage filtering"
+      },
+      "inference_moe_kernel": {
+        "miles": "flashinfer_cutlass",
+        "reason": "Pinned Miles Blackwell recipe documents identical weight-sync shape failure and selects this backend."
+      },
+      "router_precision_kernel": {
+        "baseline": "vLLM GateLinear FP32 router logits",
+        "miles": "Job-local ReplicatedLinear subclass using BF16-input torch.mm(out_dtype=float32); same canonical BF16 parameter storage",
+        "reason": "Pinned SGLang Qwen gate does not honor the baseline FP32 router-logit option."
+      },
+      "request_routing": {
+        "miles": "round_robin",
+        "reason": "Default cache-aware policy concentrated all observed workload requests on attention DP0."
+      }
+    },
+    "ppo_changes": {
+      "critic_lr": 1e-05,
+      "critic_warmup_steps": 0,
+      "policy_clip": 0.2,
+      "value_clip": 0.2,
+      "gamma": 1.0,
+      "gae_lambda": 1.0,
+      "normalize_advantages": true,
+      "rewards": "raw, no group centering",
+      "zero_variance_groups": "retained",
+      "critic": "colocated on actor GPUs with train offload",
+      "truncation": "native GAE zero bootstrap; terminal observed reward retained",
+      "entropy_coef": 0.0,
+      "reference_kl_coef": 0.0
+    },
+    "comparison_limitations": [
+      "two updates; no held-out quality evidence",
+      "task source/order/batch settings match; sampled outcomes and accepted task mix do not",
+      "same base weights; warmed image and conversion caches",
+      "weights-only actor/critic checkpoints; no optimizer/RNG resume test",
+      "native PPO adds critic work and keeps zero-variance groups"
+    ],
+    "source_sha256": {
+      "coordinator.py": "7fd457e2376d65bc0db389424bd72e1cba807af1a6be90284a77ad196fc6d2b8",
+      "training_entry.py": "2c450ad5a3652e5b8de23615743c975a57432484cadbb94ea613afff4863b820",
+      "harness_bridge.py": "1d76dc3bccb888da80b805434ca8f0731a7250dea542682385ee26d153bae088",
+      "rollout_adapter.py": "39dfebf2df3f6d99a8eed1ffe0d48787d3aa69b5262931315c9ef7e5d790a32a",
+      "ipo_loss.py": "e6cb44806a1a0611cfdfb313f743dda9fa2ba60ea5198a34d02b82a01655d70a",
+      "test_adapters.py": "550f6a8cacd04dcc8b043b73062b6c74c507264b3a45377954174b4e3567af43",
+      "test_ppo.py": "63ec1092d6bc146c293c4b9dfed377a32ff3e99c93bb60348966bfe92f3f7f87",
+      "sglang.yaml": "031b4387beded7616f3599072623a6fe77f3099b9df87d6c74fb0f8a63eabe3e",
+      "prepare_ppo_driver.py": "23b4bd85faf2e7c681fb79297d4b47abeb429e96ab9389220b9d203719cfa0e5",
+      "ppo-resident-broadcast.patch": "19960867c88866bd8ebd1b128422cd73efdcdaed0375270aa7feb7abf158766d",
+      "install_precision_patch.py": "32f9d57a418e21c754efea8af67c723a1ce9436817dfb4982911a84403cfd86f",
+      "sglang_precision.py": "b6aa8ee350c44524e29059fc296b9527bc58bfa33b9056a259df1d2de34f031d",
+      "capture_infra.py": "e53d08c324693a1ce147449be67629a800181f7c1584109d23156db3b5946d2b",
+      "capture_rdma.py": "4cce038fea581a59f4885e1ee22cd9f588ca1565d341a016d48295dd8307594b",
+      "capture_metrics.py": "852ee91839c29f1f8bf3f231902ff5a226f5d165886868a3c6a5f2b09c544d98",
+      "capture_health.py": "33883778927e2e06e0bb70961ae5287d5292a96143f8780e5b1369021bfd47fb",
+      "container_evidence.py": "5cf13a8b4184443391a271122a67375a1e87c70b2e11a5134b510704c4518d19",
+      "extract_metrics.py": "cc92d603de5b295213d09db6ee8f5f71b96b267209267187e56d40c3be1c11e6",
+      "verify_checkpoint.py": "6264a10473a42cc389025ff64d9c0f4b2d623743d32ff3dfbb44d2bfb5958522",
+      "run.sbatch": "e4be8ec618ed0c7c4655c8cea4bad6b274b89b26c57f0bfb714f96b30fa1aa86",
+      "launch_ppo.py": "d36073e7345f4ff56c99239673b883e90c5e6bac8e41618b6116788c2943eaf2"
+    },
+    "inventory": [
+      {
+        "host": "gpu-nodes-0",
+        "free_bytes": 3114669330432,
+        "gpus": {
+          "argv": [
+            "nvidia-smi",
+            "--query-gpu=uuid,name,memory.total,memory.used",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "GPU-042b468a-5f46-4b8f-c659-2be865525f4a, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-0f5cccee-264e-0ae8-6ccf-56d7fb4be5f9, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-05b02219-2b03-f8a7-ca66-04c0a7befe66, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-cf39917e-f92f-3b5a-fbf5-b9daef3036e6, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-ec52f3ef-8f41-cbaa-d2c2-7e8b56d3b32a, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-54f332eb-7acd-44a4-46ff-0017be6b0952, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-28ee82ef-4f26-3d9f-8596-ff87f1eb443c, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-2941c934-8ec5-7a72-492b-d983858d9126, NVIDIA B200, 183359 MiB, 0 MiB\n",
+          "stderr": ""
+        },
+        "processes": {
+          "argv": [
+            "nvidia-smi",
+            "--query-compute-apps=pid,gpu_uuid,used_memory",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "slurm": {
+          "argv": [
+            "scontrol",
+            "show",
+            "node",
+            "gpu-nodes-0",
+            "--oneliner"
+          ],
+          "exit_code": 0,
+          "stdout": "NodeName=gpu-nodes-0 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=6.42 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.18.139 NodeHostName=gpu-nodes-0 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2236628 Sockets=2 Boards=1 MemSpecLimit=5909 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:37:42 SlurmdStartTime=2026-09-01T17:46:43 LastBusyTime=2026-09-04T00:54:00 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-0\",\"node\":\"b200-nodepool-ac23753e6cfa\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+          "stderr": ""
+        },
+        "ib": {
+          "argv": [
+            "ibstat"
+          ],
+          "exit_code": 0,
+          "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9b04\n\tSystem image GUID: 0x5000e60300ca9b04\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 23\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9b04\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caa2b4\n\tSystem image GUID: 0x5000e60300caa2b4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 393\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caa2b4\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b90fa2\n\tSystem image GUID: 0xc470bd0300b90fa2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b90fa3\n\tSystem image GUID: 0xc470bd0300b90fa2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caa2cc\n\tSystem image GUID: 0x5000e60300caa2cc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 461\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caa2cc\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9b0c\n\tSystem image GUID: 0x5000e60300ca9b0c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 40\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9b0c\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3c34\n\tSystem image GUID: 0x5000e60300ca3c34\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 131\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3c34\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9af4\n\tSystem image GUID: 0x5000e60300ca9af4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 537\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9af4\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9aec\n\tSystem image GUID: 0x5000e60300ca9aec\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 523\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9aec\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030030621e\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x7c8c09030030621e\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030030621f\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 2\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x7c8c09030030621f\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300306220\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c090300306220\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300306221\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c090300306221\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caa22c\n\tSystem image GUID: 0x5000e60300caa22c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 123\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caa22c\n\t\tLink layer: InfiniBand\n",
+          "stderr": ""
+        },
+        "mount": {
+          "argv": [
+            "findmnt",
+            "-J",
+            "/shared"
+          ],
+          "exit_code": 0,
+          "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+          "stderr": ""
+        },
+        "memory": "MemTotal:       3170218620 kB\nMemFree:        2802533248 kB\nMemAvailable:   3053355080 kB\nBuffers:        40938636 kB\nCached:         242081300 kB\nSwapCached:            0 kB\nActive:         50247936 kB\nInactive:       236256816 kB\nActive(anon):   47200888 kB\nInactive(anon):        0 kB\nActive(file):    3047048 kB\nInactive(file): 236256816 kB\nUnevictable:       31664 kB\nMlocked:           28140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               284 kB\nWriteback:             0 kB\nAnonPages:       3518620 kB\nMapped:          2618944 kB\nShmem:          43707252 kB\nKReclaimable:   27207720 kB\nSlab:           42190592 kB\nSReclaimable:   27207720 kB\nSUnreclaim:     14982872 kB\nKernelStack:      128352 kB\nPageTables:        53744 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585109308 kB\nCommitted_AS:   71268708 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1198488 kB\nVmallocChunk:          0 kB\nPercpu:          1483776 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    158012884 kB\nDirectMap2M:    1705904128 kB\nDirectMap1G:    1356857344 kB\n",
+        "image": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "image",
+            "inspect",
+            "--format={{.Id}}",
+            "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+          ],
+          "exit_code": 0,
+          "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+          "stderr": ""
+        },
+        "driver": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "info",
+            "--format={{.Driver}}"
+          ],
+          "exit_code": 0,
+          "stdout": "fuse-overlayfs\n",
+          "stderr": ""
+        },
+        "queue": {
+          "argv": [
+            "squeue",
+            "-h",
+            "-o",
+            "%i|%T|%N"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "host": "gpu-nodes-1",
+        "free_bytes": 3114669330432,
+        "gpus": {
+          "argv": [
+            "nvidia-smi",
+            "--query-gpu=uuid,name,memory.total,memory.used",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "GPU-5952930a-878e-ec2b-c065-48fb338aa628, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-1bc17818-8165-04f4-9862-3bcbe7268fbb, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-f2fbb0d1-cb7a-4e2a-a894-21e7b6e7921b, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-2ab0b43f-4c77-d27b-7ccf-21c99d80be08, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-e1134404-a7de-f243-63f1-5fd7e11c635f, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-d1b19d48-f43c-67ea-1b22-af4a8e6e428c, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-15fdcc49-761c-3cc0-c511-7c9d4c04d796, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-0606304d-2091-5727-0a0c-ee795e16dfc7, NVIDIA B200, 183359 MiB, 0 MiB\n",
+          "stderr": ""
+        },
+        "processes": {
+          "argv": [
+            "nvidia-smi",
+            "--query-compute-apps=pid,gpu_uuid,used_memory",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "slurm": {
+          "argv": [
+            "scontrol",
+            "show",
+            "node",
+            "gpu-nodes-1",
+            "--oneliner"
+          ],
+          "exit_code": 0,
+          "stdout": "NodeName=gpu-nodes-1 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=7.24 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.13.18 NodeHostName=gpu-nodes-1 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2411937 Sockets=2 Boards=1 MemSpecLimit=5916 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:38:02 SlurmdStartTime=2026-09-01T17:46:17 LastBusyTime=2026-09-04T00:53:59 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-1\",\"node\":\"b200-nodepool-b401f8abb9f1\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+          "stderr": ""
+        },
+        "ib": {
+          "argv": [
+            "ibstat"
+          ],
+          "exit_code": 0,
+          "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3c4\n\tSystem image GUID: 0x5000e60300cab3c4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 449\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3c4\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab33c\n\tSystem image GUID: 0x5000e60300cab33c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 166\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab33c\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b9299c\n\tSystem image GUID: 0xc470bd0300b9299c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b9299d\n\tSystem image GUID: 0xc470bd0300b9299c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3e4\n\tSystem image GUID: 0x5000e60300cab3e4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 509\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3e4\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3bc\n\tSystem image GUID: 0x5000e60300cab3bc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 419\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3bc\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3b4\n\tSystem image GUID: 0x5000e60300cab3b4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 398\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3b4\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3a4\n\tSystem image GUID: 0x5000e60300cab3a4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 367\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3a4\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caafc4\n\tSystem image GUID: 0x5000e60300caafc4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 448\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caafc4\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300026198\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x7c8c090300026198\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300026199\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 4\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x7c8c090300026199\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030002619a\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c09030002619a\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030002619b\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c09030002619b\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab01c\n\tSystem image GUID: 0x5000e60300cab01c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 85\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab01c\n\t\tLink layer: InfiniBand\n",
+          "stderr": ""
+        },
+        "mount": {
+          "argv": [
+            "findmnt",
+            "-J",
+            "/shared"
+          ],
+          "exit_code": 0,
+          "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+          "stderr": ""
+        },
+        "memory": "MemTotal:       3170218776 kB\nMemFree:        2972241164 kB\nMemAvailable:   3054396208 kB\nBuffers:        18657896 kB\nCached:         114768052 kB\nSwapCached:            0 kB\nActive:         48712216 kB\nInactive:       87948452 kB\nActive(anon):   46303156 kB\nInactive(anon):        0 kB\nActive(file):    2409060 kB\nInactive(file): 87948452 kB\nUnevictable:       31592 kB\nMlocked:           28140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:                76 kB\nWriteback:             0 kB\nAnonPages:       3268144 kB\nMapped:          2425568 kB\nShmem:          43059604 kB\nKReclaimable:    7487444 kB\nSlab:           19020892 kB\nSReclaimable:    7487444 kB\nSUnreclaim:     11533448 kB\nKernelStack:      120768 kB\nPageTables:        50076 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585109388 kB\nCommitted_AS:   69437988 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1179324 kB\nVmallocChunk:          0 kB\nPercpu:          1539072 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    120010196 kB\nDirectMap2M:    1386342400 kB\nDirectMap1G:    1714421760 kB\n",
+        "image": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "image",
+            "inspect",
+            "--format={{.Id}}",
+            "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+          ],
+          "exit_code": 0,
+          "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+          "stderr": ""
+        },
+        "driver": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "info",
+            "--format={{.Driver}}"
+          ],
+          "exit_code": 0,
+          "stdout": "fuse-overlayfs\n",
+          "stderr": ""
+        },
+        "queue": {
+          "argv": [
+            "squeue",
+            "-h",
+            "-o",
+            "%i|%T|%N"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "host": "gpu-nodes-2",
+        "free_bytes": 3114669330432,
+        "gpus": {
+          "argv": [
+            "nvidia-smi",
+            "--query-gpu=uuid,name,memory.total,memory.used",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "GPU-86218e11-8977-19fa-201a-44a56b6e3af3, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-f453c594-8cff-6075-c05b-3b062157db8c, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-7872c739-35ac-de0a-ed68-2788e884b75a, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-01f65707-f773-a110-8b11-24c5b34fbeb7, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-983d90f7-787b-aff5-36d7-b6493c473cbf, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-e00780e1-e567-1c2e-0948-20d7d26b1b32, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-b159dd83-dd72-8f98-ed64-6627dd4ac56e, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-83015363-6a79-c75f-ac7a-1b923e2a3c4b, NVIDIA B200, 183359 MiB, 0 MiB\n",
+          "stderr": ""
+        },
+        "processes": {
+          "argv": [
+            "nvidia-smi",
+            "--query-compute-apps=pid,gpu_uuid,used_memory",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "slurm": {
+          "argv": [
+            "scontrol",
+            "show",
+            "node",
+            "gpu-nodes-2",
+            "--oneliner"
+          ],
+          "exit_code": 0,
+          "stdout": "NodeName=gpu-nodes-2 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=4.84 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.218.62 NodeHostName=gpu-nodes-2 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2898601 Sockets=2 Boards=1 MemSpecLimit=5910 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-09-01T20:17:30 SlurmdStartTime=2026-09-01T20:25:00 LastBusyTime=2026-09-04T00:54:01 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-2\",\"node\":\"b200-nodepool-b615b018060d\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+          "stderr": ""
+        },
+        "ib": {
+          "argv": [
+            "ibstat"
+          ],
+          "exit_code": 0,
+          "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3ddc\n\tSystem image GUID: 0x5000e60300ca3ddc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 487\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3ddc\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3dbc\n\tSystem image GUID: 0x5000e60300ca3dbc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 409\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3dbc\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b93c04\n\tSystem image GUID: 0xc470bd0300b93c04\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b93c05\n\tSystem image GUID: 0xc470bd0300b93c04\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9b14\n\tSystem image GUID: 0x5000e60300ca9b14\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 60\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9b14\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9eac\n\tSystem image GUID: 0x5000e60300ca9eac\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 379\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9eac\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3e1c\n\tSystem image GUID: 0x5000e60300ca3e1c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 72\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3e1c\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3e2c\n\tSystem image GUID: 0x5000e60300ca3e2c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 118\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3e2c\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9afc\n\tSystem image GUID: 0x5000e60300ca9afc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 607\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9afc\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5462\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x7c8c0903001b5462\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5463\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 3\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x7c8c0903001b5463\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5464\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c0903001b5464\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5465\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c0903001b5465\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9f1c\n\tSystem image GUID: 0x5000e60300ca9f1c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 83\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9f1c\n\t\tLink layer: InfiniBand\n",
+          "stderr": ""
+        },
+        "mount": {
+          "argv": [
+            "findmnt",
+            "-J",
+            "/shared"
+          ],
+          "exit_code": 0,
+          "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+          "stderr": ""
+        },
+        "memory": "MemTotal:       3170211668 kB\nMemFree:        3003848288 kB\nMemAvailable:   3064813704 kB\nBuffers:        10531972 kB\nCached:         101356120 kB\nSwapCached:            0 kB\nActive:         85204472 kB\nInactive:       28853308 kB\nActive(anon):   45940360 kB\nInactive(anon):        0 kB\nActive(file):   39264112 kB\nInactive(file): 28853308 kB\nUnevictable:      366444 kB\nMlocked:           28132 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               428 kB\nWriteback:             0 kB\nAnonPages:       2537736 kB\nMapped:          2184116 kB\nShmem:          43761852 kB\nKReclaimable:    8530764 kB\nSlab:           17383536 kB\nSReclaimable:    8530764 kB\nSUnreclaim:      8852772 kB\nKernelStack:      104112 kB\nPageTables:        43652 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585105832 kB\nCommitted_AS:   66595800 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1141704 kB\nVmallocChunk:          0 kB\nPercpu:          1010688 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    46273428 kB\nDirectMap2M:    294055936 kB\nDirectMap1G:    2880438272 kB\n",
+        "image": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "image",
+            "inspect",
+            "--format={{.Id}}",
+            "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+          ],
+          "exit_code": 0,
+          "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+          "stderr": ""
+        },
+        "driver": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "info",
+            "--format={{.Driver}}"
+          ],
+          "exit_code": 0,
+          "stdout": "fuse-overlayfs\n",
+          "stderr": ""
+        },
+        "queue": {
+          "argv": [
+            "squeue",
+            "-h",
+            "-o",
+            "%i|%T|%N"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "host": "gpu-nodes-3",
+        "free_bytes": 3114669330432,
+        "gpus": {
+          "argv": [
+            "nvidia-smi",
+            "--query-gpu=uuid,name,memory.total,memory.used",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "GPU-7471b575-a845-d73b-2411-f1e12320fca9, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-1bd6c6e0-759f-5bd3-a68b-6f090fbce455, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-6a8efa14-0d09-d842-ae39-0eef7f0feb50, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-138eab1f-3694-349e-f925-e70769282647, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-272aac0b-bdf7-22f5-d5dc-cf109fa91069, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-70057fe0-55a2-08ba-bd16-da3d25751a7f, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-1d061bc6-8ece-408b-e20e-b75dccbc370e, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-11d63c84-1166-0a29-92d4-cd3dd5761a86, NVIDIA B200, 183359 MiB, 0 MiB\n",
+          "stderr": ""
+        },
+        "processes": {
+          "argv": [
+            "nvidia-smi",
+            "--query-compute-apps=pid,gpu_uuid,used_memory",
+            "--format=csv,noheader"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "slurm": {
+          "argv": [
+            "scontrol",
+            "show",
+            "node",
+            "gpu-nodes-3",
+            "--oneliner"
+          ],
+          "exit_code": 0,
+          "stdout": "NodeName=gpu-nodes-3 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=6.14 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.180.242 NodeHostName=gpu-nodes-3 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2885193 Sockets=2 Boards=1 MemSpecLimit=5916 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:35:51 SlurmdStartTime=2026-09-01T17:46:42 LastBusyTime=2026-09-04T00:54:00 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-3\",\"node\":\"b200-nodepool-83ee4175afdb\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+          "stderr": ""
+        },
+        "ib": {
+          "argv": [
+            "ibstat"
+          ],
+          "exit_code": 0,
+          "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7bcc\n\tSystem image GUID: 0x5000e60300ca7bcc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 459\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7bcc\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7be4\n\tSystem image GUID: 0x5000e60300ca7be4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 505\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7be4\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b914fa\n\tSystem image GUID: 0xc470bd0300b914fa\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b914fb\n\tSystem image GUID: 0xc470bd0300b914fa\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c9b466\n\tSystem image GUID: 0x5000e60300c9b466\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 234\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300c9b466\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca74d4\n\tSystem image GUID: 0x5000e60300ca74d4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 473\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca74d4\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7c3c\n\tSystem image GUID: 0x5000e60300ca7c3c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 163\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7c3c\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca764c\n\tSystem image GUID: 0x5000e60300ca764c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 189\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca764c\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c9b326\n\tSystem image GUID: 0x5000e60300c9b326\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 109\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300c9b326\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba2\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x5000e60300c96ba2\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba3\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 3\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300c96ba3\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba4\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x5000e60300c96ba4\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba5\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x5000e60300c96ba5\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7c24\n\tSystem image GUID: 0x5000e60300ca7c24\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 101\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7c24\n\t\tLink layer: InfiniBand\n",
+          "stderr": ""
+        },
+        "mount": {
+          "argv": [
+            "findmnt",
+            "-J",
+            "/shared"
+          ],
+          "exit_code": 0,
+          "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+          "stderr": ""
+        },
+        "memory": "MemTotal:       3170211908 kB\nMemFree:        2992552960 kB\nMemAvailable:   3059177192 kB\nBuffers:        15502308 kB\nCached:         101944340 kB\nSwapCached:            0 kB\nActive:         87158540 kB\nInactive:       32659180 kB\nActive(anon):   46177528 kB\nInactive(anon):        0 kB\nActive(file):   40981012 kB\nInactive(file): 32659180 kB\nUnevictable:      366480 kB\nMlocked:           28140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               220 kB\nWriteback:             0 kB\nAnonPages:       2740572 kB\nMapped:          2502672 kB\nShmem:          43797640 kB\nKReclaimable:    8667008 kB\nSlab:           18281652 kB\nSReclaimable:    8667008 kB\nSUnreclaim:      9614644 kB\nKernelStack:      116064 kB\nPageTables:        63460 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585105952 kB\nCommitted_AS:   76939864 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1156232 kB\nVmallocChunk:          0 kB\nPercpu:          1657856 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:      2048 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    56654952 kB\nDirectMap2M:    550012928 kB\nDirectMap1G:    2614099968 kB\n",
+        "image": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "image",
+            "inspect",
+            "--format={{.Id}}",
+            "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+          ],
+          "exit_code": 0,
+          "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+          "stderr": ""
+        },
+        "driver": {
+          "argv": [
+            "docker",
+            "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+            "info",
+            "--format={{.Driver}}"
+          ],
+          "exit_code": 0,
+          "stdout": "fuse-overlayfs\n",
+          "stderr": ""
+        },
+        "queue": {
+          "argv": [
+            "squeue",
+            "-h",
+            "-o",
+            "%i|%T|%N"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    ],
+    "kubernetes_allocatable_gpus": 32
+  },
+  "resolved_parameters": {
+    "advantage_estimator": "ppo",
+    "use_critic": true,
+    "actor_num_nodes": 2,
+    "actor_num_gpus_per_node": 8,
+    "critic_num_nodes": 2,
+    "critic_num_gpus_per_node": 8,
+    "rollout_num_gpus": 16,
+    "rollout_num_gpus_per_engine": 16,
+    "tensor_model_parallel_size": 1,
+    "expert_model_parallel_size": 8,
+    "context_parallel_size": 1,
+    "pipeline_model_parallel_size": 1,
+    "expert_tensor_parallel_size": 1,
+    "lr": 1e-06,
+    "critic_lr": 1e-05,
+    "gamma": 1.0,
+    "lambd": 1.0,
+    "eps_clip": 0.2,
+    "eps_clip_high": 0.2,
+    "value_clip": 0.2,
+    "num_rollout": 2,
+    "global_batch_size": 16,
+    "rollout_batch_size": 2,
+    "n_samples_per_prompt": 8,
+    "seed": 1234,
+    "num_critic_only_steps": 0,
+    "normalize_advantages": true,
+    "rewards_normalization": false,
+    "loss_type": "policy_loss",
+    "offload_train": true,
+    "no_save_optim": true,
+    "no_save_rng": true,
+    "save": "/campaign/runs/job-196/checkpoints",
+    "critic_save": "/campaign/runs/job-196/checkpoints_critic",
+    "load": "/campaign/converted-model",
+    "critic_load": "/campaign/converted-model",
+    "update_weight_transfer_mode": "broadcast"
+  },
+  "resolved_arguments_sha256": "24a3e659d254e03ac9b3b3fe18698bebccb9f0d228a6d36a2f76e7d175c49518",
+  "driver_patch": {
+    "base_miles_sha": "70b89e11770fc9bac984e22cfff89c51cca44203",
+    "patch_commits": [
+      "6ef4ae5581fa9e4558df22f39e92a24b67687a4b",
+      "90c5eb3f272b736f5c91d97fe8fcb6f03605e277"
+    ],
+    "scope": "job-local synchronous driver only; raw baseline is read-only",
+    "reason": "Keep the disjoint PPO actor parameter backup; restore before broadcasting live tensors and offload afterward",
+    "base_driver_sha256": "34693c11173e69a402228bd1d732122eef9fdb6e5d105660dfdd5eae0b1b954c",
+    "patch_sha256": "19960867c88866bd8ebd1b128422cd73efdcdaed0375270aa7feb7abf158766d",
+    "patched_driver_sha256": "ebd3e5b0bf893fcf4877c883b9c133173548275c3523623227ddd24f2dee63d9"
+  },
+  "ray_placement": [
+    {
+      "bundle": 0,
+      "actual_bundle": 1,
+      "host": "gpu-nodes-1",
+      "gpu_index": 0,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 1,
+      "actual_bundle": 2,
+      "host": "gpu-nodes-1",
+      "gpu_index": 1,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 2,
+      "actual_bundle": 3,
+      "host": "gpu-nodes-1",
+      "gpu_index": 2,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 3,
+      "actual_bundle": 4,
+      "host": "gpu-nodes-1",
+      "gpu_index": 3,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 4,
+      "actual_bundle": 5,
+      "host": "gpu-nodes-1",
+      "gpu_index": 4,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 5,
+      "actual_bundle": 6,
+      "host": "gpu-nodes-1",
+      "gpu_index": 5,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 6,
+      "actual_bundle": 7,
+      "host": "gpu-nodes-1",
+      "gpu_index": 6,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 7,
+      "actual_bundle": 8,
+      "host": "gpu-nodes-1",
+      "gpu_index": 7,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 8,
+      "actual_bundle": 16,
+      "host": "gpu-nodes-0",
+      "gpu_index": 0,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 9,
+      "actual_bundle": 25,
+      "host": "gpu-nodes-0",
+      "gpu_index": 1,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 10,
+      "actual_bundle": 26,
+      "host": "gpu-nodes-0",
+      "gpu_index": 2,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 11,
+      "actual_bundle": 27,
+      "host": "gpu-nodes-0",
+      "gpu_index": 3,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 12,
+      "actual_bundle": 28,
+      "host": "gpu-nodes-0",
+      "gpu_index": 4,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 13,
+      "actual_bundle": 29,
+      "host": "gpu-nodes-0",
+      "gpu_index": 5,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 14,
+      "actual_bundle": 30,
+      "host": "gpu-nodes-0",
+      "gpu_index": 6,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 15,
+      "actual_bundle": 31,
+      "host": "gpu-nodes-0",
+      "gpu_index": 7,
+      "role": "actor_and_critic"
+    },
+    {
+      "bundle": 16,
+      "actual_bundle": 17,
+      "host": "gpu-nodes-3",
+      "gpu_index": 0,
+      "role": "rollout"
+    },
+    {
+      "bundle": 17,
+      "actual_bundle": 18,
+      "host": "gpu-nodes-3",
+      "gpu_index": 1,
+      "role": "rollout"
+    },
+    {
+      "bundle": 18,
+      "actual_bundle": 19,
+      "host": "gpu-nodes-3",
+      "gpu_index": 2,
+      "role": "rollout"
+    },
+    {
+      "bundle": 19,
+      "actual_bundle": 20,
+      "host": "gpu-nodes-3",
+      "gpu_index": 3,
+      "role": "rollout"
+    },
+    {
+      "bundle": 20,
+      "actual_bundle": 21,
+      "host": "gpu-nodes-3",
+      "gpu_index": 4,
+      "role": "rollout"
+    },
+    {
+      "bundle": 21,
+      "actual_bundle": 22,
+      "host": "gpu-nodes-3",
+      "gpu_index": 5,
+      "role": "rollout"
+    },
+    {
+      "bundle": 22,
+      "actual_bundle": 23,
+      "host": "gpu-nodes-3",
+      "gpu_index": 6,
+      "role": "rollout"
+    },
+    {
+      "bundle": 23,
+      "actual_bundle": 24,
+      "host": "gpu-nodes-3",
+      "gpu_index": 7,
+      "role": "rollout"
+    },
+    {
+      "bundle": 24,
+      "actual_bundle": 0,
+      "host": "gpu-nodes-2",
+      "gpu_index": 0,
+      "role": "rollout"
+    },
+    {
+      "bundle": 25,
+      "actual_bundle": 9,
+      "host": "gpu-nodes-2",
+      "gpu_index": 1,
+      "role": "rollout"
+    },
+    {
+      "bundle": 26,
+      "actual_bundle": 10,
+      "host": "gpu-nodes-2",
+      "gpu_index": 2,
+      "role": "rollout"
+    },
+    {
+      "bundle": 27,
+      "actual_bundle": 11,
+      "host": "gpu-nodes-2",
+      "gpu_index": 3,
+      "role": "rollout"
+    },
+    {
+      "bundle": 28,
+      "actual_bundle": 12,
+      "host": "gpu-nodes-2",
+      "gpu_index": 4,
+      "role": "rollout"
+    },
+    {
+      "bundle": 29,
+      "actual_bundle": 13,
+      "host": "gpu-nodes-2",
+      "gpu_index": 5,
+      "role": "rollout"
+    },
+    {
+      "bundle": 30,
+      "actual_bundle": 14,
+      "host": "gpu-nodes-2",
+      "gpu_index": 6,
+      "role": "rollout"
+    },
+    {
+      "bundle": 31,
+      "actual_bundle": 15,
+      "host": "gpu-nodes-2",
+      "gpu_index": 7,
+      "role": "rollout"
+    }
+  ],
+  "source_at_launch": {
+    "coordinator.py": "7fd457e2376d65bc0db389424bd72e1cba807af1a6be90284a77ad196fc6d2b8",
+    "capture_rdma.py": "4cce038fea581a59f4885e1ee22cd9f588ca1565d341a016d48295dd8307594b",
+    "launch_ppo.py": "d36073e7345f4ff56c99239673b883e90c5e6bac8e41618b6116788c2943eaf2",
+    "harness_bridge.py": "1d76dc3bccb888da80b805434ca8f0731a7250dea542682385ee26d153bae088",
+    "capture_health.py": "33883778927e2e06e0bb70961ae5287d5292a96143f8780e5b1369021bfd47fb",
+    "capture_infra.py": "e53d08c324693a1ce147449be67629a800181f7c1584109d23156db3b5946d2b",
+    "install_precision_patch.py": "32f9d57a418e21c754efea8af67c723a1ce9436817dfb4982911a84403cfd86f",
+    "verify_checkpoint.py": "6264a10473a42cc389025ff64d9c0f4b2d623743d32ff3dfbb44d2bfb5958522",
+    "test_adapters.py": "550f6a8cacd04dcc8b043b73062b6c74c507264b3a45377954174b4e3567af43",
+    "prepare_ppo_driver.py": "23b4bd85faf2e7c681fb79297d4b47abeb429e96ab9389220b9d203719cfa0e5",
+    "run.sbatch": "e4be8ec618ed0c7c4655c8cea4bad6b274b89b26c57f0bfb714f96b30fa1aa86",
+    "ppo-resident-broadcast.patch": "19960867c88866bd8ebd1b128422cd73efdcdaed0375270aa7feb7abf158766d",
+    "extract_metrics.py": "cc92d603de5b295213d09db6ee8f5f71b96b267209267187e56d40c3be1c11e6",
+    "sglang_precision.py": "b6aa8ee350c44524e29059fc296b9527bc58bfa33b9056a259df1d2de34f031d",
+    "capture_metrics.py": "852ee91839c29f1f8bf3f231902ff5a226f5d165886868a3c6a5f2b09c544d98",
+    "sglang.yaml": "031b4387beded7616f3599072623a6fe77f3099b9df87d6c74fb0f8a63eabe3e",
+    "rollout_adapter.py": "39dfebf2df3f6d99a8eed1ffe0d48787d3aa69b5262931315c9ef7e5d790a32a",
+    "training_entry.py": "2c450ad5a3652e5b8de23615743c975a57432484cadbb94ea613afff4863b820",
+    "test_ppo.py": "63ec1092d6bc146c293c4b9dfed377a32ff3e99c93bb60348966bfe92f3f7f87",
+    "ipo_loss.py": "e6cb44806a1a0611cfdfb313f743dda9fa2ba60ea5198a34d02b82a01655d70a",
+    "container_evidence.py": "5cf13a8b4184443391a271122a67375a1e87c70b2e11a5134b510704c4518d19"
+  },
+  "package_lock": {
+    "megatron-core": "0.19.0+8c1e05747",
+    "typing-inspection": "0.4.4",
+    "pure_eval": "0.2.3",
+    "apex": "0.1",
+    "humanize": "4.16.0",
+    "opencensus-context": "0.1.3",
+    "h11": "0.16.0",
+    "python-multipart": "0.0.32",
+    "nvidia-ml-py": "13.610.43",
+    "datamodel-code-generator": "0.74.0",
+    "asttokens": "3.0.2",
+    "PuLP": "3.3.2",
+    "termplotlib": "0.3.9",
+    "sentencepiece": "0.2.2",
+    "cloudpickle": "3.1.2",
+    "easydict": "1.13",
+    "pybase64": "1.5.0",
+    "ring-flash-attn": "0.1.8",
+    "mooncake-transfer-engine-cuda13": "0.3.13.dev0+g4dbe5a4c",
+    "xatlas": "0.0.11",
+    "nvidia-cufft": "12.0.0.61",
+    "memray": "1.20.0",
+    "onnx": "1.22.0",
+    "onnxscript": "0.7.1",
+    "modelscope-hub": "0.2.0",
+    "grpcio-tools": "1.83.1",
+    "fast_hadamard_transform": "1.1.0",
+    "hpc-ops": "0.0.1.dev0+gab1a402",
+    "pyarrow": "25.0.1",
+    "torch": "2.13.0+cu130",
+    "ninja": "1.13.0",
+    "nvidia-cuda-nvdisasm": "13.3.73",
+    "flashinfer-python": "0.6.17",
+    "gguf": "0.19.0",
+    "msal": "1.37.0",
+    "torchft-nightly": "2026.4.3",
+    "tabulate": "0.10.0",
+    "google-cloud-storage": "3.13.1",
+    "tokenizers": "0.22.2",
+    "linkify-it-py": "2.2.0",
+    "absl-py": "2.5.0",
+    "transformer_engine": "2.17.0",
+    "nvidia-resiliency-ext": "0.6.0",
+    "mcp-types": "2.1.1",
+    "sse-starlette": "3.4.10",
+    "jiter": "0.16.0",
+    "imageio-ffmpeg": "0.5.1",
+    "pillow": "12.3.0",
+    "runai-model-streamer-gcs": "0.16.1",
+    "megatron-energon": "7.4.1",
+    "annotated-doc": "0.0.5",
+    "cubloaty": "0.1.0b3",
+    "nvdlfw_inspect": "0.2.2",
+    "google-auth": "2.56.3",
+    "opentelemetry-exporter-otlp-proto-common": "1.44.0",
+    "cffi": "2.1.1",
+    "propcache": "0.5.2",
+    "pydantic": "2.13.5",
+    "tile_kernels": "1.0.0",
+    "ptyprocess": "0.7.0",
+    "psycopg": "3.3.5",
+    "defusedxml": "0.7.1",
+    "smg-grpc-proto": "0.4.14",
+    "polars": "1.42.1",
+    "scipy": "1.18.0",
+    "typeguard": "4.6.0",
+    "ray": "2.58.0",
+    "PyJWT": "2.13.0",
+    "datasets": "5.0.1",
+    "pyelftools": "0.33",
+    "kernels": "0.14.1",
+    "sentry-sdk": "2.68.1",
+    "multiprocess": "0.70.19",
+    "rpds-py": "2026.6.3",
+    "importlib_metadata": "9.0.0",
+    "six": "1.17.0",
+    "nvidia-cufile": "1.15.1.6",
+    "st_attn": "0.0.7",
+    "tokenspeed-mla": "0.1.8",
+    "azure-storage-blob": "12.30.0",
+    "black": "26.5.1",
+    "proglog": "0.1.12",
+    "mdurl": "0.1.2",
+    "filelock": "3.32.3",
+    "anthropic": "1.0.0",
+    "hf-xet": "1.6.0",
+    "markdown-it-py": "4.2.0",
+    "traitlets": "5.16.1",
+    "build": "1.5.0",
+    "wcwidth": "0.8.2",
+    "httpx": "0.28.1",
+    "qwen-vl-utils": "0.0.14",
+    "safetensors": "0.8.0",
+    "mbridge": "0.15.1",
+    "opentelemetry-proto": "1.44.0",
+    "genson": "1.4.0",
+    "fake_int4_quant_cuda": "0.0.0",
+    "tokenspeed-triton": "3.8.10.post20260721",
+    "tensorboard-data-server": "0.7.2",
+    "typing_extensions": "4.16.0",
+    "colorful": "0.5.8",
+    "shellingham": "1.5.4",
+    "starlette": "1.6.0",
+    "flash_qla": "0.1.2+7c7dfe1",
+    "mdit-py-plugins": "0.6.1",
+    "contourpy": "1.3.3",
+    "anyio": "4.15.0",
+    "webencodings": "0.6.1",
+    "nvidia-cutlass-dsl": "4.6.2",
+    "huggingface_hub": "1.28.0",
+    "grpcio": "1.83.1",
+    "iniconfig": "2.3.0",
+    "fastapi": "0.141.1",
+    "sympy": "1.14.0",
+    "jmespath": "1.1.0",
+    "pyasn1": "0.6.4",
+    "opentelemetry-sdk": "1.44.0",
+    "networkx": "3.6.1",
+    "nvidia-nvjitlink": "13.3.33",
+    "httpcore": "1.0.9",
+    "airportsdata": "20260803",
+    "nccl4py": "0.4.1",
+    "cupy-cuda13x": "14.2.0",
+    "soundfile": "0.13.1",
+    "s3transfer": "0.19.2",
+    "msgspec": "0.21.1",
+    "nvidia-cudnn-frontend": "1.27.0",
+    "charset-normalizer": "3.5.1",
+    "inflect": "7.5.0",
+    "llguidance": "1.8.0",
+    "azure-identity": "1.25.3",
+    "websockets": "17.0.1",
+    "apache-tvm-ffi": "0.1.11",
+    "frozenlist": "1.8.0",
+    "uv": "0.12.5",
+    "nodeenv": "1.10.0",
+    "opentelemetry-exporter-prometheus": "0.65b0",
+    "hyperframe": "6.1.0",
+    "ml_dtypes": "0.6.0",
+    "onnx-ir": "1.0.0",
+    "google-crc32c": "1.8.0",
+    "flash-attn-4": "4.0.0b19",
+    "msgpack": "1.2.1",
+    "Markdown": "3.10.3",
+    "scikit_build_core": "1.0.3",
+    "opentelemetry-exporter-otlp-proto-grpc": "1.44.0",
+    "msal-extensions": "1.3.1",
+    "smg-grpc-servicer": "0.8.0",
+    "google-resumable-media": "2.10.1",
+    "virtualenv": "21.7.4",
+    "multidict": "6.7.1",
+    "diffusers": "0.37.0",
+    "loguru": "0.7.3",
+    "nvidia-cuda-crt": "13.3.73",
+    "sglang": "0.5.19.dev54+gc16b821",
+    "aiohttp-cors": "0.8.1",
+    "zipp": "4.1.0",
+    "watchfiles": "1.2.0",
+    "textual": "8.2.8",
+    "llvmlite": "0.47.0",
+    "boto3": "1.43.78",
+    "torchvision": "0.28.0+cu130",
+    "mscclpp": "0.9.1",
+    "nvidia-modelopt": "0.46.0",
+    "flash_attn": "2.7.4.post1",
+    "pybind11": "3.1.0",
+    "multi-storage-client": "1.0.1",
+    "transformer_engine_torch": "2.17.0",
+    "timm": "1.0.16",
+    "cuda-tile": "1.6.0rc5",
+    "python-dotenv": "1.2.3",
+    "distro": "1.9.0",
+    "mistral_common": "1.11.7",
+    "nvidia-cuda-cupti": "13.0.85",
+    "av": "16.1.0",
+    "rich": "15.0.0",
+    "prompt_toolkit": "3.0.53",
+    "opencv-python-headless": "4.10.0.84",
+    "isort": "8.0.1",
+    "opentelemetry-api": "1.44.0",
+    "compressed-tensors": "0.18.0",
+    "pycparser": "3.0",
+    "nvidia-curand": "10.4.0.35",
+    "openai-harmony": "0.0.4",
+    "urllib3": "2.7.0",
+    "pytest-asyncio": "1.4.0",
+    "cuda-python": "13.3.1",
+    "grpcio-reflection": "1.81.1",
+    "icdiff": "2.0.10",
+    "cycler": "0.12.1",
+    "pytokens": "0.4.1",
+    "einops": "0.8.2",
+    "flashinfer-jit-cache": "0.6.17+cu130",
+    "vsa": "0.0.4",
+    "sglang-router": "0.3.2",
+    "ipython_pygments_lexers": "1.1.1",
+    "cfgv": "3.5.0",
+    "aiohappyeyeballs": "2.7.1",
+    "fonttools": "4.63.0",
+    "interegular": "0.3.3",
+    "zstandard": "0.25.0",
+    "jedi": "0.20.0",
+    "platformdirs": "4.11.3",
+    "trimesh": "5.0.0",
+    "megatron-bridge": "0.5.0+582783a0",
+    "identify": "2.6.19",
+    "pyproject_hooks": "1.2.0",
+    "tilelang": "0.1.9",
+    "miles": "0.1.0",
+    "aiohttp": "3.14.3",
+    "psutil": "7.2.2",
+    "click": "8.5.0",
+    "runai-model-streamer-azure": "0.16.1",
+    "outlines_core": "0.1.26",
+    "cuda-pathfinder": "1.6.1",
+    "mpmath": "1.3.0",
+    "accelerate": "1.14.0",
+    "matplotlib": "3.11.1",
+    "pyasn1_modules": "0.4.2",
+    "nvidia-nvshmem-cu13": "3.4.5",
+    "proto-plus": "1.28.3",
+    "referencing": "0.37.0",
+    "google-api-core": "2.34.0",
+    "pycountry": "26.2.16",
+    "tiktoken": "0.14.0",
+    "outlines": "0.1.11",
+    "transformers": "5.12.1",
+    "pytest": "9.1.1",
+    "wrapt": "2.4.0",
+    "scikit-image": "0.25.2",
+    "pip": "26.2.1",
+    "nvidia-cusparselt-cu13": "0.8.1",
+    "lxml": "6.1.2",
+    "lazy-loader": "0.5",
+    "runai-model-streamer-s3": "0.16.1",
+    "sortedcontainers": "2.4.0",
+    "hypothesis": "6.167.1",
+    "nvidia-cuda-runtime": "13.0.96",
+    "humming-kernels": "0.1.10",
+    "httpcore2": "2.12.0",
+    "google-cloud-core": "2.6.1",
+    "emerging-optimizers": "0.3.0",
+    "psycopg-binary": "3.3.5",
+    "nvidia-mathdx": "25.6.0",
+    "nvidia-cublas": "13.1.1.3",
+    "html5lib": "1.1",
+    "truststore": "0.10.4",
+    "pydantic_core": "2.46.5",
+    "granian": "2.8.1",
+    "jsonschema-specifications": "2025.9.1",
+    "tifffile": "2026.8.16",
+    "triton": "3.7.1",
+    "cuda-core": "1.0.1",
+    "pre_commit": "4.6.2",
+    "mcp": "2.1.1",
+    "sniffio": "1.3.1",
+    "stack-data": "0.6.3",
+    "smart_open": "8.0.1",
+    "isodate": "0.7.2",
+    "pluggy": "1.6.0",
+    "polars-runtime-32": "1.42.1",
+    "opentelemetry-semantic-conventions": "0.65b0",
+    "pyzmq": "27.2.0",
+    "kiwisolver": "1.5.0",
+    "uvloop": "0.22.1",
+    "grpcio-health-checking": "1.81.1",
+    "fla-core": "0.5.2",
+    "idna": "3.19",
+    "pycryptodomex": "3.23.0",
+    "kernels-data": "0.16.0",
+    "nvidia-cuda-nvcc": "13.3.73",
+    "kubernetes_asyncio": "36.1.0",
+    "torch_memory_saver": "0.0.9.post1",
+    "xxhash": "3.7.1",
+    "python-discovery": "1.5.2",
+    "blobfile": "3.0.0",
+    "nvidia-cusolver": "12.0.4.66",
+    "prometheus_client": "0.26.0",
+    "nest-asyncio": "1.6.0",
+    "nvidia-cutlass-dsl-libs-cu13": "4.6.2",
+    "nvidia-cutlass-dsl-libs-core": "4.6.2",
+    "causal_conv1d": "1.6.1",
+    "tomlkit": "0.15.1",
+    "moviepy": "2.2.1",
+    "parso": "0.8.7",
+    "requests": "2.34.2",
+    "wandb": "0.29.0",
+    "opentelemetry-exporter-otlp-proto-http": "1.44.0",
+    "Werkzeug": "3.1.8",
+    "flash-linear-attention": "0.5.2",
+    "typer": "0.27.1",
+    "quack-kernels": "0.6.4",
+    "annotated-types": "0.8.0",
+    "orjson": "3.12.0",
+    "more-itertools": "11.1.0",
+    "httpx2": "2.12.0",
+    "ipython": "9.16.1",
+    "sglang-kernel": "0.4.6.post1",
+    "mamba_ssm": "2.3.1",
+    "opencensus": "0.11.4",
+    "numba": "0.65.1",
+    "h2": "4.4.1",
+    "googleapis-common-protos": "1.75.1",
+    "imageio": "2.36.0",
+    "mypy_extensions": "1.1.0",
+    "Jinja2": "3.1.6",
+    "packaging": "26.3",
+    "certifi": "2026.7.22",
+    "executing": "2.2.1",
+    "nvidia-nccl-cu13": "2.29.7",
+    "fsspec": "2026.6.0",
+    "nixl": "1.4.0",
+    "nvidia-cutlass-dsl-libs-base": "4.6.2",
+    "numpy": "2.3.5",
+    "setproctitle": "1.3.7",
+    "omegaconf": "2.3.1",
+    "z3-solver": "4.15.4.0",
+    "sgl-deep-ep": "0.1.0",
+    "regex": "2026.7.19",
+    "matplotlib-inline": "0.2.2",
+    "nvidia-cuda-cccl": "13.3.3.4.1",
+    "argcomplete": "3.7.2",
+    "flash_attn_3": "3.0.0",
+    "jsonschema": "4.26.0",
+    "cuda-toolkit": "13.0.3.0",
+    "sgl-deep-gemm": "0.1.5.post3",
+    "protobuf": "7.36.1",
+    "tqdm": "4.70.0",
+    "diskcache": "5.6.3",
+    "xgrammar": "0.2.1",
+    "dill": "0.4.1",
+    "tensorboard": "2.21.0",
+    "partial-json-parser": "0.2.1.1.post7",
+    "blake3": "1.0.9",
+    "setuptools": "84.0.0",
+    "nvidia-cusparse": "12.6.3.3",
+    "transformer_engine_cu13": "2.17.0",
+    "nvidia-nvvm": "13.3.73",
+    "nvidia-cudnn-cu13": "9.22.0.52",
+    "decorator": "5.3.1",
+    "uvicorn": "0.52.4",
+    "pydantic-extra-types": "2.11.1",
+    "lark": "1.3.1",
+    "attrs": "26.1.0",
+    "opentelemetry-exporter-otlp": "1.44.0",
+    "py-spy": "0.4.2",
+    "hpack": "4.2.0",
+    "cuda-bindings": "13.3.1",
+    "torchcodec": "0.15.0+cu130",
+    "flashinfer-cubin": "0.6.17",
+    "PyYAML": "6.0.1",
+    "pylatexenc": "2.11",
+    "torchaudio": "2.11.0+cu130",
+    "wheel": "0.48.0",
+    "torch_c_dlpack_ext": "0.1.5",
+    "MarkupSafe": "3.0.3",
+    "nvidia-cuda-nvrtc": "13.0.88",
+    "nixl-cu13": "1.4.0",
+    "modelscope": "1.39.1",
+    "nvidia-nvtx": "13.0.85",
+    "aiosignal": "1.4.0",
+    "pexpect": "4.9.0",
+    "yarl": "1.24.5",
+    "python-dateutil": "2.9.0.post0",
+    "openai": "2.6.1",
+    "Pygments": "2.21.0",
+    "cache_dit": "1.3.0",
+    "addict": "2.4.0",
+    "pathspec": "1.1.1",
+    "docstring_parser": "0.18.0",
+    "distlib": "0.4.3",
+    "remote-pdb": "2.1.0",
+    "azure-core": "1.41.0",
+    "runai-model-streamer": "0.16.1",
+    "pandas": "3.0.5",
+    "antlr4-python3-runtime": "4.9.3",
+    "nvidia-cutlass-dsl-libs-cu12": "4.6.2",
+    "botocore": "1.43.78",
+    "dbus-python": "1.3.2",
+    "lazr.restfulclient": "0.14.6",
+    "pyparsing": "3.1.1",
+    "blinker": "1.7.0",
+    "launchpadlib": "1.11.0",
+    "httplib2": "0.20.4",
+    "cryptography": "41.0.7",
+    "wadllib": "1.3.6",
+    "devscripts": "2.23.7+ubuntu0.2",
+    "python-apt": "2.7.7+ubuntu5.2",
+    "oauthlib": "3.2.2",
+    "lazr.uri": "1.0.6",
+    "PyGObject": "3.48.2"
+  },
+  "package_inventory_sha256": {
+    "infra/gpu-nodes-1/python-packages.json": "607aa0adf85b55b229663683a014c8b6547f1367a2d977cda2e5b046054cf98e",
+    "infra/gpu-nodes-0/python-packages.json": "607aa0adf85b55b229663683a014c8b6547f1367a2d977cda2e5b046054cf98e",
+    "infra/gpu-nodes-2/python-packages.json": "607aa0adf85b55b229663683a014c8b6547f1367a2d977cda2e5b046054cf98e",
+    "infra/gpu-nodes-3/python-packages.json": "607aa0adf85b55b229663683a014c8b6547f1367a2d977cda2e5b046054cf98e"
+  },
+  "package_differences": {
+    "infra/gpu-nodes-1/python-packages.json": {},
+    "infra/gpu-nodes-0/python-packages.json": {},
+    "infra/gpu-nodes-2/python-packages.json": {},
+    "infra/gpu-nodes-3/python-packages.json": {}
+  },
+  "archives": [
+    {
+      "job_id": 196,
+      "remote_run": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196",
+      "local_archive": "/Users/prathmeshbhatt/Desktop/Miles-run-publish/.ppo-work/archives/job-196",
+      "files": 963,
+      "uncompressed_bytes": 257320370,
+      "manifest_sha256": "9201258ce25e84e542c6cd02161733cf26a411996d29ba45aaffd2a0b309b944",
+      "compressed_archive_sha256": "8a863df4a5f12201f30333d973d96000ed3e9c554e34cf05014641f3b8575cb3",
+      "compressed_archive_bytes": 31047415,
+      "checkpoint_shards_retained_remote": [
+        {
+          "path": "checkpoints/iter_0000001/.metadata",
+          "bytes": 14839928
+        },
+        {
+          "path": "checkpoints/iter_0000001/__0_0.distcp",
+          "bytes": 5050864927
+        },
+        {
+          "path": "checkpoints/iter_0000001/__10_0.distcp",
+          "bytes": 4234108129
+        },
+        {
+          "path": "checkpoints/iter_0000001/__11_0.distcp",
+          "bytes": 4234108129
+        },
+        {
+          "path": "checkpoints/iter_0000001/__12_0.distcp",
+          "bytes": 4234100244
+        },
+        {
+          "path": "checkpoints/iter_0000001/__13_0.distcp",
+          "bytes": 4234100244
+        },
+        {
+          "path": "checkpoints/iter_0000001/__14_0.distcp",
+          "bytes": 4234101821
+        },
+        {
+          "path": "checkpoints/iter_0000001/__15_0.distcp",
+          "bytes": 4234103398
+        },
+        {
+          "path": "checkpoints/iter_0000001/__1_0.distcp",
+          "bytes": 5050553257
+        },
+        {
+          "path": "checkpoints/iter_0000001/__2_0.distcp",
+          "bytes": 4237932089
+        },
+        {
+          "path": "checkpoints/iter_0000001/__3_0.distcp",
+          "bytes": 4237932089
+        },
+        {
+          "path": "checkpoints/iter_0000001/__4_0.distcp",
+          "bytes": 4237932089
+        },
+        {
+          "path": "checkpoints/iter_0000001/__5_0.distcp",
+          "bytes": 4237932089
+        },
+        {
+          "path": "checkpoints/iter_0000001/__6_0.distcp",
+          "bytes": 4237952918
+        },
+        {
+          "path": "checkpoints/iter_0000001/__7_0.distcp",
+          "bytes": 4237968857
+        },
+        {
+          "path": "checkpoints/iter_0000001/__8_0.distcp",
+          "bytes": 4234104975
+        },
+        {
+          "path": "checkpoints/iter_0000001/__9_0.distcp",
+          "bytes": 4234106552
+        },
+        {
+          "path": "checkpoints/iter_0000001/debug_events/actor_cell0_rank0.jsonl",
+          "bytes": 4776
+        },
+        {
+          "path": "checkpoints/iter_0000001/debug_events/critic_cell0_rank0.jsonl",
+          "bytes": 1528
+        },
+        {
+          "path": "checkpoints/iter_0000001/debug_events/rollout_manager.jsonl",
+          "bytes": 2251
+        },
+        {
+          "path": "checkpoints/iter_0000001/metadata.json",
+          "bytes": 63
+        },
+        {
+          "path": "checkpoints/latest_checkpointed_iteration.txt",
+          "bytes": 1
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/.metadata",
+          "bytes": 14840231
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__0_0.distcp",
+          "bytes": 5050864927
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__10_0.distcp",
+          "bytes": 4220470653
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__11_0.distcp",
+          "bytes": 4220470653
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__12_0.distcp",
+          "bytes": 4220472230
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__13_0.distcp",
+          "bytes": 4220472230
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__14_0.distcp",
+          "bytes": 4220473807
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__15_0.distcp",
+          "bytes": 4220473807
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__1_0.distcp",
+          "bytes": 4224300601
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__2_0.distcp",
+          "bytes": 4224300601
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__3_0.distcp",
+          "bytes": 4224300601
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__4_0.distcp",
+          "bytes": 4224300601
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__5_0.distcp",
+          "bytes": 4224300601
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__6_0.distcp",
+          "bytes": 4224324584
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__7_0.distcp",
+          "bytes": 4224324584
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__8_0.distcp",
+          "bytes": 4220469140
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/__9_0.distcp",
+          "bytes": 4220469140
+        },
+        {
+          "path": "checkpoints_critic/iter_0000001/metadata.json",
+          "bytes": 63
+        },
+        {
+          "path": "checkpoints_critic/latest_checkpointed_iteration.txt",
+          "bytes": 1
+        }
+      ]
+    },
+    {
+      "job_id": 191,
+      "remote_run": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T002517Z/runs/job-191",
+      "local_archive": "/Users/prathmeshbhatt/Desktop/Miles-run-publish/.ppo-work/archives/job-191",
+      "files": 108,
+      "uncompressed_bytes": 18618469,
+      "manifest_sha256": "65630c685b8e2ad2f9b40850ec113216e9026015cf3e94323756a36b2f9fee42",
+      "compressed_archive_sha256": "c4dc3a67ee8585b214e21fe06abd1cd207d6565a868447849c19cb50b53390b8",
+      "compressed_archive_bytes": 2399270,
+      "checkpoint_shards_retained_remote": []
+    },
+    {
+      "job_id": 192,
+      "remote_run": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T002910Z/runs/job-192",
+      "local_archive": "/Users/prathmeshbhatt/Desktop/Miles-run-publish/.ppo-work/archives/job-192",
+      "files": 668,
+      "uncompressed_bytes": 37350122,
+      "manifest_sha256": "8aafc6eb47535be7c40b39faf843484f9c6013355aabca4857135c3823a43d44",
+      "compressed_archive_sha256": "c6ee59e08b1c60ea70bdd3b48f824e83eaff5f924e711bb9524a3824246c317a",
+      "compressed_archive_bytes": 5809034,
+      "checkpoint_shards_retained_remote": []
+    },
+    {
+      "job_id": 193,
+      "remote_run": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T003339Z/runs/job-193",
+      "local_archive": "/Users/prathmeshbhatt/Desktop/Miles-run-publish/.ppo-work/archives/job-193",
+      "files": 894,
+      "uncompressed_bytes": 70805376,
+      "manifest_sha256": "d23737e356e2892e0e345e5d6279e328cb3b43204ca17fec0ecb5f36af0910ee",
+      "compressed_archive_sha256": "5191ed4c83c3c797e98e1323f1250ce794c8de8b98263b5a8c00ec927b06f82d",
+      "compressed_archive_bytes": 10464931,
+      "checkpoint_shards_retained_remote": []
+    },
+    {
+      "job_id": 194,
+      "remote_run": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T004205Z/runs/job-194",
+      "local_archive": "/Users/prathmeshbhatt/Desktop/Miles-run-publish/.ppo-work/archives/job-194",
+      "files": 107,
+      "uncompressed_bytes": 16691072,
+      "manifest_sha256": "7ce6f88de3c83ede753f5d10179ebbe0c3111692e69535026fb9d0b2b118fdb0",
+      "compressed_archive_sha256": "bee9dfedb4f2a2e2e247a3e8c0f83b0e5e4b1b1e176b4a40c3ee64e00604cb5b",
+      "compressed_archive_bytes": 1857500,
+      "checkpoint_shards_retained_remote": []
+    },
+    {
+      "job_id": 195,
+      "remote_run": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T004324Z/runs/job-195",
+      "local_archive": "/Users/prathmeshbhatt/Desktop/Miles-run-publish/.ppo-work/archives/job-195",
+      "files": 925,
+      "uncompressed_bytes": 148732378,
+      "manifest_sha256": "7410236e9e0bda5af14b719a69ca52ed2356c4edb234bacea6b88d0f356e3d21",
+      "compressed_archive_sha256": "b755446ecfb0336ed1f38f4698c9b2135dd46692bf74e851c7f595a9805b1424",
+      "compressed_archive_bytes": 17876830,
+      "checkpoint_shards_retained_remote": []
+    }
+  ],
+  "model_hashes": {
+    "time": "2026-09-04T01:15:14.962340+00:00",
+    "roots": [
+      "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0",
+      "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model"
+    ],
+    "algorithm": "sha256",
+    "files": [
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/conversion-complete.json",
+        "bytes": 267,
+        "sha256": "3a90fd6ef56bf11c6c04a88c90bdefd99513880e730803345a1e73c3a76da42e"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/latest_checkpointed_iteration.txt",
+        "bytes": 7,
+        "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/.metadata",
+        "bytes": 14712273,
+        "sha256": "8e8e10797d730345c58bfc482ecd88fcef306a793671fac2d46ce33c3420e303"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__0_0.distcp",
+        "bytes": 9441344189,
+        "sha256": "ab5818cd062a0143bdf63957b580556bc57a85c2d960adc0e5a3f0a5f360ac3a"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__1_0.distcp",
+        "bytes": 8424191591,
+        "sha256": "2b0eec9f665f68ebfd286e9d963377d2b80b6297879882dde1fd184824efb682"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__2_0.distcp",
+        "bytes": 8424191719,
+        "sha256": "b3df8c242010363e59560e8de1b168de3657745c42e51a6d58eaa26ef66b0e23"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__3_0.distcp",
+        "bytes": 8411279806,
+        "sha256": "ed7811fe48982e3db2a2207b47bf4adcb3552463bc4d750a8048d15f7712af6d"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__4_0.distcp",
+        "bytes": 8424191719,
+        "sha256": "c9b81cd3ba182a3eb980129a3dfa0a3a37c47a333ef4630d2b153eb139721661"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__5_0.distcp",
+        "bytes": 8424191655,
+        "sha256": "e476cb02dd4da1eaac991c242dac7436e0ca8bf4362aeac2b23a87fe229d3069"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__6_0.distcp",
+        "bytes": 8424191655,
+        "sha256": "359671dc4348daa0f5956c1fe7431dc8b0b7d002ae2d769a3218f550cb96ab67"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/__7_0.distcp",
+        "bytes": 9428407225,
+        "sha256": "28c3354c4f787dcc36adf8bb31009594e0bb8f14851b03d5d8bea10534fda46e"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/converted-model/release/metadata.json",
+        "bytes": 63,
+        "sha256": "56b32e2dfbc0255db319bddf6880c9dfd3475135ca8d5ace23b8a6a384ed63c6"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/.gitattributes",
+        "bytes": 1570,
+        "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/LICENSE",
+        "bytes": 11343,
+        "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/README.md",
+        "bytes": 64550,
+        "sha256": "c4ddaa065649ff6352648f64747a16eda31726f3e34add94ce04abb461c77b75"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/chat_template.jinja",
+        "bytes": 7764,
+        "sha256": "e84f32a23fdda27689f868aa4a1a5621f41133e51a48d7f3efcbea2839574259"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/checksums.sha256",
+        "bytes": 3749,
+        "sha256": "bfbaf8a42bd8a4b95dbfc088a8f9eabe1197b940085f4b79d79b0d61de5f1529"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/config.json",
+        "bytes": 3686,
+        "sha256": "93a4693fa9d8392fbfccd4b3c9873f4bfdcb14fdede978b123d07d19675efe99"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/configuration.json",
+        "bytes": 58,
+        "sha256": "c1b09db419119513247e9b8b912c4b9897106c9b20c6cada7e107d993c5435eb"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/generation_config.json",
+        "bytes": 202,
+        "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/merges.txt",
+        "bytes": 3353259,
+        "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00001-of-00026.safetensors",
+        "bytes": 3996199712,
+        "sha256": "adee7bcb930aed22e0677e58d4873b48dadb1ed8001cb5c6a0487286eadb3478"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00002-of-00026.safetensors",
+        "bytes": 1284907696,
+        "sha256": "88f2dfd2b9e73e4b70be533dbf61bcfa3c9a0003758900fcbc9d9b96f5751d4b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00003-of-00026.safetensors",
+        "bytes": 3357898360,
+        "sha256": "8f7d72178d3f4431864978e5bcfa4c6cb1c204bc00590644d90bb19d6d522eeb"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00004-of-00026.safetensors",
+        "bytes": 3370808712,
+        "sha256": "12d7db38689ba3c8af74b23ef8523eca41e0cd95db870583d0663a3ee8a6bd60"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00005-of-00026.safetensors",
+        "bytes": 3357898360,
+        "sha256": "a836047305d0f7a7b50f0815d09d5c03ec03d59ec2c763fcdc4bf7e9936bf902"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00006-of-00026.safetensors",
+        "bytes": 3959424904,
+        "sha256": "c9080d718e9c5f9e337443225aa417d4c24d00ae7995d76ee3f1cc296b557d15"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00007-of-00026.safetensors",
+        "bytes": 1096788232,
+        "sha256": "e8c05e23131b1dd45a455ec38cfac7db14667358268623c3938d00cf3e959a68"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00008-of-00026.safetensors",
+        "bytes": 3946842008,
+        "sha256": "4b6a6d495053089f4a80e7cbc82e848fba44e2c0c60122233d8fdff79fa7b296"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00009-of-00026.safetensors",
+        "bytes": 1096460848,
+        "sha256": "a31a954bb72d1c714e751bf0aabf2ff533f5a509693ebf7dd22ad6e90be46f67"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00010-of-00026.safetensors",
+        "bytes": 3946841992,
+        "sha256": "246560e66570fe746653b8443e245dc334c9b8b831ea43d2d9f1b7d98623994e"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00011-of-00026.safetensors",
+        "bytes": 1096460752,
+        "sha256": "7180392817fe3ecb3a27a1da43b7ff22c1a94806bac49975f9f122c3126df675"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00012-of-00026.safetensors",
+        "bytes": 3409971080,
+        "sha256": "043fb525f6625c2f2acb75e65a9959ee3fa7b6e3fdd2034b5cfe1859b01d3cfb"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00013-of-00026.safetensors",
+        "bytes": 1633331664,
+        "sha256": "33a20fb20a21379bf43c84a43105f9c0cc35bd50d740b1c302dcbe4b700f5425"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00014-of-00026.safetensors",
+        "bytes": 3422553872,
+        "sha256": "be823e33c5cb6120ad3769d081f34a2449dc2358041fca7c29d636c1ba19130d"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00015-of-00026.safetensors",
+        "bytes": 1633659224,
+        "sha256": "a89d547c6f9d0b535ee5ea2f2478f163089539f3f0dd330cb23d278a19d76123"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00016-of-00026.safetensors",
+        "bytes": 3946842136,
+        "sha256": "69fc3ae0316482288afdcdd0b9eb7d626703ae26f7567e89aa3fc8d1ffd4ff5b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00017-of-00026.safetensors",
+        "bytes": 1096460608,
+        "sha256": "e356e3943cf3852b76bb8992e674f3256013e27d54b78e8250514151cdc29637"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00018-of-00026.safetensors",
+        "bytes": 3946841992,
+        "sha256": "9e5e63fd1cc7d6848330c1fa363dfcb661bbc2ac87e672d0e28b71c9cb7f3c7f"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00019-of-00026.safetensors",
+        "bytes": 1096460808,
+        "sha256": "708644ad34f1de727bf484f396944d8ec628645d52c183e9a992e65671685e21"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00020-of-00026.safetensors",
+        "bytes": 3409971072,
+        "sha256": "ca083a1d1aa64f8e8a785998f543a43374f13436dc85d396eee4e72c7a84e1ae"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00021-of-00026.safetensors",
+        "bytes": 1633331744,
+        "sha256": "ada4ae48f3d48fe01b4c53f2f82bce25e798a9631fd33959c881156fef2ccbce"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00022-of-00026.safetensors",
+        "bytes": 3370808752,
+        "sha256": "def207fb42d7db31efb512755557763c23233c6e4d4c433027cb5102a7bce2f7"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00023-of-00026.safetensors",
+        "bytes": 3357898392,
+        "sha256": "864d52ca7768a36f514069222e8de8626264ae124097ba8fcce5b5da2c6e2ed7"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00024-of-00026.safetensors",
+        "bytes": 3370808752,
+        "sha256": "391acd27420cdce5935ff18152423c70620d19dac3c39a5ef1a81d369f82d737"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00025-of-00026.safetensors",
+        "bytes": 3832888256,
+        "sha256": "778e7f76602f05042b69ba7f3ec91f1fdffef390540b16074041c258fb81d154"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model-00026-of-00026.safetensors",
+        "bytes": 2231416848,
+        "sha256": "1a97404220077ed3d4182e10385b152004cab608377f50cec9f54a6b8d28b613"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/model.safetensors.index.json",
+        "bytes": 98383,
+        "sha256": "41b9356101ebf8e7519e150dc811f80c4226e727301fbb032b890f006ed0be83"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/preprocessor_config.json",
+        "bytes": 390,
+        "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/.prime-v1",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00001-of-00015.safetensors",
+        "bytes": 4999218680,
+        "sha256": "fe498ac5b2c4934e88df2839c4fb076c6584f438264e6b2a031ef82d9cc92679"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00002-of-00015.safetensors",
+        "bytes": 4050640704,
+        "sha256": "521f765cfd4c4a4f80613c12187a7676a7b569b9ffd6bbebfdd6ecdfad95b9d2"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00003-of-00015.safetensors",
+        "bytes": 4834998264,
+        "sha256": "ed70a9fbe31029e3c630cb9941cb11877d55b87ea249aa10d1e34a9f223c32f8"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00004-of-00015.safetensors",
+        "bytes": 4834998264,
+        "sha256": "74747c0ea5f73e436933c06f5d824e41def7459dd88e57d4eb9ca977055ca497"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00005-of-00015.safetensors",
+        "bytes": 4834998256,
+        "sha256": "ec83f98a3d32ed124e989e8e340b258bb499813de2c600454d7bdd83d0f4f4c9"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00006-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "742f5172a748eb0a512916763680af548364dca94a6b7f25635719c759554ae1"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00007-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "d00f88c69b856b4271a8932c744542df471288ce9bcd5d327dc403c5e5635f5c"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00008-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "49bee85ce782b7763fb7d0fcdfce724e8491aafcd81858a332a67b63771f98a5"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00009-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "3b8850c779598cf4f8b4273feeb6b4d04dd4a26253dcc8d4af006e2bed697ca9"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00010-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "4efa16cdaca8682c7cd70b16a4105fcf94dd6bcddeefd700f6a089c43f23eedc"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00011-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "0fe5309c770eda791a7202a454188518c0fd6548ea2024a01bfb656ae387151b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00012-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "c0a97899770e0b986c9074a56e8ead3c2337c3e5c335cec7d3e2b7fe8a4c426d"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00013-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "e4837380952d7cf299d34b73561c085ac44591a85ffbebd113fa64374a33775b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00014-of-00015.safetensors",
+        "bytes": 4834998280,
+        "sha256": "a6c8dfaa1560316789291dbff23f0a26c0314808f65b8ae583bcea32a8a2b132"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model-00015-of-00015.safetensors",
+        "bytes": 4833945336,
+        "sha256": "6692ce127f70058267fdff161e55d5b0e58d7fedb8d3aad7de51613a22ee63d9"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/prime/model.safetensors.index.json",
+        "bytes": 102571,
+        "sha256": "c1034bfda8ab9b70ef13bfcdb22cf47ec328150a98e971579ce78a145f621851"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/tokenizer.json",
+        "bytes": 12807982,
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/tokenizer_config.json",
+        "bytes": 16718,
+        "sha256": "5186f0defcd7f232382c7f0aebcd2252d073bb921ab240e407b7ae8745d2b29b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/video_preprocessor_config.json",
+        "bytes": 385,
+        "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0/vocab.json",
+        "bytes": 6722759,
+        "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+      }
+    ],
+    "total_bytes": 213247458338,
+    "elapsed_since_start_s": 33.83254028693773
+  },
+  "checkpoint_hashes": {
+    "time": "2026-09-04T01:15:35.059831+00:00",
+    "roots": [
+      "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints",
+      "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic"
+    ],
+    "algorithm": "sha256",
+    "files": [
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/.metadata",
+        "bytes": 14839928,
+        "sha256": "9968633e951a6735dc051e75848b3171035cb1bdae994489ad934aa70e12addd"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__0_0.distcp",
+        "bytes": 5050864927,
+        "sha256": "a63102f560747079184a42409a739ada8a8985a2910c7c9e96b96e8acea9811c"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__10_0.distcp",
+        "bytes": 4234108129,
+        "sha256": "96033919c99875bf96a305cb66a9fcc5db3fd987a077df77aaaeb74c30138d98"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__11_0.distcp",
+        "bytes": 4234108129,
+        "sha256": "4a1cae876cb864046e03ba7034d6078b2471e5b98bbc0faf001ae125afc9e27b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__12_0.distcp",
+        "bytes": 4234100244,
+        "sha256": "838cb0f636b78bd9955fa57a313da85723faa753de6590404d52f6136a8d7e85"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__13_0.distcp",
+        "bytes": 4234100244,
+        "sha256": "53300636e16beeaf84b04722f2fe9d0b4b15e0f6fa837a5a7c638419df3869ac"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__14_0.distcp",
+        "bytes": 4234101821,
+        "sha256": "74442f1954debf184ed17b14b6b784750d579237421a0292821edcad57386c43"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__15_0.distcp",
+        "bytes": 4234103398,
+        "sha256": "8ff888edc67b1c0ee4d9a4017f172f208f49d76a5c71c1a3b4d23d8b91b8e046"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__1_0.distcp",
+        "bytes": 5050553257,
+        "sha256": "1e1b69d064063f5a50d3a0d69930b9332b8eb4b1bc02a68ddd8c1e6525d22fa7"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__2_0.distcp",
+        "bytes": 4237932089,
+        "sha256": "1efa45fb3059df24576923652f57917124d0980e17c977baf9c733550007bef3"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__3_0.distcp",
+        "bytes": 4237932089,
+        "sha256": "3c9cff1f7fbb3b9c7e226bc9a5defb983bf82b352dcb2902824663b9e3cfc5d2"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__4_0.distcp",
+        "bytes": 4237932089,
+        "sha256": "91acda20baef67e33052fe47386967ccfede11210262ca660b56a99e25686bce"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__5_0.distcp",
+        "bytes": 4237932089,
+        "sha256": "f7c831cd2b5bea8f8d14939b629e5e3e72d54d88441262148c47464ddabe86c3"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__6_0.distcp",
+        "bytes": 4237952918,
+        "sha256": "0d875f33226f604a41f4a333593b374687f40f92ee60bee49471f1b2fb0d53e0"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__7_0.distcp",
+        "bytes": 4237968857,
+        "sha256": "8a2c247f3db48ac53e8272eb5a67a0319feb507b454b49fd55c295b8044ef2bf"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__8_0.distcp",
+        "bytes": 4234104975,
+        "sha256": "19922874cc321182887c44db266a3406f6ff95183565e43fa571905dad45f085"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/__9_0.distcp",
+        "bytes": 4234106552,
+        "sha256": "34bf55132107d15f9a6797873dbee535283b3e924a04178aa3c2745978865928"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/debug_events/actor_cell0_rank0.jsonl",
+        "bytes": 4776,
+        "sha256": "535b210c5b978b2f8106e0da407bbd6d35cf22b7784f4f4500ec5245d5980f3a"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/debug_events/critic_cell0_rank0.jsonl",
+        "bytes": 1528,
+        "sha256": "56b37b1949ae8475302ccea04a3b87a97097988ceb7f1ce3ed9808ca292559cb"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/debug_events/rollout_manager.jsonl",
+        "bytes": 2251,
+        "sha256": "fe03ccd91948551edbc1cf6819b891f39fcdcce26a90e8ecf2da4da9706bd215"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/iter_0000001/metadata.json",
+        "bytes": 63,
+        "sha256": "56b32e2dfbc0255db319bddf6880c9dfd3475135ca8d5ace23b8a6a384ed63c6"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints/latest_checkpointed_iteration.txt",
+        "bytes": 1,
+        "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/.metadata",
+        "bytes": 14840231,
+        "sha256": "922f5307304a8ce2572f50e044ceb353d597c13334f693907d1a97e7260215f6"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__0_0.distcp",
+        "bytes": 5050864927,
+        "sha256": "1da8bbc032c20975e9e44e6a941b2a40e24d100a3f6f60fefa4cd0fdc8ab205f"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__10_0.distcp",
+        "bytes": 4220470653,
+        "sha256": "414652f4bff249a5f2b264a3767906f9e4a2d112cf6bc5e6319572ba3db57fcc"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__11_0.distcp",
+        "bytes": 4220470653,
+        "sha256": "4c21adf00e1283a650c9e75725bc238b056132b99d5406e2a563a1477606ee12"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__12_0.distcp",
+        "bytes": 4220472230,
+        "sha256": "9d6681074acd33b3d3fddc894b427f4c4b9658fdd64ae03e36b166497d71a2c9"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__13_0.distcp",
+        "bytes": 4220472230,
+        "sha256": "fc2292437bb7e83956a9fca0e8bd656ab29e91dc2cb6ade1df8cee93b19e5ada"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__14_0.distcp",
+        "bytes": 4220473807,
+        "sha256": "6648735965460ec3e9474554eda751277dd631e0d2d17c55b5bb1890780d48f5"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__15_0.distcp",
+        "bytes": 4220473807,
+        "sha256": "c126622c9e6273768c074a161279568b2a12548a7959b30a74dba25c493b8414"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__1_0.distcp",
+        "bytes": 4224300601,
+        "sha256": "802249d06f958a8b0af6a56fbed166e7298ba93c0cc5bef22d9c619c9876ad01"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__2_0.distcp",
+        "bytes": 4224300601,
+        "sha256": "e83f1e9f6a5d6138492d1c4023ac580244dfd03c09f0fc3e85325a0bb70aa750"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__3_0.distcp",
+        "bytes": 4224300601,
+        "sha256": "2dec312ece03fe2602dfd8631c319bcf00bae0edbfbc2ca64bec86aae2e5f2e8"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__4_0.distcp",
+        "bytes": 4224300601,
+        "sha256": "16edc9f21da038f5c54052b75c8d547deeb935cd02f7abb807c87fc55086ba2d"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__5_0.distcp",
+        "bytes": 4224300601,
+        "sha256": "0a379595124d49bcab44be6fe9c236b5f2594e708dc1f64c4cf52df113c20c52"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__6_0.distcp",
+        "bytes": 4224324584,
+        "sha256": "ef228a0b6c52992fd76c142347850b02280ede0c4191b6f62112c28c9965af32"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__7_0.distcp",
+        "bytes": 4224324584,
+        "sha256": "49421706f14a88e1d78a909bb963e4f5f212339c2b692a7c8a44895864704a96"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__8_0.distcp",
+        "bytes": 4220469140,
+        "sha256": "f0cfd9bdb0ab02453d6f57d757b21fc1f2815da8ccc6e9ad3bbf9258c89d5a05"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/__9_0.distcp",
+        "bytes": 4220469140,
+        "sha256": "693a75696046f1876884a585fbe8355c206e9833ed68c2cd0c3227d4532d38d4"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/iter_0000001/metadata.json",
+        "bytes": 63,
+        "sha256": "56b32e2dfbc0255db319bddf6880c9dfd3475135ca8d5ace23b8a6a384ed63c6"
+      },
+      {
+        "path": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z/runs/job-196/checkpoints_critic/latest_checkpointed_iteration.txt",
+        "bytes": 1,
+        "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+      }
+    ],
+    "total_bytes": 137816379409,
+    "elapsed_since_start_s": 53.93000418297015
+  },
+  "native_tests": {
+    "fixtures": 16,
+    "source_sha256": {
+      "math_utils.py": "7a1c36117f0d9471dbdcfcbe663b5b5b6171bfdfcd423948a1697fec34fa27ca",
+      "losses.py": "482c6e8c972fdf502846bd7319b1c21ca0b95dd7549db82385d1b22012290b1a"
+    },
+    "lifecycle": {
+      "cases": 8,
+      "ordering_and_exception_cleanup": "passed",
+      "patched_driver_sha256": "ebd3e5b0bf893fcf4877c883b9c133173548275c3523623227ddd24f2dee63d9"
+    },
+    "mask_aware_gae": "passed",
+    "policy_and_value_gradients": "passed",
+    "raw_reward_configuration": "passed",
+    "status": "passed",
+    "mode": "native"
+  },
+  "transport_tests": {
+    "fixture_directory": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030/runs/job-190/rollouts",
+    "fixture_sha256": {
+      "step1-group1-task_06652-0.json": "5ee1b2cf0785a687f1afad6cf8531651ee7d724a7bf4f3b1b1e3924bb6432f84",
+      "step1-group1-task_06652-1.json": "0be5188b92f0a5f1910fc0db05504fbf32eac58866d77376897cc66b762acbb6",
+      "step1-group1-task_06652-2.json": "e701404bc91181080ae3bcfadb449c229c520495923da60c3e008288ec54a466",
+      "step1-group1-task_06652-3.json": "83f3778ec534f22cbe87c8d3b84a30d3ace51c0140fe4e906cb99ff6534b94e9",
+      "step1-group1-task_06652-4.json": "bfdf4779fb3e5ad79434ba8f010812e25c5ddc3c1b17008dd361e07d1f8e1261",
+      "step1-group1-task_06652-5.json": "6e5a78a47f28b1bd0c4b3c94bdf00caaadc1da5209220e27b1954f0900b27fb5",
+      "step1-group1-task_06652-6.json": "ca03200888b512c541aacbd2716c3dceaf34a8c610dad3d0f14cea31f6c4cb37",
+      "step1-group1-task_06652-7.json": "e0e77541fa3cca39f4e59e9a066481bc387d1acfc17c72b341a2c3d7de441172",
+      "step1-group2-task_14118-0.json": "638da98b58cb14db36df61388ac1395b67bacffd567c14f514261da65f1d4d86",
+      "step1-group2-task_14118-1.json": "28505de1e49e3745952a956027457a9c8a1ec187d2b54e4a81da6f6674c101c1",
+      "step1-group2-task_14118-2.json": "6a33cd15d1f2e2ab6d09b37e6351df9aefeb8aa948321b7599713a159bd1b04a",
+      "step1-group2-task_14118-3.json": "31af38efa1cccd691703f1f2e59504738e7721bc576f02b2f99671e63b81995c",
+      "step1-group2-task_14118-4.json": "f7b5cd227fad0aed7c1825b6dd94e50f9bdc0516bd432cad136188b5623084d8",
+      "step1-group2-task_14118-5.json": "68d7a65ed18335a4eac9829d63357a32b4ba7c76481f87552308d2073c5f020e",
+      "step1-group2-task_14118-6.json": "0050aaa6c97cb6fd62403a0f4669de21cf723cc0a577649616fb9635b5a8b8f3",
+      "step1-group2-task_14118-7.json": "93262c75ea2ea56b97eb63d2722fe044c56f019386855d5e0dc59948c5bfbaad",
+      "step1-group3-task_10753-0.json": "373f697543b2c09f48afec7a908c84605812d55cc9d13e5141509f1648c22a5d",
+      "step1-group3-task_10753-1.json": "d85f88830d1cadd24d38bd7c4541971f74b48fb11a03907633c54cb70cbd7eec",
+      "step1-group3-task_10753-2.json": "3e916b8e7ff3a7705c6a468c11ce1c5af53e0db4d17b1ff52d94d9f55e787242",
+      "step1-group3-task_10753-3.json": "9f98be30ae44200e775a6a7667a6e62c8aaf35876b4c88bc55d64b7849d17737",
+      "step1-group3-task_10753-4.json": "373f0d905c3d99874c216a9cef73b2b7cd9df40a6b11a1be69a6e7669b752e89",
+      "step1-group3-task_10753-5.json": "9840d859de714f94b40d44f0857474722a3e92490703efec8dc24eeca972af68",
+      "step1-group3-task_10753-6.json": "bed3791086f5db0da954935055627931fce58a94c544c46ad69941c724cf00e6",
+      "step1-group3-task_10753-7.json": "92ef2a54c0997149f99ef3b4f76293d270d2242298ade7cd06f62952906ec48e",
+      "step2-group1-task_09467-0.json": "dabc00b4afc8c3d1e511c708a0463017ff951d3821dd622421fac743b1ba19db",
+      "step2-group1-task_09467-1.json": "a06d9127ffa21edb00d2b7677269024931fa3b286a7d963cf9b5de3db175910b",
+      "step2-group1-task_09467-2.json": "f1233d2cfe3cd4af217bad68ea018dcba23acddb43bcbf0bf74baff6c41fa2b2",
+      "step2-group1-task_09467-3.json": "1863a87b8c91cdd0620839a05927a8d0dbc928bc5283ca4afdc8829b4debd331",
+      "step2-group1-task_09467-4.json": "3018d35fb05d96abf22d7bbfac93cc8d6aa5926a2040f20ed12f5470bb8298c5",
+      "step2-group1-task_09467-5.json": "5c26f86d335713f7582a696d10929c8cbb1df88450373c47e61df5a6d67f1ebd",
+      "step2-group1-task_09467-6.json": "6a40165f518a18006343bd0424e8cb4a9ff3b0636b5e76a49e26a3ccecec4510",
+      "step2-group1-task_09467-7.json": "fd944f5d06c92ecbf4746040d3ea44588a9dd8641fcf6e3fbfb95f2de51e71a0",
+      "step2-group2-task_06652-0.json": "4a4c84612700aac03105b741f460042f8128bc86c1f7d66c1a804c5d5685ed77",
+      "step2-group2-task_06652-1.json": "d7fb729dffcf80b832959d7cb709b4320f59bc2a21e134e3eacbb5c6318bf27a",
+      "step2-group2-task_06652-2.json": "938322eaa3e74ed00a2f0e08abb58003277aa93652fd755fca2c451f7ec8f66b",
+      "step2-group2-task_06652-3.json": "3ad52cc1b4a34f29e2eab559083261a65524a335965b4519f055d3430e40c849",
+      "step2-group2-task_06652-4.json": "aec16e2a85c7177a52e573058a1b8842fa0f5a524ac380b068990df5e836be79",
+      "step2-group2-task_06652-5.json": "266943dafb63f26f784a501c846877039dd92e9414d4397911c9f00e0774e00f",
+      "step2-group2-task_06652-6.json": "2a71be9b3bc0bfc3e13cdbb67201134e0360c929d7bfb7aa3dd430ea4cc81f00",
+      "step2-group2-task_06652-7.json": "afbd11f6dee99a54b6166eb21d41cf5f6de3210d63924f6b0cb6fea83752afbb",
+      "step2-group3-task_14118-0.json": "16cfe5c6999724ac781d741d57bf14f7409f9ccac69f9eb993a81f1dff971a88",
+      "step2-group3-task_14118-1.json": "247925f0ded191187abc0255315546a2aa3c1319866b22e62a825b3c778021d8",
+      "step2-group3-task_14118-2.json": "de446da4ddb2dcdcf0c0a0084fb364b4561a2c0eddff2a80a80266ec7370d66b",
+      "step2-group3-task_14118-3.json": "d4661350a8300fcbb3b52944bc519c28a47700956931b63aad66d07e07db1843",
+      "step2-group3-task_14118-4.json": "290820953fdadb76b91a12a4f1eb0252029afed6d9c2471f5f0b699ced28484e",
+      "step2-group3-task_14118-5.json": "b62682d73bf5ec0eb61b0aec4916c888999a99c20ff84a84da10a5dcabbc81ba",
+      "step2-group3-task_14118-6.json": "f41293f181c093470674a265eeca7a86ab2456700ffa3b5ce6ebea8f675e4f15",
+      "step2-group3-task_14118-7.json": "627a17f25936620411af806930b4b4fc2443e0065e52f2573382a20bf0acdb88",
+      "step2-group4-task_10753-0.json": "d93a1c9f737d0baa3c369982d30a170fbe9815116bd72158323628a6f3a040b2",
+      "step2-group4-task_10753-1.json": "6789ed18278b8758cddb99cf0e069f5dd02fa5ccddd01e5d83380919b5b594e8",
+      "step2-group4-task_10753-2.json": "f731afa7f4f605ce5b4a50c6da219749deb92877c93ebb2173652f14fb888d1d",
+      "step2-group4-task_10753-3.json": "4011ee2420d0c437e3a29c39497873b32e9b12c1f6d8f9e696644f93aee115a6",
+      "step2-group4-task_10753-4.json": "22ca88514d51a96b7b17be57859789356b2ea1d94f678b0c7b53220228954e59",
+      "step2-group4-task_10753-5.json": "9004d0b72119eb2159ff43ab87a5c821a04764053d356a4e38f103fa3eb4d25e",
+      "step2-group4-task_10753-6.json": "e46b7d80db2350ba5140f9a85d55a9979be7bb67cfb82c90b762efe09c029227",
+      "step2-group4-task_10753-7.json": "4bace6c27bb0ed9a1e806f892ae6c1a9d620a21c5430f24f2a3c4c2034fec6fa"
+    },
+    "traces": 56,
+    "sampled_ids_logprobs_masks": "passed",
+    "zero_reward_group_admission": "passed",
+    "raw_reward_transport": "passed",
+    "status": "passed",
+    "mode": "transport"
+  },
+  "policy_validity": [
+    {
+      "status": "passed",
+      "active_tokens": 36607,
+      "uniform_distribution_signature": false,
+      "finite_logprobs": true,
+      "vocab_size": 248320
+    },
+    {
+      "status": "passed",
+      "active_tokens": 32795,
+      "uniform_distribution_signature": false,
+      "finite_logprobs": true,
+      "vocab_size": 248320
+    }
+  ],
+  "final_runtime": {
+    "time": "2026-09-04T01:15:35.143985+00:00",
+    "commands": [
+      {
+        "argv": [
+          "sacct",
+          "-j",
+          "191,192,193,194,195,196",
+          "--allocations",
+          "-P",
+          "--format=JobID,State,ExitCode,Start,End,Elapsed,AllocTRES"
+        ],
+        "exit_code": 0,
+        "stdout": "JobID|State|ExitCode|Start|End|Elapsed|AllocTRES\n191|FAILED|1:0|2026-09-04T00:25:21|2026-09-04T00:26:51|00:01:30|billing=1024,cpu=1024,gres/gpu=32,mem=12336349M,node=4\n192|FAILED|1:0|2026-09-04T00:29:15|2026-09-04T00:33:29|00:04:14|billing=1024,cpu=1024,gres/gpu=32,mem=12336349M,node=4\n193|FAILED|1:0|2026-09-04T00:33:42|2026-09-04T00:41:08|00:07:26|billing=1024,cpu=1024,gres/gpu=32,mem=12336349M,node=4\n194|FAILED|1:0|2026-09-04T00:42:09|2026-09-04T00:43:12|00:01:03|billing=1024,cpu=1024,gres/gpu=32,mem=12336349M,node=4\n195|CANCELLED by 0|0:0|2026-09-04T00:43:27|2026-09-04T00:53:57|00:10:30|billing=1024,cpu=1024,gres/gpu=32,mem=12336349M,node=4\n196|COMPLETED|0:0|2026-09-04T00:55:37|2026-09-04T01:13:58|00:18:21|billing=1024,cpu=1024,gres/gpu=32,mem=12336349M,node=4\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "squeue",
+          "-h",
+          "-o",
+          "%i|%T|%N"
+        ],
+        "exit_code": 0,
+        "stdout": "197|RUNNING|gpu-nodes-[0-3]\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "scontrol",
+          "show",
+          "nodes",
+          "--oneliner"
+        ],
+        "exit_code": 0,
+        "stdout": "NodeName=gpu-nodes-2 Arch=x86_64 CoresPerSocket=64  CPUAlloc=256 CPUEfctv=256 CPUTot=256 CPULoad=6.44 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.218.62 NodeHostName=gpu-nodes-2 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=3084090 FreeMem=2898511 Sockets=2 Boards=1 MemSpecLimit=5910 State=ALLOCATED+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-09-01T20:17:30 SlurmdStartTime=2026-09-01T20:25:00 LastBusyTime=2026-09-04T01:13:58 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES=cpu=256,mem=3084090M,gres/gpu=8 CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-2\",\"node\":\"b200-nodepool-b615b018060d\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\nNodeName=gpu-nodes-3 Arch=x86_64 CoresPerSocket=64  CPUAlloc=256 CPUEfctv=256 CPUTot=256 CPULoad=7.85 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.180.242 NodeHostName=gpu-nodes-3 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=3084084 FreeMem=2884810 Sockets=2 Boards=1 MemSpecLimit=5916 State=ALLOCATED+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:35:51 SlurmdStartTime=2026-09-01T17:46:42 LastBusyTime=2026-09-04T01:13:58 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES=cpu=256,mem=3084084M,gres/gpu=8 CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-3\",\"node\":\"b200-nodepool-83ee4175afdb\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\nNodeName=gpu-nodes-0 Arch=x86_64 CoresPerSocket=64  CPUAlloc=256 CPUEfctv=256 CPUTot=256 CPULoad=9.79 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.18.139 NodeHostName=gpu-nodes-0 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=3084091 FreeMem=1740297 Sockets=2 Boards=1 MemSpecLimit=5909 State=ALLOCATED+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:37:42 SlurmdStartTime=2026-09-01T17:46:43 LastBusyTime=2026-09-04T01:13:58 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES=cpu=256,mem=3084091M,gres/gpu=8 CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-0\",\"node\":\"b200-nodepool-ac23753e6cfa\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\nNodeName=gpu-nodes-1 Arch=x86_64 CoresPerSocket=64  CPUAlloc=256 CPUEfctv=256 CPUTot=256 CPULoad=9.34 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.13.18 NodeHostName=gpu-nodes-1 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=3084084 FreeMem=1785201 Sockets=2 Boards=1 MemSpecLimit=5916 State=ALLOCATED+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:38:02 SlurmdStartTime=2026-09-01T17:46:17 LastBusyTime=2026-09-04T01:13:58 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES=cpu=256,mem=3084084M,gres/gpu=8 CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-1\",\"node\":\"b200-nodepool-b401f8abb9f1\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "df",
+          "-B1",
+          "/shared"
+        ],
+        "exit_code": 0,
+        "stdout": "Filesystem                                                                                                                            1B-blocks          Used     Available Use% Mounted on\n10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn 4398046511104 1421468540928 2976577970176  33% /shared\n",
+        "stderr": ""
+      }
+    ],
+    "node_inventory": "infra/*-after.json",
+    "harness_python": "3.12.13 (main, Jun  2 2026, 22:27:15) [Clang 22.1.3 ]",
+    "harness_package_lock": {
+      "httptools": "0.8.0",
+      "i3-math": "0.1.0",
+      "opentelemetry-semantic-conventions-ai": "0.5.1",
+      "fastsafetensors": "0.3.3",
+      "nvidia-nvshmem-cu13": "3.4.5",
+      "distlib": "0.4.0",
+      "dataclasses-json": "0.6.7",
+      "prompt_toolkit": "3.0.52",
+      "dill": "0.4.0",
+      "html2text": "2025.4.15",
+      "flash_attn": "2.8.3+cu130torch2.13",
+      "nixl-cu13": "0.10.1",
+      "deep-swe": "0.1.0",
+      "supabase-auth": "2.31.0",
+      "python-json-logger": "4.1.0",
+      "bm25s": "0.3.9",
+      "cycler": "0.12.1",
+      "wasabi": "1.1.3",
+      "fsspec": "2026.2.0",
+      "genson": "1.4.0",
+      "typing-inspect": "0.9.0",
+      "nvidia-cuda-runtime": "13.0.96",
+      "tokenspeed-triton": "3.8.10.post20260721",
+      "multiprocess": "0.70.18",
+      "tenacity": "9.1.4",
+      "anthropic": "1.0.0",
+      "lab": "0.1.0",
+      "cuda-pathfinder": "1.5.4",
+      "platformdirs": "4.11.0",
+      "proposer-solver": "0.1.0",
+      "textual-hires-canvas": "0.14.0",
+      "einops": "0.8.2",
+      "aiosignal": "1.4.0",
+      "junitparser": "5.0.1",
+      "pydantic_core": "2.46.4",
+      "quack-kernels": "0.6.4",
+      "pre_commit": "4.6.0",
+      "idna": "3.19",
+      "wandb": "0.27.0",
+      "tomlkit": "0.14.0",
+      "unidiff": "0.7.5",
+      "apache-tvm-ffi": "0.1.11",
+      "durationpy": "0.10",
+      "mmk12": "0.1.0",
+      "mmmu": "0.1.0",
+      "charset-normalizer": "3.4.7",
+      "ipython_pygments_lexers": "1.1.1",
+      "dion": "0.1.0",
+      "renderers": "0.1.12.dev2",
+      "wrapt": "1.17.3",
+      "referencing": "0.37.0",
+      "senior-swe-bench": "0.1.1",
+      "h11": "0.16.0",
+      "programbench": "1.2.3",
+      "protobuf-py": "0.1.1",
+      "ifbench": "0.1.0",
+      "Jinja2": "3.1.6",
+      "kuhn-poker": "0.1.0",
+      "browsecomp": "0.1.0",
+      "s3transfer": "0.19.0",
+      "orderly-set": "5.5.0",
+      "kernels": "0.14.1",
+      "joblib": "1.5.3",
+      "kimina": "0.1.0",
+      "seaborn": "0.13.2",
+      "nvidia-nvvm": "13.3.73",
+      "xgrammar": "0.2.1",
+      "tornado": "6.5.5",
+      "dotenv": "0.9.9",
+      "numpy": "2.3.5",
+      "oolong-synth": "0.1.0",
+      "torchdata": "0.11.0",
+      "torch_c_dlpack_ext": "0.1.5",
+      "scaleswe": "0.1.2",
+      "nvidia-cutlass-dsl": "4.6.2",
+      "inflect": "7.5.0",
+      "mistral_common": "1.11.7",
+      "general-agent": "0.1.0",
+      "mdurl": "0.1.2",
+      "blake3": "1.0.8",
+      "Pygments": "2.20.0",
+      "jiter": "0.15.0",
+      "pytest": "9.0.3",
+      "arxivmath": "0.1.0",
+      "hf-xet": "1.6.0",
+      "rpds-py": "0.30.0",
+      "nvidia-cudnn-frontend": "1.25.0",
+      "toml": "0.10.2",
+      "tyro": "1.0.13",
+      "nvidia-cusparse": "12.6.3.3",
+      "patterned-needle-in-haystack": "0.1.0",
+      "frontierscience": "0.1.0",
+      "redsearcher": "0.1.0",
+      "outlines_core": "0.2.14",
+      "PyStemmer": "3.1.0",
+      "deepdive": "0.1.0",
+      "verbatim-copy": "0.1.0",
+      "nvidia-cuda-nvcc": "13.3.73",
+      "nvidia-cusolver": "12.0.4.66",
+      "backoff": "2.2.1",
+      "google_search_results": "2.4.2",
+      "debugpy": "1.8.20",
+      "pydantic-argparse": "0.10.0",
+      "StrEnum": "0.4.15",
+      "connectrpc": "0.11.1",
+      "websockets": "15.0.1",
+      "swebench-multilingual": "0.1.0",
+      "oolong-pairs": "0.1.0",
+      "tiktoken": "0.13.0",
+      "openai": "2.54.0",
+      "click": "8.4.2",
+      "confection": "1.3.3",
+      "deprecation": "2.1.0",
+      "opentelemetry-exporter-otlp-proto-grpc": "1.42.1",
+      "docstring_parser": "0.18.0",
+      "aiohappyeyeballs": "2.6.2",
+      "swebench-verified": "0.1.0",
+      "PyGithub": "2.9.1",
+      "torchaudio": "2.11.0+cu130",
+      "types-toml": "0.10.8.20260518",
+      "typing_extensions": "4.15.0",
+      "pynvvideocodec": "2.0.4",
+      "typer": "0.25.1",
+      "wordle": "0.1.0",
+      "jsonlines": "4.0.0",
+      "pytokens": "0.4.1",
+      "datasets": "4.6.1",
+      "s1-deepresearch": "0.1.0",
+      "aiolimiter": "1.2.1",
+      "eval_type_backport": "0.4.0",
+      "cachebox": "5.2.3",
+      "ipython": "9.13.0",
+      "ninja": "1.13.0",
+      "prime-kernels": "0.1.0+cu130torch2.13.0",
+      "cuda-python": "13.3.1",
+      "python-discovery": "1.3.1",
+      "cloudpathlib": "0.24.0",
+      "fastavro": "1.12.2",
+      "docker": "7.1.0",
+      "frozenlist": "1.8.0",
+      "modal": "1.5.1",
+      "detect-installer": "0.1.0",
+      "textual-plot": "0.10.1",
+      "writer-sdk": "3.0.0",
+      "livecodebench": "0.1.0",
+      "sentencepiece": "0.2.1",
+      "immutabledict": "4.3.1",
+      "syllapy": "0.7.2",
+      "pandas": "3.0.3",
+      "cuda-toolkit": "13.0.3.0",
+      "nodeenv": "1.10.0",
+      "wiki-search": "0.1.0",
+      "nvidia-cutlass-dsl-libs-core": "4.6.2",
+      "networkx": "3.6.1",
+      "ring-flash-attn": "0.1.8",
+      "requests-oauthlib": "2.0.0",
+      "pycparser": "3.0",
+      "transformers": "5.6.2",
+      "aiofiles": "25.1.0",
+      "more-itertools": "11.1.0",
+      "uvicorn": "0.52.4",
+      "textual": "8.2.7",
+      "openswe": "0.1.3",
+      "mypy_extensions": "1.1.0",
+      "sympy": "1.14.0",
+      "harbor": "0.21.0",
+      "build": "1.5.0",
+      "scikit-learn": "1.9.0",
+      "opentelemetry-proto": "1.42.1",
+      "linkify-it-py": "2.1.0",
+      "nvidia-cuda-cccl": "13.3.3.4.1",
+      "scicode": "0.3.0",
+      "nvidia-nvtx": "13.0.85",
+      "jupyter_client": "8.8.0",
+      "json5": "0.15.0",
+      "pyee": "13.0.1",
+      "graphwalks": "0.1.0",
+      "iniconfig": "2.3.0",
+      "opentelemetry-api": "1.42.1",
+      "compressed-tensors": "0.17.0",
+      "nvidia-cublas": "13.1.1.3",
+      "mooncake-transfer-engine": "0.3.11.post1",
+      "cohere": "7.0.5",
+      "deepseek-prover": "0.1.0",
+      "verifiers": "0.3.2.dev46",
+      "bcrypt": "5.0.0",
+      "argcomplete": "3.7.0",
+      "markdown-it-py": "4.2.0",
+      "cuda-tile": "1.5.0",
+      "i3-code": "0.1.0",
+      "stack-data": "0.6.3",
+      "marshmallow": "3.26.2",
+      "gymnasium": "1.3.0",
+      "nvidia-cudnn-cu13": "9.24.0.43",
+      "swesmith": "0.0.9",
+      "msgpack": "1.1.2",
+      "flash-attn-4": "4.0.0b27",
+      "langdetect": "1.0.9",
+      "typing-inspection": "0.4.2",
+      "pure_eval": "0.2.3",
+      "drug-discovery-bench": "0.1.0",
+      "cbor2": "6.1.1",
+      "torch": "2.13.0+cu130",
+      "triviaqa": "0.1.0",
+      "nvidia-cutlass-dsl-libs-base": "4.6.2",
+      "oauthlib": "3.3.1",
+      "overrides": "7.7.0",
+      "mmmu-pro": "0.1.0",
+      "multidict": "6.7.1",
+      "prometheus-fastapi-instrumentator": "8.0.2",
+      "openseeker": "0.1.0",
+      "PyNaCl": "1.6.2",
+      "goedel-pset": "0.1.0",
+      "wandb-workspaces": "0.4.3",
+      "fastcore": "1.14.1",
+      "papersearchqa": "0.1.0",
+      "nvidia-cuda-nvrtc": "13.0.88",
+      "terminal-lego": "0.1.1",
+      "ruff": "0.15.14",
+      "grpcio": "1.80.0",
+      "uvloop": "0.22.1",
+      "longbenchpro": "0.2.0",
+      "tmax": "0.1.0",
+      "greenlet": "3.5.5",
+      "vllm": "0.28.0",
+      "gitignore_parser": "0.1.13",
+      "traitlets": "5.15.0",
+      "pathspec": "1.1.1",
+      "xxhash": "3.7.0",
+      "swebench": "4.1.0",
+      "datamodel-code-generator": "0.68.0",
+      "dnspython": "2.8.0",
+      "cachetools": "7.1.4",
+      "fonttools": "4.63.0",
+      "tomli_w": "1.2.0",
+      "watchfiles": "1.2.0",
+      "openthoughts-tblite": "0.1.1",
+      "anyio": "4.13.0",
+      "dashscope": "1.26.2",
+      "truststore": "0.10.4",
+      "pillow": "12.2.0",
+      "pytrec_eval-terrier": "0.5.10",
+      "opentelemetry-semantic-conventions": "0.63b1",
+      "pyarrow": "24.0.0",
+      "prime-pydantic-config": "0.4.3",
+      "tree-sitter": "0.26.0",
+      "nvidia-nccl-cu13": "2.29.7",
+      "supervisor": "4.3.0",
+      "pydantic-settings": "2.14.1",
+      "simpleqa-verified": "0.2.0",
+      "jsonschema": "4.26.0",
+      "modelexpress": "0.3.0",
+      "nvidia-cufft": "12.0.0.61",
+      "httpx": "0.28.1",
+      "cymem": "2.0.13",
+      "spacy-loggers": "1.0.5",
+      "matplotlib": "3.10.9",
+      "r2e-gym": "0.1.2",
+      "executing": "2.2.1",
+      "cfgv": "3.5.0",
+      "supabase": "2.31.0",
+      "gpqa": "0.1.0",
+      "sentry-sdk": "2.60.0",
+      "murmurhash": "1.0.15",
+      "spacy-legacy": "3.0.12",
+      "bfcl_eval": "0.0.0.dev0",
+      "soundfile": "0.14.0",
+      "orjson": "3.11.9",
+      "mcp-types": "2.0.0",
+      "parso": "0.8.7",
+      "mistralai": "1.12.4",
+      "safetensors": "0.7.0",
+      "synchronicity": "0.12.5",
+      "prime-tunnel": "0.1.10",
+      "protobuf": "6.33.6",
+      "typeguard": "4.5.2",
+      "uc-micro-py": "2.0.0",
+      "aiohttp": "3.14.3",
+      "jedi": "0.20.0",
+      "opentelemetry-exporter-otlp": "1.42.1",
+      "packaging": "26.2",
+      "wcwidth": "0.7.0",
+      "psutil": "7.2.2",
+      "msgspec": "0.21.1",
+      "depyf": "0.20.0",
+      "faiss-cpu": "1.14.3",
+      "nvidia-nvjitlink": "13.3.33",
+      "unscramble": "0.1.0",
+      "deshuffle-papers": "0.1.0",
+      "blis": "1.3.3",
+      "contourpy": "1.3.3",
+      "ipykernel": "7.2.0",
+      "onnxruntime": "1.28.0",
+      "cffi": "2.0.0",
+      "i3-science": "0.1.0",
+      "mrcr-v2": "0.1.0",
+      "absl-py": "2.4.0",
+      "sniffio": "1.3.1",
+      "fastar": "0.11.0",
+      "latex2sympy2_extended": "1.11.0",
+      "prime-rl-configs": "0.4.0",
+      "addict": "2.4.0",
+      "dirhash": "0.5.0",
+      "hle": "0.3.0",
+      "opentelemetry-exporter-otlp-proto-http": "1.42.1",
+      "longcot-mini": "0.1.0",
+      "bfcl-v3": "0.3.0",
+      "bashlex": "0.18",
+      "identify": "2.6.19",
+      "torchvision": "0.28.0+cu130",
+      "decorator": "5.3.1",
+      "humaneval": "0.1.0",
+      "pip": "26.1.2",
+      "charxiv": "0.1.0",
+      "terminal-bench-2": "0.1.0",
+      "deep_ep": "1.2.1+29d31c0",
+      "regex": "2026.3.32",
+      "setuptools": "77.0.3",
+      "requests": "2.34.2",
+      "narwhals": "2.22.0",
+      "pyzstd": "0.19.1",
+      "chess": "1.11.2",
+      "scantree": "0.0.4",
+      "math500": "0.1.0",
+      "plotly": "6.7.0",
+      "cuda-bindings": "13.3.1",
+      "types-requests": "2.33.0.20260518",
+      "realtime": "2.31.0",
+      "PyPika": "0.51.1",
+      "distro": "1.9.0",
+      "hpack": "4.2.0",
+      "langfuse": "4.7.1",
+      "nvidia-cuda-nvdisasm": "13.3.73",
+      "MarkupSafe": "3.0.3",
+      "catalogue": "2.0.10",
+      "isort": "8.0.1",
+      "attrs": "26.1.0",
+      "llvmlite": "0.47.0",
+      "kubernetes": "36.0.3",
+      "numina": "0.1.0",
+      "yarl": "1.24.2",
+      "flashinfer-python": "0.6.16.post3",
+      "google-genai": "2.9.0",
+      "aime25": "0.1.0",
+      "scipy": "1.17.1",
+      "pyasn1": "0.6.3",
+      "apex-shortlist": "0.1.0",
+      "nvidia-cusparselt-cu13": "0.8.1",
+      "ml_dtypes": "0.5.4",
+      "nvidia-cuda-crt": "13.3.73",
+      "pydantic": "2.13.4",
+      "ptyprocess": "0.7.0",
+      "loguru": "0.7.3",
+      "emoji": "2.15.0",
+      "longcot": "0.1.0",
+      "tau2-bench": "0.3.1",
+      "invoke": "2.2.1",
+      "shellingham": "1.5.4",
+      "tree-sitter-javascript": "0.25.0",
+      "fastapi-cloud-cli": "0.18.0",
+      "chardet": "7.4.3",
+      "playwright": "1.62.0",
+      "sse-starlette": "3.4.4",
+      "interegular": "0.3.3",
+      "threadpoolctl": "3.6.0",
+      "tau2": "0.2.1.dev0",
+      "setproctitle": "1.3.7",
+      "sentence-transformers": "5.6.0",
+      "prime-rl": "0.9.0",
+      "numba": "0.65.0",
+      "torchcodec": "0.15.0",
+      "pinchbench": "0.2.0",
+      "pydantic-extra-types": "2.11.1",
+      "swe-rex": "1.4.0",
+      "types-certifi": "2021.10.8.3",
+      "humming-kernels": "0.1.12",
+      "tensorboard": "2.20.0",
+      "fastapi-cli": "0.0.24",
+      "tqdm": "4.67.3",
+      "astor": "0.8.1",
+      "litellm": "1.95.0",
+      "pexpect": "4.9.0",
+      "virtualenv": "21.3.3",
+      "storage3": "2.31.0",
+      "tabulate": "0.9.0",
+      "widgetsnbextension": "4.0.15",
+      "mdit-py-plugins": "0.6.1",
+      "mmlu-pro": "0.1.0",
+      "pyzmq": "27.1.0",
+      "filelock": "3.32.0",
+      "wideseek": "0.2.0",
+      "pycountry": "26.2.16",
+      "nccl4py": "0.4.1",
+      "nvidia-ml-py": "13.595.45",
+      "mpmath": "1.3.0",
+      "smmap": "5.0.3",
+      "nvidia-cufile": "1.15.1.6",
+      "opentelemetry-sdk": "1.42.1",
+      "pyparsing": "3.3.2",
+      "wadler_lindig": "0.1.7",
+      "color-codeword": "0.1.0",
+      "swerebench-v2": "0.1.2",
+      "mcp-atlas": "0.4.0",
+      "qwen-agent": "0.0.34",
+      "certifi": "2026.5.20",
+      "cuda-core": "1.0.1",
+      "nvtx": "0.2.15",
+      "Farama-Notifications": "0.0.6",
+      "tokenizers": "0.22.2",
+      "tree-sitter-java": "0.23.5",
+      "httpcore": "1.0.9",
+      "matplotlib-inline": "0.2.2",
+      "flash_attn_3": "3.0.0",
+      "multiswe": "0.1.2",
+      "jupyter_core": "5.9.1",
+      "huggingface_hub": "1.28.0",
+      "math-verify": "0.9.0",
+      "lm-format-enforcer": "0.11.3",
+      "appdirs": "1.4.4",
+      "ipywidgets": "8.1.8",
+      "deep_gemm": "2.5.0+891d57b",
+      "wikispeedia": "0.1.0",
+      "srsly": "2.5.3",
+      "beartype": "0.22.9",
+      "PyJWT": "2.13.0",
+      "jsonschema-specifications": "2025.9.1",
+      "supabase-functions": "2.31.0",
+      "tilelang": "0.1.12",
+      "Markdown": "3.10.2",
+      "boto3": "1.43.40",
+      "clbench": "0.2.0",
+      "partial-json-parser": "0.2.1.1.post7",
+      "rank-bm25": "0.2.2",
+      "gsm8k": "0.1.0",
+      "prime-evals": "0.2.3",
+      "aime24": "0.1.0",
+      "pyproject_hooks": "1.2.0",
+      "email-validator": "2.3.0",
+      "mmh3": "5.2.1",
+      "ijson": "3.5.0",
+      "nixl": "0.10.1",
+      "asttokens": "3.0.1",
+      "black": "26.5.1",
+      "aime26": "0.1.0",
+      "browsecomp-plus": "0.1.0",
+      "forth-lang": "0.2.0",
+      "fs": "2.4.16",
+      "weasel": "1.0.0",
+      "h2": "4.3.0",
+      "nl2repobench": "0.2.0",
+      "tokenspeed-mla": "0.1.8",
+      "grpclib": "0.4.9",
+      "zipp": "4.1.0",
+      "flash-linear-attention": "0.5.2",
+      "prometheus_client": "0.25.0",
+      "ghapi": "1.0.16",
+      "python-dateutil": "2.9.0.post0",
+      "smart_open": "7.6.1",
+      "kiwisolver": "1.5.0",
+      "pyasn1_modules": "0.4.2",
+      "enterprise-ops-gym": "0.2.0",
+      "fastuuid": "0.14.0",
+      "triton": "3.7.1",
+      "nvidia-cutlass-dsl-libs-cu13": "4.6.2",
+      "botocore": "1.43.40",
+      "minif2f": "0.1.0",
+      "google-auth": "2.55.0",
+      "jaxtyping": "0.3.10",
+      "tomli": "2.4.1",
+      "torchtitan": "0.1.0",
+      "pluggy": "1.6.0",
+      "nest-asyncio": "1.6.0",
+      "httpx-sse": "0.4.3",
+      "chromadb": "1.5.9",
+      "prolog": "0.5.0",
+      "uuid-ctf": "0.1.0",
+      "rignore": "0.7.6",
+      "soupsieve": "2.8.4",
+      "gepa": "0.1.1",
+      "nltk": "3.9.4",
+      "importlib_resources": "7.1.0",
+      "python-multipart": "0.0.29",
+      "shortuuid": "1.0.13",
+      "kernels-data": "0.14.1",
+      "GitPython": "3.1.50",
+      "pybase64": "1.4.3",
+      "swebench-pro": "0.1.0",
+      "googleapis-common-protos": "1.75.0",
+      "gitdb": "4.0.12",
+      "proverbench": "0.1.0",
+      "urllib3": "2.7.0",
+      "annotated-types": "0.7.0",
+      "python-dotenv": "1.2.2",
+      "postgrest": "2.31.0",
+      "spacy": "3.8.14",
+      "tensorboard-data-server": "0.7.2",
+      "starlette": "1.3.1",
+      "simpleqa": "0.2.0",
+      "Werkzeug": "3.1.8",
+      "prime": "0.6.19",
+      "rich-toolkit": "0.19.10",
+      "importlib_metadata": "8.9.0",
+      "prime-sandboxes": "0.2.39",
+      "multi-swe-bench": "1.1.2",
+      "rich": "15.0.0",
+      "swelego": "0.1.2",
+      "math-env": "0.1.0",
+      "redis": "8.0.0",
+      "i3-logic": "0.2.0",
+      "fastapi": "0.136.3",
+      "beautifulsoup4": "4.15.0",
+      "openai-harmony": "0.0.8",
+      "six": "1.17.0",
+      "longpdfs": "0.0.1",
+      "protobuf-py-ext": "0.1.1",
+      "alphabet-sort": "0.1.0",
+      "oolong-real": "0.1.0",
+      "httpcore2": "2.12.0",
+      "ifeval": "0.1.0",
+      "flatbuffers": "25.12.19",
+      "websocket-client": "1.9.0",
+      "pytest-asyncio": "1.3.0",
+      "hyperframe": "6.1.0",
+      "cryptography": "48.0.0",
+      "TextArena": "0.7.4",
+      "antlr4-python3-runtime": "4.13.2",
+      "annotated-doc": "0.0.4",
+      "preshed": "3.0.13",
+      "longcot-env": "0.1.0",
+      "vllm-router": "0.2.0",
+      "deepdiff": "9.1.0",
+      "httpx2": "2.12.0",
+      "lark": "1.2.2",
+      "nvidia-curand": "10.4.0.35",
+      "swesmith-env": "0.1.3",
+      "torchao": "0.18.0+git5f2baf9d5",
+      "z3-solver": "4.15.4.0",
+      "nvidia-cuda-cupti": "13.0.85",
+      "Faker": "40.23.0",
+      "programbench-env": "0.2.0",
+      "virl39k": "0.1.0",
+      "propcache": "0.5.2",
+      "watchdog": "6.0.0",
+      "model-hosting-container-standards": "0.1.15",
+      "jupyterlab_widgets": "3.0.16",
+      "pyqwest": "0.6.0",
+      "backports.zstd": "1.7.0",
+      "rdkit": "2026.3.3",
+      "comm": "0.2.3",
+      "cloudpickle": "3.1.2",
+      "thinc": "8.3.13",
+      "llguidance": "1.7.5",
+      "py-cpuinfo": "9.0.0",
+      "jmespath": "1.1.0",
+      "opentelemetry-exporter-otlp-proto-common": "1.42.1",
+      "opencv-python-headless": "4.13.0.92",
+      "reverse-text": "0.1.0",
+      "PyYAML": "6.0.3",
+      "mcp": "2.0.0"
+    },
+    "baseline_source_preservation": [
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/runs/20260903-150011/provenance/prime-rl.toml",
+        "bytes": 2817,
+        "sha256": "676eec8b48ce0a7bc5d7cbd9adb07f4c5f01891efacb90819490c9c15ed63f06",
+        "expected_sha256": "676eec8b48ce0a7bc5d7cbd9adb07f4c5f01891efacb90819490c9c15ed63f06",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/runs/20260903-150011/prime-rl/configs/attempt_1/resolved/trainer.json",
+        "bytes": 3196,
+        "sha256": "979253f0fe0fae1aca2ee32304b1d3c2b7c81bdea5366421972319c4894e8a3b",
+        "expected_sha256": "979253f0fe0fae1aca2ee32304b1d3c2b7c81bdea5366421972319c4894e8a3b",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/runs/20260903-150011/prime-rl/configs/attempt_1/resolved/inference.json",
+        "bytes": 1580,
+        "sha256": "3e1f00287365e491f4396e864383df025e456b88bdfa71439175b7140673c665",
+        "expected_sha256": "3e1f00287365e491f4396e864383df025e456b88bdfa71439175b7140673c665",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/runs/20260903-150011/prime-rl/configs/attempt_1/resolved/orchestrator.json",
+        "bytes": 6163,
+        "sha256": "d19dc6794c09cc03385d7205f1da42fc10ba12d46fda317968aee20de340d511",
+        "expected_sha256": "d19dc6794c09cc03385d7205f1da42fc10ba12d46fda317968aee20de340d511",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/runs/20260903-150011/prime-rl/configs/attempt_1/resolved/envs/train/clustermax-terminal-lego.json",
+        "bytes": 2318,
+        "sha256": "119fc08d0e923e10d6ad65cbd2fc01eae6b305752c8cac941c42fe10b22eb715",
+        "expected_sha256": "119fc08d0e923e10d6ad65cbd2fc01eae6b305752c8cac941c42fe10b22eb715",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/code-git/scripts/2-performance/training/prime-rl-terminal-lego/workload/clustermax_terminal_lego/taskset.py",
+        "bytes": 2562,
+        "sha256": "3c7641c837195d3bad87d39261c403c250ae71aacf387a2d0f514285ddd3b310",
+        "expected_sha256": "3c7641c837195d3bad87d39261c403c250ae71aacf387a2d0f514285ddd3b310",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/code-git/scripts/2-performance/training/prime-rl-terminal-lego/workload/task-files.sha256",
+        "bytes": 2863,
+        "sha256": "92ea2bbfc97afacc27f370fe90147df184f593d8f7dd351f8641f8dc6451df30",
+        "expected_sha256": "92ea2bbfc97afacc27f370fe90147df184f593d8f7dd351f8641f8dc6451df30",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/code-git/scripts/2-performance/training/prime-rl-terminal-lego/workload/collect_results.py",
+        "bytes": 6347,
+        "sha256": "18abb0eccf1ff96dc2ea461c5927ebd577e113064e83603112c90f13b8ff2eba",
+        "expected_sha256": "18abb0eccf1ff96dc2ea461c5927ebd577e113064e83603112c90f13b8ff2eba",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/trainer/rl/loss.py",
+        "bytes": 14904,
+        "sha256": "6b55671b10bd7216ca6ba5f6a67d0d6b514db0675e2241cfceb37d00e4b94e68",
+        "expected_sha256": "6b55671b10bd7216ca6ba5f6a67d0d6b514db0675e2241cfceb37d00e4b94e68",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/base.py",
+        "bytes": 3082,
+        "sha256": "91dfaaba1f2519ec2ee530aba7491063bc3005b1a6632071a0f7b033045bb02c",
+        "expected_sha256": "91dfaaba1f2519ec2ee530aba7491063bc3005b1a6632071a0f7b033045bb02c",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/rae.py",
+        "bytes": 2039,
+        "sha256": "78e56d1c8cfc1f570e9011e902f91450d3aab2704bfe958c016212cd34f0eda9",
+        "expected_sha256": "78e56d1c8cfc1f570e9011e902f91450d3aab2704bfe958c016212cd34f0eda9",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/__init__.py",
+        "bytes": 3318,
+        "sha256": "265997029d2e88eacc85271320044ac2e28f32e4b4d3b3b7e7fed2ae93474900",
+        "expected_sha256": "265997029d2e88eacc85271320044ac2e28f32e4b4d3b3b7e7fed2ae93474900",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/opd.py",
+        "bytes": 1954,
+        "sha256": "59e09e5cc23aab9c4a9eb908f246711f0d3ba5b0d77d26555a82c1cd889b5b2d",
+        "expected_sha256": "59e09e5cc23aab9c4a9eb908f246711f0d3ba5b0d77d26555a82c1cd889b5b2d",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/max_rl.py",
+        "bytes": 1359,
+        "sha256": "d128d53f51ccfdeca0bd41b7aa1a1af4764f11c338f461c6fe06f258ec751a87",
+        "expected_sha256": "d128d53f51ccfdeca0bd41b7aa1a1af4764f11c338f461c6fe06f258ec751a87",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/routing.py",
+        "bytes": 3237,
+        "sha256": "d6b1f86a550f873453c47d9c9450457c5901bd9f3d32c2bf9884ffdb6d40014a",
+        "expected_sha256": "d6b1f86a550f873453c47d9c9450457c5901bd9f3d32c2bf9884ffdb6d40014a",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/sft.py",
+        "bytes": 509,
+        "sha256": "24de754b6e920192c47773adf4de7bdb4ec20c8d495f8a1454f8f29c1785e3b7",
+        "expected_sha256": "24de754b6e920192c47773adf4de7bdb4ec20c8d495f8a1454f8f29c1785e3b7",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/grpo.py",
+        "bytes": 2115,
+        "sha256": "d6319e1f2626ac4225e4cd9f85eaf18e13aa13b27c8a6d6eaa458e5fa99847f5",
+        "expected_sha256": "d6319e1f2626ac4225e4cd9f85eaf18e13aa13b27c8a6d6eaa458e5fa99847f5",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/hierarchical_grpo.py",
+        "bytes": 1853,
+        "sha256": "5d70fc5e674681929b2b510a6af9b2a90313fccbe56b33d9cb6b2f0ce3fc71e2",
+        "expected_sha256": "5d70fc5e674681929b2b510a6af9b2a90313fccbe56b33d9cb6b2f0ce3fc71e2",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/echo.py",
+        "bytes": 5872,
+        "sha256": "be7a6441b9903a11762ba1eff941572e59bfa95c692a8dbb709b51a922abd77a",
+        "expected_sha256": "be7a6441b9903a11762ba1eff941572e59bfa95c692a8dbb709b51a922abd77a",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/src/prime_rl/orchestrator/algo/opsd.py",
+        "bytes": 3782,
+        "sha256": "236c9a9e8b600ff0e616bae8f81e6150ed35ce61bd94e1a63db5f2e37cb2c141",
+        "expected_sha256": "236c9a9e8b600ff0e616bae8f81e6150ed35ce61bd94e1a63db5f2e37cb2c141",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/clients/client.py",
+        "bytes": 3125,
+        "sha256": "cea0bf024883f69974931c486eea4d89e85b4be62755da7710c6742ce1d377c5",
+        "expected_sha256": "cea0bf024883f69974931c486eea4d89e85b4be62755da7710c6742ce1d377c5",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/clients/train.py",
+        "bytes": 18828,
+        "sha256": "87356166967c2cd283e6212dc32f955590e6722bc7636f2af13df301f6e53705",
+        "expected_sha256": "87356166967c2cd283e6212dc32f955590e6722bc7636f2af13df301f6e53705",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/clients/base.py",
+        "bytes": 1691,
+        "sha256": "3e80f0e0632aadfb8f4c554aea7da30e6943d3f949e734eb61c362a39caae8af",
+        "expected_sha256": "3e80f0e0632aadfb8f4c554aea7da30e6943d3f949e734eb61c362a39caae8af",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/clients/eval.py",
+        "bytes": 8322,
+        "sha256": "709b9cc9416c6c5d49946f271744e5c36101312a0017460c92581888e4a83698",
+        "expected_sha256": "709b9cc9416c6c5d49946f271744e5c36101312a0017460c92581888e4a83698",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/clients/__init__.py",
+        "bytes": 507,
+        "sha256": "62c8a0d2d13fd04e09b1f81f7acd571cdf9f2b5b3f4425dda990fa13b94ae0f5",
+        "expected_sha256": "62c8a0d2d13fd04e09b1f81f7acd571cdf9f2b5b3f4425dda990fa13b94ae0f5",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/retries.py",
+        "bytes": 821,
+        "sha256": "fa73e5826cfb27f359e063981baa02737b615e8e0b6b64ae7c19af406bef3c6a",
+        "expected_sha256": "fa73e5826cfb27f359e063981baa02737b615e8e0b6b64ae7c19af406bef3c6a",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/agent.py",
+        "bytes": 3251,
+        "sha256": "2f93faa266c08b8539c30b2ca4c1c0b8cf35d75b01f4055d9bcaba079895d65c",
+        "expected_sha256": "2f93faa266c08b8539c30b2ca4c1c0b8cf35d75b01f4055d9bcaba079895d65c",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/taskset.py",
+        "bytes": 777,
+        "sha256": "379b05623ce37269d41223621c7ebdbda39f97c7ec5709aa5e65a63e2c6a38e0",
+        "expected_sha256": "379b05623ce37269d41223621c7ebdbda39f97c7ec5709aa5e65a63e2c6a38e0",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/serve.py",
+        "bytes": 2716,
+        "sha256": "a1aff406b01510a6e8537e38c348589126978fc95fdbab741fcee0be7700a344",
+        "expected_sha256": "a1aff406b01510a6e8537e38c348589126978fc95fdbab741fcee0be7700a344",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/judge.py",
+        "bytes": 2142,
+        "sha256": "0819868321d756970172dbeb143e46956ef9c297855d515a8eaff188c6805439",
+        "expected_sha256": "0819868321d756970172dbeb143e46956ef9c297855d515a8eaff188c6805439",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/runtime.py",
+        "bytes": 2967,
+        "sha256": "2015f7171889d9125a897d9a2a0850d79725147bc9a4f517cbc19640ea4d8583",
+        "expected_sha256": "2015f7171889d9125a897d9a2a0850d79725147bc9a4f517cbc19640ea4d8583",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/env.py",
+        "bytes": 7784,
+        "sha256": "f8171d7783043df7a455cfdf9e98b0b1bf540f008d74d08aac01c6a10bae5eef",
+        "expected_sha256": "f8171d7783043df7a455cfdf9e98b0b1bf540f008d74d08aac01c6a10bae5eef",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/harness.py",
+        "bytes": 1640,
+        "sha256": "9e4d38e980578d2bff70d40941e3920dd75bc1b1fd048e065f2962c45bcbe08e",
+        "expected_sha256": "9e4d38e980578d2bff70d40941e3920dd75bc1b1fd048e065f2962c45bcbe08e",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/__init__.py",
+        "bytes": 317,
+        "sha256": "5fbbba5fb07789e0f51d997bf53bf5920fb23c76d3d102ef01e6da1aac55b6f0",
+        "expected_sha256": "5fbbba5fb07789e0f51d997bf53bf5920fb23c76d3d102ef01e6da1aac55b6f0",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/task.py",
+        "bytes": 2614,
+        "sha256": "e7b3a710601aea34e21b5d8bc7f7a5444534da4a1887c524334b7456fc5a872b",
+        "expected_sha256": "e7b3a710601aea34e21b5d8bc7f7a5444534da4a1887c524334b7456fc5a872b",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/configs/client.py",
+        "bytes": 4437,
+        "sha256": "13b67179604557f00ff0cc9fc579dc4d9b3e627f9029d0d2e7b1c2033a954eb4",
+        "expected_sha256": "13b67179604557f00ff0cc9fc579dc4d9b3e627f9029d0d2e7b1c2033a954eb4",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/serve/encoding.py",
+        "bytes": 2399,
+        "sha256": "e6d29a80a64ac013cde95c9d2ce6c2283ccb9e28ebbd1c0c8eec95414ab904a0",
+        "expected_sha256": "e6d29a80a64ac013cde95c9d2ce6c2283ccb9e28ebbd1c0c8eec95414ab904a0",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/serve/server.py",
+        "bytes": 8778,
+        "sha256": "875079dd1641b98811b78c6687d2fa8c12742af09dabbc260806b79f09093289",
+        "expected_sha256": "875079dd1641b98811b78c6687d2fa8c12742af09dabbc260806b79f09093289",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/serve/__init__.py",
+        "bytes": 477,
+        "sha256": "768226092c526191235435df45a7cb1e48475dc5d0c7303aa9418c050f1b4a4a",
+        "expected_sha256": "768226092c526191235435df45a7cb1e48475dc5d0c7303aa9418c050f1b4a4a",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/serve/types.py",
+        "bytes": 1552,
+        "sha256": "0a367a3d6425cd2464046efb8177f32879f0fd2fea2949bd759492c55824bf5c",
+        "expected_sha256": "0a367a3d6425cd2464046efb8177f32879f0fd2fea2949bd759492c55824bf5c",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/serve/client.py",
+        "bytes": 7583,
+        "sha256": "51698b524c21cacdb8d4f09ee43ca662cfd81f1ca937ebba18be1617c0343a34",
+        "expected_sha256": "51698b524c21cacdb8d4f09ee43ca662cfd81f1ca937ebba18be1617c0343a34",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/serve/pool.py",
+        "bytes": 15443,
+        "sha256": "1d9b093dcaeef5e36bc68dd19a2f9576dd6d8d9c2aa36a08e1097f20a7d432d6",
+        "expected_sha256": "1d9b093dcaeef5e36bc68dd19a2f9576dd6d8d9c2aa36a08e1097f20a7d432d6",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/env.py",
+        "bytes": 18234,
+        "sha256": "0848738e88e18398ea6ce62bb949dce54ed3b600c70d2c7c362885034a9f6edf",
+        "expected_sha256": "0848738e88e18398ea6ce62bb949dce54ed3b600c70d2c7c362885034a9f6edf",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/episode.py",
+        "bytes": 5741,
+        "sha256": "15fb744765ba20d01578986813d6fc87b2ff2904b3ed7bb13f8153fd785cb146",
+        "expected_sha256": "15fb744765ba20d01578986813d6fc87b2ff2904b3ed7bb13f8153fd785cb146",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/rollout.py",
+        "bytes": 24021,
+        "sha256": "153e9961f4aa90a3856b9b66e765c34cb8a32b1aa978baf7c7630174b224e319",
+        "expected_sha256": "153e9961f4aa90a3856b9b66e765c34cb8a32b1aa978baf7c7630174b224e319",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/types.py",
+        "bytes": 9857,
+        "sha256": "3c7d52c515973a33c28100fd69980cd7cfdb102bc548d436e609026ee9664ca5",
+        "expected_sha256": "3c7d52c515973a33c28100fd69980cd7cfdb102bc548d436e609026ee9664ca5",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/trace.py",
+        "bytes": 29623,
+        "sha256": "f0a086305da2694347fcfca928dc7ef90c1b4ac979754086797a7d0e6926fb6e",
+        "expected_sha256": "f0a086305da2694347fcfca928dc7ef90c1b4ac979754086797a7d0e6926fb6e",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/taskset.py",
+        "bytes": 4374,
+        "sha256": "7e9d84d081212ff61b8fd71e819c258df4e65b6ee9ff7d334d61c52b0fe45c4e",
+        "expected_sha256": "7e9d84d081212ff61b8fd71e819c258df4e65b6ee9ff7d334d61c52b0fe45c4e",
+        "unchanged": true
+      },
+      {
+        "path": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/prime-rl/deps/verifiers/verifiers/v1/__init__.py",
+        "bytes": 8352,
+        "sha256": "a8928eb225000ca5f80b5b4c2ac00f417889328f7ef3414d7b23e9032455b216",
+        "expected_sha256": "a8928eb225000ca5f80b5b4c2ac00f417889328f7ef3414d7b23e9032455b216",
+        "unchanged": true
+      }
+    ],
+    "weights_only": true,
+    "optimizer_rng_resume_tested": false
+  },
+  "node_post_runtime": [
+    {
+      "source": "infra/gpu-nodes-0-post-runtime.json",
+      "sha256": "6b49072781be0715d7ca62829056c1c166d30566f7d915233347bdd31c3a91d3",
+      "hostname": "gpu-nodes-0",
+      "summary": {
+        "gpu_count": 8,
+        "remaining_gpu_processes": "",
+        "remaining_run_containers": "",
+        "kernel_xid_lines": []
+      },
+      "gpu_uuids": [
+        "GPU-042b468a-5f46-4b8f-c659-2be865525f4a",
+        "GPU-0f5cccee-264e-0ae8-6ccf-56d7fb4be5f9",
+        "GPU-05b02219-2b03-f8a7-ca66-04c0a7befe66",
+        "GPU-cf39917e-f92f-3b5a-fbf5-b9daef3036e6",
+        "GPU-ec52f3ef-8f41-cbaa-d2c2-7e8b56d3b32a",
+        "GPU-54f332eb-7acd-44a4-46ff-0017be6b0952",
+        "GPU-28ee82ef-4f26-3d9f-8596-ff87f1eb443c",
+        "GPU-2941c934-8ec5-7a72-492b-d983858d9126"
+      ],
+      "slurm_state": "ALLOCATED+DYNAMIC_NORM",
+      "command_exit_codes": {
+        "gpus": 0,
+        "processes": 0,
+        "containers": 0,
+        "kernel": 0,
+        "slurm": 0
+      }
+    },
+    {
+      "source": "infra/gpu-nodes-1-post-runtime.json",
+      "sha256": "4b140807cd846be4e67b5779f92a352bf6fcc73b06c5297c8c366fc00c29b07b",
+      "hostname": "gpu-nodes-1",
+      "summary": {
+        "gpu_count": 8,
+        "remaining_gpu_processes": "",
+        "remaining_run_containers": "",
+        "kernel_xid_lines": []
+      },
+      "gpu_uuids": [
+        "GPU-5952930a-878e-ec2b-c065-48fb338aa628",
+        "GPU-1bc17818-8165-04f4-9862-3bcbe7268fbb",
+        "GPU-f2fbb0d1-cb7a-4e2a-a894-21e7b6e7921b",
+        "GPU-2ab0b43f-4c77-d27b-7ccf-21c99d80be08",
+        "GPU-e1134404-a7de-f243-63f1-5fd7e11c635f",
+        "GPU-d1b19d48-f43c-67ea-1b22-af4a8e6e428c",
+        "GPU-15fdcc49-761c-3cc0-c511-7c9d4c04d796",
+        "GPU-0606304d-2091-5727-0a0c-ee795e16dfc7"
+      ],
+      "slurm_state": "ALLOCATED+DYNAMIC_NORM",
+      "command_exit_codes": {
+        "gpus": 0,
+        "processes": 0,
+        "containers": 0,
+        "kernel": 0,
+        "slurm": 0
+      }
+    },
+    {
+      "source": "infra/gpu-nodes-2-post-runtime.json",
+      "sha256": "15989b31bf000bdfe54d4d088710c0f2dff01d13dbdebd752aa8fe7dc1420704",
+      "hostname": "gpu-nodes-2",
+      "summary": {
+        "gpu_count": 8,
+        "remaining_gpu_processes": "",
+        "remaining_run_containers": "",
+        "kernel_xid_lines": []
+      },
+      "gpu_uuids": [
+        "GPU-86218e11-8977-19fa-201a-44a56b6e3af3",
+        "GPU-f453c594-8cff-6075-c05b-3b062157db8c",
+        "GPU-7872c739-35ac-de0a-ed68-2788e884b75a",
+        "GPU-01f65707-f773-a110-8b11-24c5b34fbeb7",
+        "GPU-983d90f7-787b-aff5-36d7-b6493c473cbf",
+        "GPU-e00780e1-e567-1c2e-0948-20d7d26b1b32",
+        "GPU-b159dd83-dd72-8f98-ed64-6627dd4ac56e",
+        "GPU-83015363-6a79-c75f-ac7a-1b923e2a3c4b"
+      ],
+      "slurm_state": "ALLOCATED+DYNAMIC_NORM",
+      "command_exit_codes": {
+        "gpus": 0,
+        "processes": 0,
+        "containers": 0,
+        "kernel": 0,
+        "slurm": 0
+      }
+    },
+    {
+      "source": "infra/gpu-nodes-3-post-runtime.json",
+      "sha256": "382bed5b699f2a262570a90c2e8f499346e0d626a5bde80d5f5e12fab311b365",
+      "hostname": "gpu-nodes-3",
+      "summary": {
+        "gpu_count": 8,
+        "remaining_gpu_processes": "",
+        "remaining_run_containers": "",
+        "kernel_xid_lines": []
+      },
+      "gpu_uuids": [
+        "GPU-7471b575-a845-d73b-2411-f1e12320fca9",
+        "GPU-1bd6c6e0-759f-5bd3-a68b-6f090fbce455",
+        "GPU-6a8efa14-0d09-d842-ae39-0eef7f0feb50",
+        "GPU-138eab1f-3694-349e-f925-e70769282647",
+        "GPU-272aac0b-bdf7-22f5-d5dc-cf109fa91069",
+        "GPU-70057fe0-55a2-08ba-bd16-da3d25751a7f",
+        "GPU-1d061bc6-8ece-408b-e20e-b75dccbc370e",
+        "GPU-11d63c84-1166-0a29-92d4-cd3dd5761a86"
+      ],
+      "slurm_state": "ALLOCATED+DYNAMIC_NORM",
+      "command_exit_codes": {
+        "gpus": 0,
+        "processes": 0,
+        "containers": 0,
+        "kernel": 0,
+        "slurm": 0
+      }
+    }
+  ],
+  "analysis_versions": {
+    "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+    "package_lock": [
+      "absl-py==2.3.1",
+      "contourpy==1.3.0",
+      "cycler==0.12.1",
+      "fonttools==4.60.2",
+      "grpcio==1.80.0",
+      "importlib_metadata==8.7.1",
+      "importlib_resources==6.5.2",
+      "kiwisolver==1.4.7",
+      "Markdown==3.9",
+      "MarkupSafe==3.0.3",
+      "matplotlib==3.9.4",
+      "numpy==2.0.2",
+      "packaging==26.3",
+      "pillow==11.3.0",
+      "protobuf==6.33.6",
+      "pyparsing==3.3.2",
+      "python-dateutil==2.9.0.post0",
+      "six==1.17.0",
+      "tensorboard==2.20.0",
+      "tensorboard-data-server==0.7.2",
+      "typing_extensions==4.16.0",
+      "Werkzeug==3.1.8",
+      "zipp==3.23.1"
+    ]
+  },
+  "kubernetes_after": {
+    "source_sha256": "d7c363fab388b9fb7546edf90dc0d0e2f5607a7518a2ebf5e87c949980185e27",
+    "captured_at": "2026-09-04T01:14:54.971090+00:00",
+    "nodes": [
+      {
+        "name": "b200-nodepool-83ee4175afdb",
+        "allocatable_gpus": "8",
+        "conditions": {
+          "CorruptDockerOverlay2": "False",
+          "KernelDeadlock": "False",
+          "ReadonlyFilesystem": "False",
+          "NetworkUnavailable": "False",
+          "MemoryPressure": "False",
+          "DiskPressure": "False",
+          "PIDPressure": "False",
+          "Ready": "True"
+        }
+      },
+      {
+        "name": "b200-nodepool-ac23753e6cfa",
+        "allocatable_gpus": "8",
+        "conditions": {
+          "KernelDeadlock": "False",
+          "ReadonlyFilesystem": "False",
+          "CorruptDockerOverlay2": "False",
+          "NetworkUnavailable": "False",
+          "MemoryPressure": "False",
+          "DiskPressure": "False",
+          "PIDPressure": "False",
+          "Ready": "True"
+        }
+      },
+      {
+        "name": "b200-nodepool-b401f8abb9f1",
+        "allocatable_gpus": "8",
+        "conditions": {
+          "KernelDeadlock": "False",
+          "ReadonlyFilesystem": "False",
+          "CorruptDockerOverlay2": "False",
+          "NetworkUnavailable": "False",
+          "MemoryPressure": "False",
+          "DiskPressure": "False",
+          "PIDPressure": "False",
+          "Ready": "True"
+        }
+      },
+      {
+        "name": "b200-nodepool-b615b018060d",
+        "allocatable_gpus": "8",
+        "conditions": {
+          "KernelDeadlock": "False",
+          "ReadonlyFilesystem": "False",
+          "CorruptDockerOverlay2": "False",
+          "NetworkUnavailable": "False",
+          "MemoryPressure": "False",
+          "DiskPressure": "False",
+          "PIDPressure": "False",
+          "Ready": "True"
+        }
+      }
+    ]
+  },
+  "publication_validation": {
+    "time": "2026-09-04T01:21:12.275713+00:00",
+    "test_command": "python3 -m unittest test_analysis -v",
+    "tests_passed": 5,
+    "tests_skipped": 0,
+    "test_source_sha256": "1e803d4e98cdb2211c7f981147d61c19bd7257e495a3964f2ad8ff9ea203ef43",
+    "json_svg_parse": "passed",
+    "markdown_links": "passed",
+    "credential_pattern_scan": "passed",
+    "diff_whitespace_check": "passed",
+    "incoming_chart_pngs": "10 unchanged from f7ec463e3c28429578118a0aba9ddff3e13a9684",
+    "visual_review": "All three generated plot sheets inspected; SVG whitespace normalization preserves paths.",
+    "publish_branch": "ppo-job-196-compact",
+    "concurrent_main_commit_not_merged": "6fe7a43e4a818c2f9a239e725222cb7c46e467fd",
+    "reason": "Preserve active async job197 publication without importing 1357 additional snapshot files into the compact completed-run branch."
+  }
+}

@@ -1,6 +1,7 @@
 """Regression checks for evidence units, missing-data handling, and phase status."""
 import json
 import math
+import csv
 from pathlib import Path
 import tempfile
 import unittest
@@ -83,6 +84,21 @@ class PublishedRunTests(unittest.TestCase):
         self.assertEqual(provenance['transport_tests']['status'],'passed')
         self.assertEqual([r['status'] for r in provenance['policy_validity']],['passed','passed'])
         self.assertTrue(all(r['unchanged'] for r in provenance['final_runtime']['baseline_source_preservation']))
+        nodes=provenance['node_post_runtime']
+        self.assertEqual(len(nodes),4)
+        uuids=[u for n in nodes for u in n['gpu_uuids']]
+        self.assertEqual(len(set(uuids)),32)
+        before={row.split(',')[0] for n in provenance['launch_manifest']['inventory'] for row in n['gpus']['stdout'].strip().splitlines()}
+        self.assertEqual(set(uuids),before)
+        for node in nodes:
+            self.assertEqual(node['summary']['remaining_run_containers'],'')
+        commands=provenance['final_runtime']['commands']
+        queue=next(c for c in commands if c['argv'][0]=='squeue')
+        self.assertNotIn(str(run['job_id']),[line.split('|')[0] for line in queue['stdout'].splitlines()])
+        accounting=next(c for c in commands if c['argv'][0]=='sacct')
+        own=next(row for row in csv.DictReader(accounting['stdout'].splitlines(),delimiter='|') if row['JobID']==str(run['job_id']))
+        self.assertEqual(own['State'],'COMPLETED')
+        self.assertEqual(own['ExitCode'],'0:0')
 
 
 if __name__=='__main__':

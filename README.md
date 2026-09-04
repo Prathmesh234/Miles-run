@@ -10,6 +10,7 @@ This repository contains reproducible launch code and compact evidence for the f
 - [Consolidated metrics](results/comparison.json): all training scalars, task-level outcomes, timing phases, GPU/node/link distributions, and collector errors.
 - [Sampled timelines](results/timeseries.csv), [provenance and archive index](results/provenance.json), and [failure/intervention log](results/interventions.json).
 - [Original job-190 report](COMPARISON.md), [infrastructure inventory](INFRASTRUCTURE.md), [pinned baseline specification](comparison-spec.json), and [consolidated historical evidence](results/legacy-evidence.json).
+- [Detailed job-190 infrastructure charts](charts/README.md), preserved from the independently published chart commit.
 
 Raw transcripts, TensorBoard files, NCCL/Ray logs, per-node collector output, and checkpoints remain in the checksummed local and `/shared` archives. They are not copied into hundreds of Git files. Previous published raw evidence remains in Git history at `0fa4636863b1f61b444a830f74980cb06d59c10e`; this change does not rewrite that history.
 
