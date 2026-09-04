@@ -1,0 +1,528 @@
+{
+  "schema_version": 1,
+  "status": "preflight_passed",
+  "created_at": "20260904T005533Z",
+  "campaign": "/shared/clustermax-campaigns/miles-ppo-terminal-lego-20260904T005533Z",
+  "baseline_jobs": [
+    181,
+    190
+  ],
+  "reused_campaign_read_only": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030",
+  "algorithm": "ppo",
+  "image": "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d",
+  "miles_sha": "70b89e11770fc9bac984e22cfff89c51cca44203",
+  "clustermax_sha": "fed871df5321d42706c98701522cc3ccd55898d5",
+  "publication_parent_sha": "0fa4636863b1f61b444a830f74980cb06d59c10e",
+  "matched_workload": {
+    "model": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0",
+    "model_revision": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+    "initial_weights": "original base-model checkpoint, not the trained step_2 checkpoint",
+    "tasks": [
+      "task_06652",
+      "task_14118",
+      "task_10753",
+      "task_09467"
+    ],
+    "dataset_revision": "9c197f1c2e87b64cc316b1a5bfcef57b584929f0",
+    "task_file_hashes": "baseline/code-git/scripts/2-performance/training/prime-rl-terminal-lego/workload/task-files.sha256",
+    "train_nodes": 2,
+    "inference_nodes": 2,
+    "gpus_per_node": 8,
+    "gpu_type": "NVIDIA B200",
+    "steps": 2,
+    "sequences_per_batch": 16,
+    "samples_per_task_group": 8,
+    "max_context_tokens": 8192,
+    "max_completion_tokens_per_turn": 2048,
+    "max_agent_turns": 8,
+    "rollout_timeout_seconds": 1200,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "min_p": 0.0,
+    "concurrent_episodes": 16,
+    "max_off_policy_steps": 0,
+    "optimizer": {
+      "lr": 1e-06,
+      "weight_decay": 0.0,
+      "max_norm": 1.0,
+      "type": "adamw",
+      "betas1": 0.9,
+      "betas2": 0.999
+    },
+    "scheduler": {
+      "type": "constant"
+    },
+    "trainer_loss": {
+      "type": "ipo",
+      "eps": 0.1,
+      "adv_tau": 1.0,
+      "kl_tau": 0.001
+    },
+    "advantages": "reward minus group mean, without dividing by group standard deviation",
+    "loss_reduction": "global active-token mean",
+    "no_reference_kl": true,
+    "optimization_dtype": "bfloat16",
+    "gradient_reduction_dtype": "bfloat16",
+    "trainer_ep": 8,
+    "trainer_cp": 1,
+    "inference_tp": 8,
+    "inference_dp": 2,
+    "inference_gpu_memory_fraction": 0.85,
+    "freeze_vision_encoder": true,
+    "no_mtp_training": true,
+    "no_speculative_decoding": true,
+    "checkpoint_interval": 2,
+    "save_optimizer": false,
+    "verifiers_commit": "c1547418f6126b431a85ce4d46f1fbd0afe58e92",
+    "renderers_commit": "f91c3e7061ce50ea405cdf54fd419a45cb51a152",
+    "harness": "bash",
+    "runtime": "docker",
+    "renderer": "qwen3.6",
+    "inference_fp32_lm_head": true,
+    "inference_fp32_router_logits": true
+  },
+  "inherited_backend_deviations": {
+    "gradient_reduction_dtype": {
+      "baseline": "bfloat16",
+      "miles": "float32",
+      "reason": "Megatron BF16 training validation requires FP32 gradient accumulation/reduction"
+    },
+    "inference_parallelism_notation": {
+      "baseline": "vLLM TP8, DP2, global EP16",
+      "miles": "SGLang global TP16, attention DP2 with attention TP8, EP16"
+    },
+    "prefill_cuda_graphs": {
+      "miles": "disabled",
+      "reason": "Pinned SGLang breakable prefill graph shape error in job187"
+    },
+    "cpu_numa_binding": {
+      "miles": "SGLang automatic NUMA affinity skipped in inner container; all CPUs and both NUMA nodes allowed"
+    },
+    "schedule": {
+      "baseline": "asynchronous group prefetch and zero-advantage filtering",
+      "miles": "synchronous two-step, cyclic same four tasks, zero-advantage filtering"
+    },
+    "inference_moe_kernel": {
+      "miles": "flashinfer_cutlass",
+      "reason": "Pinned Miles Blackwell recipe documents identical weight-sync shape failure and selects this backend."
+    },
+    "router_precision_kernel": {
+      "baseline": "vLLM GateLinear FP32 router logits",
+      "miles": "Job-local ReplicatedLinear subclass using BF16-input torch.mm(out_dtype=float32); same canonical BF16 parameter storage",
+      "reason": "Pinned SGLang Qwen gate does not honor the baseline FP32 router-logit option."
+    },
+    "request_routing": {
+      "miles": "round_robin",
+      "reason": "Default cache-aware policy concentrated all observed workload requests on attention DP0."
+    }
+  },
+  "ppo_changes": {
+    "critic_lr": 1e-05,
+    "critic_warmup_steps": 0,
+    "policy_clip": 0.2,
+    "value_clip": 0.2,
+    "gamma": 1.0,
+    "gae_lambda": 1.0,
+    "normalize_advantages": true,
+    "rewards": "raw, no group centering",
+    "zero_variance_groups": "retained",
+    "critic": "colocated on actor GPUs with train offload",
+    "truncation": "native GAE zero bootstrap; terminal observed reward retained",
+    "entropy_coef": 0.0,
+    "reference_kl_coef": 0.0
+  },
+  "comparison_limitations": [
+    "two updates; no held-out quality evidence",
+    "task source/order/batch settings match; sampled outcomes and accepted task mix do not",
+    "same base weights; warmed image and conversion caches",
+    "weights-only actor/critic checkpoints; no optimizer/RNG resume test",
+    "native PPO adds critic work and keeps zero-variance groups"
+  ],
+  "source_sha256": {
+    "coordinator.py": "7fd457e2376d65bc0db389424bd72e1cba807af1a6be90284a77ad196fc6d2b8",
+    "training_entry.py": "2c450ad5a3652e5b8de23615743c975a57432484cadbb94ea613afff4863b820",
+    "harness_bridge.py": "1d76dc3bccb888da80b805434ca8f0731a7250dea542682385ee26d153bae088",
+    "rollout_adapter.py": "39dfebf2df3f6d99a8eed1ffe0d48787d3aa69b5262931315c9ef7e5d790a32a",
+    "ipo_loss.py": "e6cb44806a1a0611cfdfb313f743dda9fa2ba60ea5198a34d02b82a01655d70a",
+    "test_adapters.py": "550f6a8cacd04dcc8b043b73062b6c74c507264b3a45377954174b4e3567af43",
+    "test_ppo.py": "63ec1092d6bc146c293c4b9dfed377a32ff3e99c93bb60348966bfe92f3f7f87",
+    "sglang.yaml": "031b4387beded7616f3599072623a6fe77f3099b9df87d6c74fb0f8a63eabe3e",
+    "prepare_ppo_driver.py": "23b4bd85faf2e7c681fb79297d4b47abeb429e96ab9389220b9d203719cfa0e5",
+    "ppo-resident-broadcast.patch": "19960867c88866bd8ebd1b128422cd73efdcdaed0375270aa7feb7abf158766d",
+    "install_precision_patch.py": "32f9d57a418e21c754efea8af67c723a1ce9436817dfb4982911a84403cfd86f",
+    "sglang_precision.py": "b6aa8ee350c44524e29059fc296b9527bc58bfa33b9056a259df1d2de34f031d",
+    "capture_infra.py": "e53d08c324693a1ce147449be67629a800181f7c1584109d23156db3b5946d2b",
+    "capture_rdma.py": "4cce038fea581a59f4885e1ee22cd9f588ca1565d341a016d48295dd8307594b",
+    "capture_metrics.py": "852ee91839c29f1f8bf3f231902ff5a226f5d165886868a3c6a5f2b09c544d98",
+    "capture_health.py": "33883778927e2e06e0bb70961ae5287d5292a96143f8780e5b1369021bfd47fb",
+    "container_evidence.py": "5cf13a8b4184443391a271122a67375a1e87c70b2e11a5134b510704c4518d19",
+    "extract_metrics.py": "cc92d603de5b295213d09db6ee8f5f71b96b267209267187e56d40c3be1c11e6",
+    "verify_checkpoint.py": "6264a10473a42cc389025ff64d9c0f4b2d623743d32ff3dfbb44d2bfb5958522",
+    "run.sbatch": "e4be8ec618ed0c7c4655c8cea4bad6b274b89b26c57f0bfb714f96b30fa1aa86",
+    "launch_ppo.py": "d36073e7345f4ff56c99239673b883e90c5e6bac8e41618b6116788c2943eaf2"
+  },
+  "inventory": [
+    {
+      "host": "gpu-nodes-0",
+      "free_bytes": 3114669330432,
+      "gpus": {
+        "argv": [
+          "nvidia-smi",
+          "--query-gpu=uuid,name,memory.total,memory.used",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "GPU-042b468a-5f46-4b8f-c659-2be865525f4a, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-0f5cccee-264e-0ae8-6ccf-56d7fb4be5f9, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-05b02219-2b03-f8a7-ca66-04c0a7befe66, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-cf39917e-f92f-3b5a-fbf5-b9daef3036e6, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-ec52f3ef-8f41-cbaa-d2c2-7e8b56d3b32a, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-54f332eb-7acd-44a4-46ff-0017be6b0952, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-28ee82ef-4f26-3d9f-8596-ff87f1eb443c, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-2941c934-8ec5-7a72-492b-d983858d9126, NVIDIA B200, 183359 MiB, 0 MiB\n",
+        "stderr": ""
+      },
+      "processes": {
+        "argv": [
+          "nvidia-smi",
+          "--query-compute-apps=pid,gpu_uuid,used_memory",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "slurm": {
+        "argv": [
+          "scontrol",
+          "show",
+          "node",
+          "gpu-nodes-0",
+          "--oneliner"
+        ],
+        "exit_code": 0,
+        "stdout": "NodeName=gpu-nodes-0 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=6.42 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.18.139 NodeHostName=gpu-nodes-0 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2236628 Sockets=2 Boards=1 MemSpecLimit=5909 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:37:42 SlurmdStartTime=2026-09-01T17:46:43 LastBusyTime=2026-09-04T00:54:00 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-0\",\"node\":\"b200-nodepool-ac23753e6cfa\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+        "stderr": ""
+      },
+      "ib": {
+        "argv": [
+          "ibstat"
+        ],
+        "exit_code": 0,
+        "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9b04\n\tSystem image GUID: 0x5000e60300ca9b04\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 23\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9b04\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caa2b4\n\tSystem image GUID: 0x5000e60300caa2b4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 393\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caa2b4\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b90fa2\n\tSystem image GUID: 0xc470bd0300b90fa2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b90fa3\n\tSystem image GUID: 0xc470bd0300b90fa2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caa2cc\n\tSystem image GUID: 0x5000e60300caa2cc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 461\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caa2cc\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9b0c\n\tSystem image GUID: 0x5000e60300ca9b0c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 40\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9b0c\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3c34\n\tSystem image GUID: 0x5000e60300ca3c34\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 131\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3c34\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9af4\n\tSystem image GUID: 0x5000e60300ca9af4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 537\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9af4\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9aec\n\tSystem image GUID: 0x5000e60300ca9aec\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 523\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9aec\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030030621e\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x7c8c09030030621e\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030030621f\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 2\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x7c8c09030030621f\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300306220\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c090300306220\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300306221\n\tSystem image GUID: 0x7c8c09030030621e\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c090300306221\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caa22c\n\tSystem image GUID: 0x5000e60300caa22c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 123\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caa22c\n\t\tLink layer: InfiniBand\n",
+        "stderr": ""
+      },
+      "mount": {
+        "argv": [
+          "findmnt",
+          "-J",
+          "/shared"
+        ],
+        "exit_code": 0,
+        "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+        "stderr": ""
+      },
+      "memory": "MemTotal:       3170218620 kB\nMemFree:        2802533248 kB\nMemAvailable:   3053355080 kB\nBuffers:        40938636 kB\nCached:         242081300 kB\nSwapCached:            0 kB\nActive:         50247936 kB\nInactive:       236256816 kB\nActive(anon):   47200888 kB\nInactive(anon):        0 kB\nActive(file):    3047048 kB\nInactive(file): 236256816 kB\nUnevictable:       31664 kB\nMlocked:           28140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               284 kB\nWriteback:             0 kB\nAnonPages:       3518620 kB\nMapped:          2618944 kB\nShmem:          43707252 kB\nKReclaimable:   27207720 kB\nSlab:           42190592 kB\nSReclaimable:   27207720 kB\nSUnreclaim:     14982872 kB\nKernelStack:      128352 kB\nPageTables:        53744 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585109308 kB\nCommitted_AS:   71268708 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1198488 kB\nVmallocChunk:          0 kB\nPercpu:          1483776 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    158012884 kB\nDirectMap2M:    1705904128 kB\nDirectMap1G:    1356857344 kB\n",
+      "image": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "image",
+          "inspect",
+          "--format={{.Id}}",
+          "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+        ],
+        "exit_code": 0,
+        "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+        "stderr": ""
+      },
+      "driver": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "info",
+          "--format={{.Driver}}"
+        ],
+        "exit_code": 0,
+        "stdout": "fuse-overlayfs\n",
+        "stderr": ""
+      },
+      "queue": {
+        "argv": [
+          "squeue",
+          "-h",
+          "-o",
+          "%i|%T|%N"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "host": "gpu-nodes-1",
+      "free_bytes": 3114669330432,
+      "gpus": {
+        "argv": [
+          "nvidia-smi",
+          "--query-gpu=uuid,name,memory.total,memory.used",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "GPU-5952930a-878e-ec2b-c065-48fb338aa628, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-1bc17818-8165-04f4-9862-3bcbe7268fbb, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-f2fbb0d1-cb7a-4e2a-a894-21e7b6e7921b, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-2ab0b43f-4c77-d27b-7ccf-21c99d80be08, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-e1134404-a7de-f243-63f1-5fd7e11c635f, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-d1b19d48-f43c-67ea-1b22-af4a8e6e428c, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-15fdcc49-761c-3cc0-c511-7c9d4c04d796, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-0606304d-2091-5727-0a0c-ee795e16dfc7, NVIDIA B200, 183359 MiB, 0 MiB\n",
+        "stderr": ""
+      },
+      "processes": {
+        "argv": [
+          "nvidia-smi",
+          "--query-compute-apps=pid,gpu_uuid,used_memory",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "slurm": {
+        "argv": [
+          "scontrol",
+          "show",
+          "node",
+          "gpu-nodes-1",
+          "--oneliner"
+        ],
+        "exit_code": 0,
+        "stdout": "NodeName=gpu-nodes-1 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=7.24 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.13.18 NodeHostName=gpu-nodes-1 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2411937 Sockets=2 Boards=1 MemSpecLimit=5916 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:38:02 SlurmdStartTime=2026-09-01T17:46:17 LastBusyTime=2026-09-04T00:53:59 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-1\",\"node\":\"b200-nodepool-b401f8abb9f1\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+        "stderr": ""
+      },
+      "ib": {
+        "argv": [
+          "ibstat"
+        ],
+        "exit_code": 0,
+        "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3c4\n\tSystem image GUID: 0x5000e60300cab3c4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 449\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3c4\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab33c\n\tSystem image GUID: 0x5000e60300cab33c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 166\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab33c\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b9299c\n\tSystem image GUID: 0xc470bd0300b9299c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b9299d\n\tSystem image GUID: 0xc470bd0300b9299c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3e4\n\tSystem image GUID: 0x5000e60300cab3e4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 509\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3e4\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3bc\n\tSystem image GUID: 0x5000e60300cab3bc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 419\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3bc\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3b4\n\tSystem image GUID: 0x5000e60300cab3b4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 398\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3b4\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab3a4\n\tSystem image GUID: 0x5000e60300cab3a4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 367\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab3a4\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300caafc4\n\tSystem image GUID: 0x5000e60300caafc4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 448\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300caafc4\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300026198\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x7c8c090300026198\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c090300026199\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 4\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x7c8c090300026199\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030002619a\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c09030002619a\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.42.1280\n\tHardware version: 0\n\tNode GUID: 0x7c8c09030002619b\n\tSystem image GUID: 0x7c8c090300026198\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c09030002619b\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300cab01c\n\tSystem image GUID: 0x5000e60300cab01c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 85\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300cab01c\n\t\tLink layer: InfiniBand\n",
+        "stderr": ""
+      },
+      "mount": {
+        "argv": [
+          "findmnt",
+          "-J",
+          "/shared"
+        ],
+        "exit_code": 0,
+        "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+        "stderr": ""
+      },
+      "memory": "MemTotal:       3170218776 kB\nMemFree:        2972241164 kB\nMemAvailable:   3054396208 kB\nBuffers:        18657896 kB\nCached:         114768052 kB\nSwapCached:            0 kB\nActive:         48712216 kB\nInactive:       87948452 kB\nActive(anon):   46303156 kB\nInactive(anon):        0 kB\nActive(file):    2409060 kB\nInactive(file): 87948452 kB\nUnevictable:       31592 kB\nMlocked:           28140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:                76 kB\nWriteback:             0 kB\nAnonPages:       3268144 kB\nMapped:          2425568 kB\nShmem:          43059604 kB\nKReclaimable:    7487444 kB\nSlab:           19020892 kB\nSReclaimable:    7487444 kB\nSUnreclaim:     11533448 kB\nKernelStack:      120768 kB\nPageTables:        50076 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585109388 kB\nCommitted_AS:   69437988 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1179324 kB\nVmallocChunk:          0 kB\nPercpu:          1539072 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    120010196 kB\nDirectMap2M:    1386342400 kB\nDirectMap1G:    1714421760 kB\n",
+      "image": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "image",
+          "inspect",
+          "--format={{.Id}}",
+          "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+        ],
+        "exit_code": 0,
+        "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+        "stderr": ""
+      },
+      "driver": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "info",
+          "--format={{.Driver}}"
+        ],
+        "exit_code": 0,
+        "stdout": "fuse-overlayfs\n",
+        "stderr": ""
+      },
+      "queue": {
+        "argv": [
+          "squeue",
+          "-h",
+          "-o",
+          "%i|%T|%N"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "host": "gpu-nodes-2",
+      "free_bytes": 3114669330432,
+      "gpus": {
+        "argv": [
+          "nvidia-smi",
+          "--query-gpu=uuid,name,memory.total,memory.used",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "GPU-86218e11-8977-19fa-201a-44a56b6e3af3, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-f453c594-8cff-6075-c05b-3b062157db8c, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-7872c739-35ac-de0a-ed68-2788e884b75a, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-01f65707-f773-a110-8b11-24c5b34fbeb7, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-983d90f7-787b-aff5-36d7-b6493c473cbf, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-e00780e1-e567-1c2e-0948-20d7d26b1b32, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-b159dd83-dd72-8f98-ed64-6627dd4ac56e, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-83015363-6a79-c75f-ac7a-1b923e2a3c4b, NVIDIA B200, 183359 MiB, 0 MiB\n",
+        "stderr": ""
+      },
+      "processes": {
+        "argv": [
+          "nvidia-smi",
+          "--query-compute-apps=pid,gpu_uuid,used_memory",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "slurm": {
+        "argv": [
+          "scontrol",
+          "show",
+          "node",
+          "gpu-nodes-2",
+          "--oneliner"
+        ],
+        "exit_code": 0,
+        "stdout": "NodeName=gpu-nodes-2 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=4.84 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.218.62 NodeHostName=gpu-nodes-2 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2898601 Sockets=2 Boards=1 MemSpecLimit=5910 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-09-01T20:17:30 SlurmdStartTime=2026-09-01T20:25:00 LastBusyTime=2026-09-04T00:54:01 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-2\",\"node\":\"b200-nodepool-b615b018060d\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+        "stderr": ""
+      },
+      "ib": {
+        "argv": [
+          "ibstat"
+        ],
+        "exit_code": 0,
+        "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3ddc\n\tSystem image GUID: 0x5000e60300ca3ddc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 487\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3ddc\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3dbc\n\tSystem image GUID: 0x5000e60300ca3dbc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 409\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3dbc\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b93c04\n\tSystem image GUID: 0xc470bd0300b93c04\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b93c05\n\tSystem image GUID: 0xc470bd0300b93c04\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9b14\n\tSystem image GUID: 0x5000e60300ca9b14\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 60\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9b14\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9eac\n\tSystem image GUID: 0x5000e60300ca9eac\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 379\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9eac\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3e1c\n\tSystem image GUID: 0x5000e60300ca3e1c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 72\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3e1c\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca3e2c\n\tSystem image GUID: 0x5000e60300ca3e2c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 118\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca3e2c\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9afc\n\tSystem image GUID: 0x5000e60300ca9afc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 607\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9afc\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5462\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x7c8c0903001b5462\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5463\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 3\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x7c8c0903001b5463\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5464\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c0903001b5464\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x7c8c0903001b5465\n\tSystem image GUID: 0x7c8c0903001b5462\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x7c8c0903001b5465\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca9f1c\n\tSystem image GUID: 0x5000e60300ca9f1c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 83\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca9f1c\n\t\tLink layer: InfiniBand\n",
+        "stderr": ""
+      },
+      "mount": {
+        "argv": [
+          "findmnt",
+          "-J",
+          "/shared"
+        ],
+        "exit_code": 0,
+        "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+        "stderr": ""
+      },
+      "memory": "MemTotal:       3170211668 kB\nMemFree:        3003848288 kB\nMemAvailable:   3064813704 kB\nBuffers:        10531972 kB\nCached:         101356120 kB\nSwapCached:            0 kB\nActive:         85204472 kB\nInactive:       28853308 kB\nActive(anon):   45940360 kB\nInactive(anon):        0 kB\nActive(file):   39264112 kB\nInactive(file): 28853308 kB\nUnevictable:      366444 kB\nMlocked:           28132 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               428 kB\nWriteback:             0 kB\nAnonPages:       2537736 kB\nMapped:          2184116 kB\nShmem:          43761852 kB\nKReclaimable:    8530764 kB\nSlab:           17383536 kB\nSReclaimable:    8530764 kB\nSUnreclaim:      8852772 kB\nKernelStack:      104112 kB\nPageTables:        43652 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585105832 kB\nCommitted_AS:   66595800 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1141704 kB\nVmallocChunk:          0 kB\nPercpu:          1010688 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    46273428 kB\nDirectMap2M:    294055936 kB\nDirectMap1G:    2880438272 kB\n",
+      "image": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "image",
+          "inspect",
+          "--format={{.Id}}",
+          "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+        ],
+        "exit_code": 0,
+        "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+        "stderr": ""
+      },
+      "driver": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "info",
+          "--format={{.Driver}}"
+        ],
+        "exit_code": 0,
+        "stdout": "fuse-overlayfs\n",
+        "stderr": ""
+      },
+      "queue": {
+        "argv": [
+          "squeue",
+          "-h",
+          "-o",
+          "%i|%T|%N"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "host": "gpu-nodes-3",
+      "free_bytes": 3114669330432,
+      "gpus": {
+        "argv": [
+          "nvidia-smi",
+          "--query-gpu=uuid,name,memory.total,memory.used",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "GPU-7471b575-a845-d73b-2411-f1e12320fca9, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-1bd6c6e0-759f-5bd3-a68b-6f090fbce455, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-6a8efa14-0d09-d842-ae39-0eef7f0feb50, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-138eab1f-3694-349e-f925-e70769282647, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-272aac0b-bdf7-22f5-d5dc-cf109fa91069, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-70057fe0-55a2-08ba-bd16-da3d25751a7f, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-1d061bc6-8ece-408b-e20e-b75dccbc370e, NVIDIA B200, 183359 MiB, 0 MiB\nGPU-11d63c84-1166-0a29-92d4-cd3dd5761a86, NVIDIA B200, 183359 MiB, 0 MiB\n",
+        "stderr": ""
+      },
+      "processes": {
+        "argv": [
+          "nvidia-smi",
+          "--query-compute-apps=pid,gpu_uuid,used_memory",
+          "--format=csv,noheader"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "slurm": {
+        "argv": [
+          "scontrol",
+          "show",
+          "node",
+          "gpu-nodes-3",
+          "--oneliner"
+        ],
+        "exit_code": 0,
+        "stdout": "NodeName=gpu-nodes-3 Arch=x86_64 CoresPerSocket=64  CPUAlloc=0 CPUEfctv=256 CPUTot=256 CPULoad=6.14 AvailableFeatures=gpu-nodes ActiveFeatures=gpu-nodes Gres=gpu:8 NodeAddr=10.244.180.242 NodeHostName=gpu-nodes-3 Version=26.05.2 OS=Linux 6.8.0-138-generic #138-Ubuntu SMP PREEMPT_DYNAMIC Fri Jul 31 22:41:49 UTC 2026  RealMemory=3090000 AllocMem=0 FreeMem=2885193 Sockets=2 Boards=1 MemSpecLimit=5916 State=IDLE+DYNAMIC_NORM ThreadsPerCore=2 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=gpu-nodes  BootTime=2026-08-25T16:35:51 SlurmdStartTime=2026-09-01T17:46:42 LastBusyTime=2026-09-04T00:54:00 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=256,mem=3090000M,billing=256,gres/gpu=8 AllocTRES= CurrentWatts=0 AveWatts=0 Comment={\"namespace\":\"slurm\",\"podName\":\"slurm-worker-gpu-nodes-3\",\"node\":\"b200-nodepool-83ee4175afdb\",\"nodeSetName\":\"slurm-worker-gpu-nodes\",\"nodeSetUID\":\"e2b6841e-bcca-4ca5-9b2e-053e19599f1d\"}\n",
+        "stderr": ""
+      },
+      "ib": {
+        "argv": [
+          "ibstat"
+        ],
+        "exit_code": 0,
+        "stdout": "CA 'mlx5_0'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7bcc\n\tSystem image GUID: 0x5000e60300ca7bcc\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 459\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7bcc\n\t\tLink layer: InfiniBand\nCA 'mlx5_1'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7be4\n\tSystem image GUID: 0x5000e60300ca7be4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 505\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7be4\n\t\tLink layer: InfiniBand\nCA 'mlx5_10'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b914fa\n\tSystem image GUID: 0xc470bd0300b914fa\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_11'\n\tCA type: MT41692\n\tNumber of ports: 1\n\tFirmware version: 32.42.1000\n\tHardware version: 1\n\tNode GUID: 0xc470bd0300b914fb\n\tSystem image GUID: 0xc470bd0300b914fa\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 200\n\t\tBase lid: 0\n\t\tLMC: 0\n\t\tSM lid: 0\n\t\tCapability mask: 0x00010000\n\t\tPort GUID: 0x0000000000000000\n\t\tLink layer: Ethernet\nCA 'mlx5_12'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c9b466\n\tSystem image GUID: 0x5000e60300c9b466\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 234\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300c9b466\n\t\tLink layer: InfiniBand\nCA 'mlx5_13'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca74d4\n\tSystem image GUID: 0x5000e60300ca74d4\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 473\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca74d4\n\t\tLink layer: InfiniBand\nCA 'mlx5_2'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7c3c\n\tSystem image GUID: 0x5000e60300ca7c3c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 163\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7c3c\n\t\tLink layer: InfiniBand\nCA 'mlx5_3'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca764c\n\tSystem image GUID: 0x5000e60300ca764c\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 189\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca764c\n\t\tLink layer: InfiniBand\nCA 'mlx5_4'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c9b326\n\tSystem image GUID: 0x5000e60300c9b326\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 109\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300c9b326\n\t\tLink layer: InfiniBand\nCA 'mlx5_5'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba2\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 1\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e84a\n\t\tPort GUID: 0x5000e60300c96ba2\n\t\tLink layer: InfiniBand\nCA 'mlx5_6'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba3\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 3\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300c96ba3\n\t\tLink layer: InfiniBand\nCA 'mlx5_7'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba4\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 5\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x5000e60300c96ba4\n\t\tLink layer: InfiniBand\nCA 'mlx5_8'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.47.2526\n\tHardware version: 0\n\tNode GUID: 0x5000e60300c96ba5\n\tSystem image GUID: 0x5000e60300c96ba2\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 100\n\t\tBase lid: 6\n\t\tLMC: 0\n\t\tSM lid: 1\n\t\tCapability mask: 0xa741ec48\n\t\tPort GUID: 0x5000e60300c96ba5\n\t\tLink layer: InfiniBand\nCA 'mlx5_9'\n\tCA type: MT4129\n\tNumber of ports: 1\n\tFirmware version: 28.43.2026\n\tHardware version: 0\n\tNode GUID: 0x5000e60300ca7c24\n\tSystem image GUID: 0x5000e60300ca7c24\n\tPort 1:\n\t\tState: Active\n\t\tPhysical state: LinkUp\n\t\tRate: 400\n\t\tBase lid: 101\n\t\tLMC: 0\n\t\tSM lid: 64\n\t\tCapability mask: 0xa751e848\n\t\tPort GUID: 0x5000e60300ca7c24\n\t\tLink layer: InfiniBand\n",
+        "stderr": ""
+      },
+      "mount": {
+        "argv": [
+          "findmnt",
+          "-J",
+          "/shared"
+        ],
+        "exit_code": 0,
+        "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/shared\",\n         \"source\": \"10.6.98.15@tcp,10.6.98.16@tcp:10.6.98.17@tcp,10.6.98.18@tcp:10.6.98.19@tcp,10.6.98.20@tcp:10.6.98.21@tcp,10.6.98.22@tcp:/vultrddn[/pvc-exa-36896e7d-79f1-4088-9b80-d21d1c3a4105-projectId-245405055]\",\n         \"fstype\": \"lustre\",\n         \"options\": \"rw,flock,lazystatfs,encrypt\"\n      }\n   ]\n}\n",
+        "stderr": ""
+      },
+      "memory": "MemTotal:       3170211908 kB\nMemFree:        2992552960 kB\nMemAvailable:   3059177192 kB\nBuffers:        15502308 kB\nCached:         101944340 kB\nSwapCached:            0 kB\nActive:         87158540 kB\nInactive:       32659180 kB\nActive(anon):   46177528 kB\nInactive(anon):        0 kB\nActive(file):   40981012 kB\nInactive(file): 32659180 kB\nUnevictable:      366480 kB\nMlocked:           28140 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               220 kB\nWriteback:             0 kB\nAnonPages:       2740572 kB\nMapped:          2502672 kB\nShmem:          43797640 kB\nKReclaimable:    8667008 kB\nSlab:           18281652 kB\nSReclaimable:    8667008 kB\nSUnreclaim:      9614644 kB\nKernelStack:      116064 kB\nPageTables:        63460 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    1585105952 kB\nCommitted_AS:   76939864 kB\nVmallocTotal:   13743895347199 kB\nVmallocUsed:     1156232 kB\nVmallocChunk:          0 kB\nPercpu:          1657856 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:      2048 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:    56654952 kB\nDirectMap2M:    550012928 kB\nDirectMap1G:    2614099968 kB\n",
+      "image": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "image",
+          "inspect",
+          "--format={{.Id}}",
+          "radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d"
+        ],
+        "exit_code": 0,
+        "stdout": "sha256:f5d837da7d26efb14ecb262c607cf816b7e862b60cd7f082840bebd3bb54fa54\n",
+        "stderr": ""
+      },
+      "driver": {
+        "argv": [
+          "docker",
+          "--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock",
+          "info",
+          "--format={{.Driver}}"
+        ],
+        "exit_code": 0,
+        "stdout": "fuse-overlayfs\n",
+        "stderr": ""
+      },
+      "queue": {
+        "argv": [
+          "squeue",
+          "-h",
+          "-o",
+          "%i|%T|%N"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "kubernetes_allocatable_gpus": 32
+}

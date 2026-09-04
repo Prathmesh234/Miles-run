@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "kubectl",
+    "--kubeconfig",
+    "/Users/prathmeshbhatt/.kube/vultr-vke.yaml",
+    "exec",
+    "-i",
+    "-n",
+    "slurm",
+    "slurm-worker-gpu-nodes-0",
+    "-c",
+    "slurmd",
+    "--",
+    "python3",
+    "-c",
+    "import json,subprocess,socket,shutil,pathlib\ndef run(args):\n p=subprocess.run(args,capture_output=True,text=True,timeout=30)\n return {\"argv\":args,\"exit_code\":p.returncode,\"stdout\":p.stdout,\"stderr\":p.stderr}\nprint(json.dumps({\"host\":socket.gethostname(),\"free_bytes\":shutil.disk_usage(\"/shared\").free,\n \"gpus\":run([\"nvidia-smi\",\"--query-gpu=uuid,name,memory.total,memory.used\",\"--format=csv,noheader\"]),\n \"processes\":run([\"nvidia-smi\",\"--query-compute-apps=pid,gpu_uuid,used_memory\",\"--format=csv,noheader\"]),\n \"slurm\":run([\"scontrol\",\"show\",\"node\",socket.gethostname(),\"--oneliner\"]),\n \"ib\":run([\"ibstat\"]),\"mount\":run([\"findmnt\",\"-J\",\"/shared\"]),\n \"memory\":pathlib.Path(\"/proc/meminfo\").read_text(),\n \"image\":run([\"docker\",\"--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock\",\"image\",\"inspect\",\"--format={{.Id}}\",\"radixark/miles@sha256:4ee6da9f16e06f8ad24991b18a950482572c458a357aae0bfc396feaf3fe0a6d\"]),\n \"driver\":run([\"docker\",\"--host=unix:///tmp/miles-terminal-lego-20260903-2030/docker.sock\",\"info\",\"--format={{.Driver}}\"]),\n \"queue\":run([\"squeue\",\"-h\",\"-o\",\"%i|%T|%N\"])}))\n"
+  ],
+  "exit_code": 0
+}

@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "kubectl",
+    "--kubeconfig",
+    "/Users/prathmeshbhatt/.kube/vultr-vke.yaml",
+    "exec",
+    "-i",
+    "-n",
+    "slurm",
+    "slurm-worker-gpu-nodes-0",
+    "-c",
+    "slurmd",
+    "--",
+    "sbatch",
+    "--parsable",
+    "--job-name=miles-ppo-terminal-lego",
+    "--time=01:00:00",
+    "--dependency=afterok:196",
+    "--export=ALL,MILES_ALGORITHM=ppo,MILES_CAMPAIGN_ROOT=/shared/clustermax-campaigns/miles-async-ppo-terminal-lego-20260904T010040Z,MILES_REUSE_CAMPAIGN=/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030",
+    "--output=/shared/clustermax-campaigns/miles-async-ppo-terminal-lego-20260904T010040Z/preflight/slurm-%j.out",
+    "/shared/clustermax-campaigns/miles-async-ppo-terminal-lego-20260904T010040Z/code/run.sbatch"
+  ],
+  "exit_code": 0
+}

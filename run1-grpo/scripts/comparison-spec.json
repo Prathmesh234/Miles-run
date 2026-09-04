@@ -1,0 +1,136 @@
+{
+  "status": "preparing_megatron_run",
+  "baseline": {
+    "job_id": 181,
+    "campaign": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00",
+    "run": "runs/20260903-150011",
+    "policy": "Do not delete, modify, resume, or overwrite any baseline artifact or its environment."
+  },
+  "miles": {
+    "repository": "https://github.com/radixark/miles",
+    "commit": "70b89e11770fc9bac984e22cfff89c51cca44203",
+    "job_submitted": false,
+    "backend_approval": "User approved Megatron and requested extensive infrastructure evidence",
+    "campaign": "/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030"
+  },
+  "required_invariants": {
+    "model": "/shared/clustermax-campaigns/prime-rl-terminal-lego-b29c37e00/model-fetch/models/qwen3.6-35b-a3b-995ad96eacd98c81ed38be0c5b274b04031597b0",
+    "model_revision": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+    "initial_weights": "original base-model checkpoint, not the trained step_2 checkpoint",
+    "tasks": [
+      "task_06652",
+      "task_14118",
+      "task_10753",
+      "task_09467"
+    ],
+    "dataset_revision": "9c197f1c2e87b64cc316b1a5bfcef57b584929f0",
+    "task_file_hashes": "baseline/code-git/scripts/2-performance/training/prime-rl-terminal-lego/workload/task-files.sha256",
+    "train_nodes": 2,
+    "inference_nodes": 2,
+    "gpus_per_node": 8,
+    "gpu_type": "NVIDIA B200",
+    "steps": 2,
+    "sequences_per_batch": 16,
+    "samples_per_task_group": 8,
+    "max_context_tokens": 8192,
+    "max_completion_tokens_per_turn": 2048,
+    "max_agent_turns": 8,
+    "rollout_timeout_seconds": 1200,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "min_p": 0.0,
+    "concurrent_episodes": 16,
+    "max_off_policy_steps": 0,
+    "optimizer": {
+      "lr": 1e-06,
+      "weight_decay": 0.0,
+      "max_norm": 1.0,
+      "type": "adamw",
+      "betas1": 0.9,
+      "betas2": 0.999
+    },
+    "scheduler": {
+      "type": "constant"
+    },
+    "trainer_loss": {
+      "type": "ipo",
+      "eps": 0.1,
+      "adv_tau": 1.0,
+      "kl_tau": 0.001
+    },
+    "advantages": "reward minus group mean, without dividing by group standard deviation",
+    "loss_reduction": "global active-token mean",
+    "no_reference_kl": true,
+    "optimization_dtype": "bfloat16",
+    "gradient_reduction_dtype": "bfloat16",
+    "trainer_ep": 8,
+    "trainer_cp": 1,
+    "inference_tp": 8,
+    "inference_dp": 2,
+    "inference_gpu_memory_fraction": 0.85,
+    "freeze_vision_encoder": true,
+    "no_mtp_training": true,
+    "no_speculative_decoding": true,
+    "checkpoint_interval": 2,
+    "save_optimizer": false,
+    "verifiers_commit": "c1547418f6126b431a85ce4d46f1fbd0afe58e92",
+    "renderers_commit": "f91c3e7061ce50ea405cdf54fd419a45cb51a152",
+    "harness": "bash",
+    "runtime": "docker",
+    "renderer": "qwen3.6"
+  },
+  "compatibility_findings": [
+    "Miles FSDP supports data parallelism but not the baseline expert parallelism. Megatron supports EP=8 but changes the trainer implementation and checkpoint format.",
+    "Miles uses SGLang, while the baseline used vLLM. Matching sampling knobs does not make sampled trajectories or kernel behavior bit-identical.",
+    "The standard Miles Verifiers adapter requires Verifiers 0.2.0 and an older EnvConfig/TrainClient API. The pinned baseline uses a newer API and OpenAI>=2.54.0. Preserve the pinned harness through an isolated adapter instead of downgrading or changing the baseline environment.",
+    "The baseline default IPO loss and mean-centered, unstandardized GRPO advantages must be ported and numerically tested. The stock Miles Qwen recipe changes both algorithm settings and optimizer settings.",
+    "The stock Miles Qwen3.6 recipe enables MTP/speculation. Both must stay disabled for this comparison.",
+    "The original task sample order, RNG state, and trajectory truncation/reduction semantics need verification before calling the workloads exact."
+  ],
+  "baseline_observed": {
+    "allocation_start_utc": "2026-09-03T15:00:11Z",
+    "inference_ready_utc": "2026-09-03T15:24:22Z",
+    "step_1_trainer_finished_utc": "2026-09-03T15:27:43Z",
+    "step_2_trainer_finished_utc": "2026-09-03T15:29:46Z",
+    "checkpoint_saved_trainer_finished_utc": "2026-09-03T15:30:03Z",
+    "allocation_end_utc": "2026-09-03T19:00:11Z",
+    "allocation_status": "TIMEOUT",
+    "trainer_status": "RL trainer finished",
+    "completed_steps": 2,
+    "checkpoint": "prime-rl/checkpoints/step_2",
+    "orchestrator_rewards": [
+      0.375,
+      0.4375
+    ],
+    "trainer_loss": [
+      -0.0046,
+      -0.0041
+    ],
+    "reported_throughput_tokens_per_second": [
+      1334,
+      5834
+    ],
+    "reported_mfu_percent": [
+      0.1,
+      0.3
+    ],
+    "reported_peak_memory_gib": [
+      52.6,
+      51.1
+    ],
+    "reported_truncation_percent": [
+      81.2,
+      81.2
+    ]
+  },
+  "comparison_rules": [
+    "Write all new results, logs, caches, model conversions, environments, and checkpoint files into separate directories.",
+    "Mount baseline model and task inputs read-only where possible; never mount baseline outputs as the new output directory.",
+    "Compare setup, inference startup, rollout, active optimizer work, weight transfer, checkpoint saving, and allocation lifetime separately.",
+    "Do not count the old allocation remaining open for roughly 3.5 hours after training finished as useful training time.",
+    "Report total completions, accepted samples, tokens, rewards, truncation, GPU utilization, memory, and per-stage timing alongside backend differences.",
+    "Treat a two-step run as a functionality and performance smoke test, not evidence of model-quality improvement.",
+    "Retain every attempt and inspect failures before retrying. Cancel only job-scoped processes and do not use global cleanup commands."
+  ]
+}

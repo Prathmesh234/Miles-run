@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "kubectl",
+    "--kubeconfig",
+    "/Users/prathmeshbhatt/.kube/vultr-vke.yaml",
+    "exec",
+    "-i",
+    "-n",
+    "slurm",
+    "slurm-worker-gpu-nodes-0",
+    "-c",
+    "slurmd",
+    "--",
+    "python3",
+    "-c",
+    "import sys,tarfile,pathlib,shutil\np=pathlib.Path(sys.argv[1]); assert p.parent==pathlib.Path('/shared/clustermax-campaigns')\nassert shutil.disk_usage(p.parent).free>512*1024**3\np.mkdir(exist_ok=False); (p/'runs').mkdir()\nwith tarfile.open(fileobj=sys.stdin.buffer,mode='r|') as t:\n for m in t:\n  assert m.isfile() and not pathlib.Path(m.name).is_absolute() and '..' not in pathlib.Path(m.name).parts\n  target=p/m.name; target.parent.mkdir(parents=True,exist_ok=True)\n  tmp=target.with_suffix(target.suffix+'.tmp'); tmp.write_bytes(t.extractfile(m).read()); tmp.replace(target)\nprint(p)\n",
+    "/shared/clustermax-campaigns/miles-async-ppo-terminal-lego-20260904T010040Z"
+  ],
+  "exit_code": 0
+}
