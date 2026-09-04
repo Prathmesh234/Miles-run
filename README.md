@@ -25,12 +25,14 @@ This is a **two-update functionality/performance smoke test**, not a model-quali
 - **[Final status](STATUS.md)** and **[machine-readable results](comparison-results.json)**.
 - **[Configuration and deviations](comparison-spec.json)**, including exact model, dataset and source revisions.
 - **[Checkpoint verification](evidence-job-190/job-190/checkpoint-verification.json)** and **[baseline preservation audit](baseline-preservation-after-job-190.json)**.
+- **[Infrastructure charts](charts/README.md):** GPU utilization/memory/power, host CPU/memory, InfiniBand counters, SGLang inference metrics and a run-phase timeline, rendered from the committed telemetry by `plot_infra_charts.py`.
 
 ## Repository contents
 
 | Location | Contents |
 | --- | --- |
 | Root `*.py`, `run.sbatch`, `sglang.yaml` | Campaign launch, adapters, precision patch, telemetry, analysis and validation scripts |
+| `charts/`, `plot_infra_charts.py` | PNG charts of job-190 infrastructure telemetry and the script that renders them from the evidence files |
 | `evidence-job-190/job-190/source/` | Frozen launch-time source, distinct from later analysis additions |
 | `evidence-job-190/job-190/analysis-source/` | Frozen post-run analysis scripts |
 | `evidence-job-190/job-190/` | Training/harness logs, exact argv, resolved arguments, timelines, accepted traces and all 56 episode records |
