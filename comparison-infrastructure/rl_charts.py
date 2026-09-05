@@ -286,6 +286,6 @@ if __name__ == "__main__":
         if any(v is None for v in custom): ap.error("Supply all five options for a custom run")
         render_run(*custom)
     else:
-        render_run("run1-grpo", "run1-grpo/logs", "run1-grpo/rollouts", 190, "GRPO-style credit / custom IPO")
+        render_run("run1-grpo", "evidence-job-190/job-190", "run1-grpo/rollouts", 190, "GRPO-style credit / custom IPO")
         render_run("run2-ppo", "run2-ppo/logs/job-196-final", "run2-ppo/logs/job-196-final/rollouts", 196, "Synchronous PPO")
         render_run("run3-async-ppo", "run3-async-ppo/logs/job-197-final", "run3-async-ppo/logs/job-197-final/rollouts", 197, "Async PPO + TIS")

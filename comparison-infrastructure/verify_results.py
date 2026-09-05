@@ -6,8 +6,24 @@ import json
 import math
 from pathlib import Path
 import re
+import subprocess
 
 ROOT=Path(__file__).resolve().parent
+REPO=ROOT.parent
+RETIRED=json.loads((REPO/'repository-cleanup.json').read_text())
+HISTORY_READS=[]
+
+def evidence_bytes(path):
+    """Read current evidence, or an explicitly retired blob from immutable history."""
+    path=Path(path).resolve()
+    if path.is_file():return path.read_bytes()
+    relative=str(path.relative_to(REPO))
+    record=RETIRED['removed'].get(relative)
+    if record is None:raise FileNotFoundError(path)
+    content=subprocess.check_output(['git','-C',str(REPO),'show',RETIRED['base_commit']+':'+relative])
+    assert hashlib.sha256(content).hexdigest()==record['sha256'],relative
+    HISTORY_READS.append(relative)
+    return content
 
 def main():
     data=json.loads((ROOT/'results.json').read_text())
@@ -23,11 +39,11 @@ def main():
         assert run['exit_code']=='0' and len(run['batches'])==2
         assert all(b['samples']==16 and b['active_tokens']>0 for b in run['batches'])
         for file,digest in run['source_sha256'].items():
-            assert hashlib.sha256((root/file).read_bytes()).hexdigest()==digest,(job,file)
+            assert hashlib.sha256(evidence_bytes(root/file)).hexdigest()==digest,(job,file)
         snapshot=root/'snapshot-manifest.json';verified_count=0
         if snapshot.exists():
             for item in json.loads(snapshot.read_text())['included']:
-                assert hashlib.sha256((root/item['path']).read_bytes()).hexdigest()==item['sha256'],item['path']
+                assert hashlib.sha256(evidence_bytes(root/item['path'])).hexdigest()==item['sha256'],item['path']
                 verified_count+=1
         checks={}
         for role,name in [('actor','checkpoint-verification.json'),('critic','critic-checkpoint-verification.json')]:
@@ -75,6 +91,8 @@ def main():
             'snapshot_files_checked':verified_count,'checkpoint_checks':checks,'policy_validity':gates,
             'warning_line_counts_not_unique_events':dict(warning_counts),
             'optimizer_role_assignment_basis':dict(Counter(p['role_assignment_basis'] for p in run['optimizer_steps']))}
+    verification['retired_evidence']={'base_commit':RETIRED['base_commit'],'historical_blob_reads':len(HISTORY_READS),
+                                    'note':'Only paths explicitly retired by repository-cleanup.json use Git history; missing unlisted inputs still fail.'}
     (ROOT/'verification.json').write_text(json.dumps(verification,indent=2,allow_nan=False)+'\n')
     print(json.dumps({'verified_jobs':list(verification['runs']),'output':str(ROOT/'verification.json')}))
 

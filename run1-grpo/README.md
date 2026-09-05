@@ -7,7 +7,7 @@ The folder name is convenient shorthand: this run used **group-relative credit w
 
 **[RL chart gallery](charts/rl/README.md):** rewards before/after admission, custom IPO objective, entropy, actor gradients, mismatch, masking, rollout lengths/truncation and per-task outcomes. PNG/SVG exports and compact source metrics are included; critic learning and TIS do not apply to this run.
 
-- `logs/`: training, harness, infrastructure and event logs.
+- [Canonical job-190 evidence](../evidence-job-190/job-190/): training, harness, infrastructure and event logs. The duplicate `logs/` tree was removed; exact originals remain in Git history.
 - `rollouts/`: recorded task episodes and accepted batches.
 - `metrics/`: extracted scalars, checkpoint verification and baseline comparison.
 - `charts/`: GPU, CPU, memory, IB, inference and phase charts from this completed run.

@@ -1,6 +1,6 @@
 # Important: asynchronous startup scripts
 
-**Job 197 is already queued. Do not run this command again just to check status.**
+**Job 197 completed historically. Do not run this command merely to check its status.**
 
 For a deliberately new experiment, from this directory:
 

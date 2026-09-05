@@ -3,10 +3,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import analyze as a
 import capture_fabric_1s as capture
 import rl_metrics as rl
+import verify_results as verification
 
 
 class AnalysisTests(unittest.TestCase):
@@ -159,5 +161,19 @@ class AnalysisTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Incomplete'):
                 rl.extract(root,root,log,roll,1,'fixture')
 
+
+class RetiredEvidenceTests(unittest.TestCase):
+    def test_only_explicit_retired_paths_can_read_history(self):
+        retired=next(k for k,v in verification.RETIRED['removed'].items() if v['reason']=='empty_ray_log')
+        with patch.object(verification.subprocess,'check_output',return_value=b'') as read:
+            self.assertEqual(verification.evidence_bytes(verification.REPO/retired),b'')
+            self.assertIn(verification.RETIRED['base_commit']+':'+retired,read.call_args.args[0])
+        with self.assertRaises(FileNotFoundError):
+            verification.evidence_bytes(verification.REPO/'not-a-recorded-retired-file')
+
+    def test_retired_blob_hash_must_match(self):
+        retired=next(k for k,v in verification.RETIRED['removed'].items() if v['reason']=='empty_ray_log')
+        with patch.object(verification.subprocess,'check_output',return_value=b'changed'):
+            with self.assertRaises(AssertionError):verification.evidence_bytes(verification.REPO/retired)
 
 if __name__=='__main__':unittest.main()
