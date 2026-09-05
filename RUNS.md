@@ -25,3 +25,9 @@ Rendering requires Matplotlib and NumPy. Each run's `metrics/rl-metrics.json` co
 [RL verification receipt](comparison-infrastructure/rl-verification.json): 13 analysis tests, 129 source-file hashes, 30 image exports, gallery links, raw-reward checks and preservation checks passed.
 
 These directories preserve the originals; they do not delete or replace the baseline campaign. Live snapshots are timestamped evidence, not promises of final results. No weights/checkpoint shards or credentials are committed. Full binary run artifacts remain on the cluster paths recorded in the manifests.
+
+## Repository cleanup
+
+Repeated job-190 logs now have one canonical location: `evidence-job-190/job-190/`. Empty Ray logs and duplicate frozen script copies were retired with exact hashes; see [REPOSITORY.md](REPOSITORY.md). Original snapshot manifests remain historical, and the verifier checks retired inputs against the immutable pre-cleanup Git commit. Unique failed attempts and all canonical startup modules are retained.
+
+[CollectiveX dashboard and metrics](collectivex/README.md) are a separate communication benchmark, not another RL run.

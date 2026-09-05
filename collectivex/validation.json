@@ -1,0 +1,102 @@
+{
+  "validated_at": "2026-09-05T01:20:21.521486+00:00",
+  "checks": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "collectivex",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "test_generated_html_matches_reviewed_data (test_dashboard.DashboardTests) ... ok\ntest_missing_infrastructure_values_stay_null (test_dashboard.DashboardTests) ... ok\ntest_payload_contains_no_private_inventory_or_remote_dependencies (test_dashboard.DashboardTests) ... ok\ntest_rejects_duplicate_point_and_nonfinite_latency (test_dashboard.DashboardTests) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.171s\n\nOK\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "comparison-infrastructure",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "test_highrate_units_interval_and_reset (test_analysis.AnalysisTests) ... ok\ntest_incomplete_node_is_missing_not_zero_or_rescaled (test_analysis.AnalysisTests) ... ok\ntest_naive_timestamps_are_utc (test_analysis.AnalysisTests) ... ok\ntest_native_lifecycle_retains_quantized_rank_identity (test_analysis.AnalysisTests) ... ok\ntest_native_timer_and_scalars_keep_critic_separate (test_analysis.AnalysisTests) ... ok\ntest_overlap_does_not_double_count_actor_and_critic (test_analysis.AnalysisTests) ... ok\ntest_rl_action_tokens_exclude_tool_span_and_transport_credit (test_analysis.AnalysisTests) ... ok\ntest_rl_missing_episode_reward_is_not_zero_filled (test_analysis.AnalysisTests) ... ok\ntest_rl_reads_only_accepted_sample_files (test_analysis.AnalysisTests) ... ok\ntest_rl_rejects_branching_denominator (test_analysis.AnalysisTests) ... ok\ntest_rl_scalars_deduplicate_and_keep_critic_and_rollout_metrics (test_analysis.AnalysisTests) ... ok\ntest_role_inference_requires_unambiguous_enclosing_train_span (test_analysis.AnalysisTests) ... ok\ntest_sampler_extracts_counters (test_analysis.AnalysisTests) ... ok\ntest_only_explicit_retired_paths_can_read_history (test_analysis.RetiredEvidenceTests) ... ok\ntest_retired_blob_hash_must_match (test_analysis.RetiredEvidenceTests) ... ok\n\n----------------------------------------------------------------------\nRan 15 tests in 0.007s\n\nOK\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "run4-ppo-long/scripts",
+        "-p",
+        "test_long_run.py",
+        "-v"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "test_async_tis_preserved (test_long_run.ConfigTests) ... ok\ntest_conversion_identity_checked_before_start (test_long_run.ConfigTests) ... ok\ntest_cpu_offload_required (test_long_run.ConfigTests) ... ok\ntest_distinct_conversion_required (test_long_run.ConfigTests) ... ok\ntest_exact_ten_update_boundary (test_long_run.ConfigTests) ... ok\ntest_generated_scripts_use_new_config_in_both_modes (test_long_run.ConfigTests)\nExecute generated argument functions, not a duplicate expected recipe. ... ok\ntest_immutable_model_revision_required (test_long_run.ConfigTests) ... ok\ntest_only_authorized_argument_changes (test_long_run.ConfigTests) ... ok\ntest_pending_choices_block_launch (test_long_run.ConfigTests) ... ok\ntest_ten_step_native_async_schedule (test_long_run.ConfigTests)\nExtend the previous native-driver fixture to exercise all ten steps. ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.045s\n\nOK\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "collectivex/render.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"status\": \"ok\", \"measured_points\": 112, \"dashboard\": \"/Users/prathmeshbhatt/Desktop/Miles-run/collectivex/index.html\", \"checked\": true}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "browser": {
+    "status": "passed",
+    "selection_combinations": 768,
+    "native_points": 112,
+    "infra_metrics": 17,
+    "csv_rows": 33,
+    "title": "CollectiveX \u00b7 Vultr B200 | Miles experiments",
+    "mobile": {
+      "width": 390,
+      "body": 390,
+      "chart": 322
+    },
+    "console_errors": 0,
+    "external_requests": [],
+    "desktop_screenshot": "dashboard-browser-preview.png"
+  },
+  "historical_jobs_verified": [
+    190,
+    196,
+    197
+  ],
+  "scope": "Local CPU/browser/report verification only; no training or GPU jobs submitted",
+  "sha256": {
+    "index.html": "8ab0edfae59ae7ca9ca084b18b61ba6a6267b9074f951383dc2a178cab8cfb37",
+    "metrics.json": "655ae54647fa8a1023ba419bb5977285a6730797b9dee296004224bc001d1eb2",
+    "render.py": "c7e99b4b30300531911cce1a1290bec91ae72f07f9537c253c04da93f4a99d22",
+    "node-comparison.svg": "e5fe0e2ab19b345d8ffb985a7d30ccb543e5223b07677a82baafb949e2d0a273",
+    "infrastructure.svg": "ea1db18c2e1a90abaf4b340c6440a24353de9bef0dadd6745f82c9680b295813"
+  }
+}

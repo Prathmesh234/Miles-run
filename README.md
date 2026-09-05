@@ -1,94 +1,55 @@
-# Miles experiments: GRPO-style / IPO, PPO, and async PPO + TIS
+# Miles experiments and CollectiveX on Vultr B200
 
-**RL chart galleries:** [Run 1 — GRPO-style/IPO](run1-grpo/charts/rl/README.md) · [Run 2 — PPO](run2-ppo/charts/rl/README.md) · [Run 3 — async PPO + TIS](run3-async-ppo/charts/rl/README.md).
-Fifteen multi-panel figures in PNG/SVG cover raw rewards, task outcomes, policy loss/entropy/gradients, clipping, rollout behavior, PPO critic learning, and async importance correction. Each gallery includes compact source data, hashes, interpretation notes and missing metrics. These are two-update training diagnostics, not held-out learning curves.
+**[Open the CollectiveX HTML dashboard](collectivex/index.html)** · [CollectiveX results and methods](collectivex/README.md) · [Repository map and cleanup](REPOSITORY.md)
 
-**[Read the three-run infrastructure report](comparison-infrastructure/README.md)** for the final results and clean, exportable charts: rollout time, actual overlap, weight-publication latency, IB/NVLink utilization, off-policy correction and optimizer offloading.
+The CollectiveX dashboard is a self-contained HTML file: download it and open
+it locally. It provides measured dispatch/combine/round-trip latency, payload
+rates, node comparisons, infrastructure traces, and CSV/JSON/SVG exports.
+No browser extension, server, GPU allocation or internet connection is required.
 
-**[Run folders and essential startup scripts](RUNS.md)** preserve the exact sources and evidence for jobs 190, 196 and 197. Earlier snapshots and the invalid cancelled job-195 attempt remain separate. No old run artifacts were deleted.
+## CollectiveX: completed EP8 characterization
 
-The report distinguishes sampled fabric utilization from actual scaling efficiency: no node-count or GPU-count scaling sweep was performed.
+Jobs **221–224**, four nodes / 32 B200 GPUs, **112/112 measured points passed**.
+At 8,192 tokens/GPU, FP8 dispatch reduced chained pair-period latency by about
+22.8% versus BF16; combine remains BF16. This tests four separate NVLink
+islands, not EP32/inter-node RDMA or model quality. Full methodology, pins,
+telemetry caveats and evidence-archive checksum are in [collectivex/](collectivex/README.md).
 
----
+## Historical Miles runs
 
-## Archived job-190 report
+These are **two-update functionality/performance experiments**, not a held-out
+quality hill climb or a controlled algorithm speedup claim. All use
+Qwen3.6-35B-A3B; generated trajectories and some runtime choices differ.
 
-The following original report concerns job 190 and its Prime-RL baseline only; use the report above for the later PPO runs.
+- [Run 1: GRPO-style credit / custom IPO](run1-grpo/README.md), job 190.
+- [Run 2: synchronous PPO](run2-ppo/README.md), job 196.
+- [Run 3: native one-batch-ahead async PPO + TIS](run3-async-ppo/README.md), job 197.
+- [Run guide and RL galleries](RUNS.md): rewards, optimizer diagnostics, critic
+  learning, rollout behavior, task outcomes and TIS.
+- [Three-run infrastructure comparison](comparison-infrastructure/README.md):
+  overlap, weight publication, GPU/IB/NVLink utilization and CPU offload.
+- Original job-190 reports: [comparison](COMPARISON.md),
+  [infrastructure](INFRASTRUCTURE.md), [final status](STATUS.md).
 
-# Miles / Megatron Terminal-Lego run — job 190
+Run 4/5 folders contain **unsubmitted preparation**, not completed long runs.
+Cancelled job 195 is retained separately and excluded from valid comparisons.
+Checkpoints were weights-only; a full optimizer/RNG resume test was not performed.
 
-Completed **3 September 2026** on **32 NVIDIA B200 GPUs**. This repository now contains the completed Miles experiment, its comparison with Prime-RL job 181, reproducibility scripts, and infrastructure evidence. It replaces the previous job-177 working tree; older work remains in Git history.
+## Keep this repository compact
 
-## Results
+The cleanup removed 2,170 redundant files, including 222 duplicate script
+copies. Canonical per-run startup modules and every distinct historical
+content hash were preserved during deduplication. See [REPOSITORY.md](REPOSITORY.md)
+and [the machine-readable deletion ledger](repository-cleanup.json).
+Original files remain in Git history; historical manifests are not rewritten.
 
-| Item | Result |
-| --- | --- |
-| Slurm job | **190 — COMPLETED, exit 0:0** |
-| Training | **Two optimizer updates**, 16 accepted traces each |
-| Model | Qwen3.6-35B-A3B, original base weights |
-| Backends | Miles + Megatron trainer + SGLang inference |
-| Allocation | Four nodes, 14m34s, 7.77 allocated GPU-hours |
-| Final checkpoint | `runs/job-190/checkpoints/iter_0000001` — zero-based ID, after update two |
-| Second trainer update | 19.01s; baseline approximately 19.40s with different timer boundaries |
-| Inference-ready → checkpoint | Miles 7m39.65s; baseline 5m41s |
-| Original run | Preserved; final source/config hash audit passed |
+Do not commit duplicated source snapshots, empty process logs, checkpoint/model
+weights, Docker images, kubeconfigs, credentials or private Slack transcripts.
+Keep full archives separately; publish compact measured data and readable reports.
 
-This is a **two-update functionality/performance smoke test**, not a model-quality result or a controlled backend speedup benchmark. Precision, kernels, rollout scheduling and generated trajectories differ. Failed setup attempts and final shutdown warnings are documented, not omitted.
+**Startup scripts are environment-specific historical sources, not a portable
+one-command installer.** Inspect each run's scripts README before reusing them.
+Submitting the old workload can reserve 32 GPUs; this repository cleanup and
+CollectiveX dashboard publication did not launch another training job.
 
-## Start here
-
-- **[Comparison report](COMPARISON.md):** workload, timing, rewards, memory, failed attempts, caveats and checkpoint checks.
-- **[Infrastructure report](INFRASTRUCTURE.md):** GPU/CPU/NUMA topology, IB/RDMA, storage, resource constraints, software versions and telemetry coverage.
-- **[Final status](STATUS.md)** and **[machine-readable results](comparison-results.json)**.
-- **[Configuration and deviations](comparison-spec.json)**, including exact model, dataset and source revisions.
-- **[Checkpoint verification](evidence-job-190/job-190/checkpoint-verification.json)** and **[baseline preservation audit](baseline-preservation-after-job-190.json)**.
-- **[Infrastructure charts](charts/README.md):** GPU utilization/memory/power, host CPU/memory, InfiniBand counters, SGLang inference metrics and a run-phase timeline, rendered from the committed telemetry by `plot_infra_charts.py`.
-
-## Repository contents
-
-| Location | Contents |
-| --- | --- |
-| Root `*.py`, `run.sbatch`, `sglang.yaml` | Campaign launch, adapters, precision patch, telemetry, analysis and validation scripts |
-| `charts/`, `plot_infra_charts.py` | PNG charts of job-190 infrastructure telemetry and the script that renders them from the evidence files |
-| `evidence-job-190/job-190/source/` | Frozen launch-time source, distinct from later analysis additions |
-| `evidence-job-190/job-190/analysis-source/` | Frozen post-run analysis scripts |
-| `evidence-job-190/job-190/` | Training/harness logs, exact argv, resolved arguments, timelines, accepted traces and all 56 episode records |
-| `evidence-job-190/job-190/infra/` | NCCL/Ray logs, GPU/host time series, local PMA/RDMA counters, before/after snapshots, runtime constraints and precision-patch provenance |
-| `infra-preflight/` | Hardware snapshots before the experiment |
-| `baseline-*.json`, `baseline-metrics.jsonl` | Baseline metrics, task schedule and preservation evidence |
-| `publication-inputs/` | Pinned image digest, base-model conversion provenance and recorded adapter-test result |
-| `publication-manifest.json` | SHA-256 and size of every copied file, exclusions and previous repository commit |
-
-Published evidence is approximately **167 MB of uncompressed text**. Checkpoint/model weights, Docker images, archives, caches, binary rollout dumps and TensorBoard event files are not committed. The complete local/cluster archive retains those run artifacts. The reports were written against that complete archive, so references to TensorBoard and binary debug dumps describe retained evidence, not files included here.
-
-Infrastructure files intentionally include observed private network addresses, node names, device identifiers and filesystem paths. They do **not** include a kubeconfig or access credentials. This is a public evidence repository, not an access mechanism.
-
-## Reproduction scope
-
-These scripts preserve the actual campaign and its environment-specific paths. They are **not a portable one-command installer**. A fresh environment must supply the pinned base-model files, task images, original harness and the four-node Slurm/Docker infrastructure. Large inputs and the original baseline source are referenced by revision/path, not vendored into this repository.
-
-The recorded campaign root is:
-
-```text
-/shared/clustermax-campaigns/miles-terminal-lego-20260903-2030
-```
-
-The execution sequence was:
-
-1. Inventory and preserve the baseline; pin the model, dataset, harness, renderer and Miles revisions in `comparison-spec.json`.
-2. Stage the pinned Miles image in separate `fuse-overlayfs` Docker daemons; keep the original task-image daemon unchanged. See `isolated_docker.py` and `preflight_image.py`.
-3. Supply the pinned Miles checkout at the campaign's `miles/`, scripts at `code/`, and the pinned image digest at `image-digest.json`. The original model is mounted read-only. `remote.py` requires your own local kubeconfig configuration.
-4. Run the adapter fidelity checks in the original pinned harness environment. They require original accepted-episode fixtures and the job-189 errored-group fixture, which are retained on cluster but not all bundled here. The successful recorded result is in [adapter-test-result.json](publication-inputs/preflight/harness-test-v2/adapter-test-result.json).
-5. Submit `run.sbatch` to the four assigned nodes. `coordinator.py` creates a **new job-ID directory**, snapshots its source, applies and validates the job-local precision patch, validates arguments, converts or reuses original base weights, starts the harness and Ray, runs two updates, and stops only job-scoped processes.
-6. Supplement the built-in two-second collector with `capture_rdma.py`, `capture_metrics.py` and `runtime_constraints.py`, as recorded in the evidence. These additional collectors were started separately; `run.sbatch` alone does not reproduce their collection start times.
-7. Extract metrics, verify checkpoint storage ranges and sample tensors, audit baseline preservation, and compare the measured work using the included analysis scripts.
-
-**Submitting this workload reserves 32 GPUs.** No new training job was launched to publish this repository. Do not rerun against an existing job directory or use the trained baseline checkpoint as the initial model.
-
-## Validation and limitations
-
-The completed run passed 32 exact IPO value/gradient fixtures, real TrainClient stop/length mapping, all 32 baseline trace conversions, native errored-group admission/credit tests, five GPU precision shapes and CUDA-graph replay. The final checkpoint passed metadata/range checks and three actual CPU tensor reads. **A full distributed checkpoint-resume test was not performed.**
-
-Publication checks verify copied-file hashes, frozen source manifests, Python syntax, JSON/JSONL parsing and README links. These checks do not rerun GPU training or replace the recorded fidelity tests. Credential-pattern screening found no credentials after reviewing the SGLang `IP:port@DP-rank` URL notation; pattern-based screening is not an exhaustive security guarantee.
-
-See [third-party notices](THIRD_PARTY_NOTICES.md) for the retained SGLang/vLLM source snapshots.
+[Third-party notices](THIRD_PARTY_NOTICES.md)
